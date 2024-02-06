@@ -1,0 +1,11 @@
+{#- Template Parameters: -#}
+{#- models (list): A list of models, where each model is an instance of the Model Pydantic class -#}
+{#-  containing 'name' (str) and 'fields' (list of Field instances). -#}
+from pydantic import BaseModel
+{%- for model in models %}
+
+class {{ model.name }}(BaseModel):
+{%- for field in model.fields %}
+    {{ field.name }}: {{ field.type }}{{ " " if field.required else " = None" }}
+{%- endfor %}
+{% endfor -%}

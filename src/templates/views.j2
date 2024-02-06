@@ -1,0 +1,18 @@
+{#- Template Parameters: -#}
+{#- views (list): A list of views to generate -#}
+from fastapi import APIRouter
+from models import (
+{%- for view in views %}
+    {{ view.response.name }}{% if not loop.last %},{% endif %}
+{%- endfor %}
+)
+api_router = APIRouter()
+{%- for view in views %}
+@api_router.{{ view.method }}(
+    path="{{ view.path }}",
+    response_model={{ view.response.name }}
+)
+async def {{ view.name }}():
+    # TODO: implement your view
+    pass
+{% endfor -%}
