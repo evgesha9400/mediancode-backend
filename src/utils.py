@@ -36,7 +36,7 @@ def snake_to_camel(name):
 
 
 def remove_duplicates(s: str) -> str:
-    """Remove duplicate words from the given string."""
+    """Remove adjacent duplicate words from the given string."""
     words = re.findall('[A-Z][^A-Z]*', s)
     seen = set()
     result = []
@@ -44,4 +44,18 @@ def remove_duplicates(s: str) -> str:
         if word.lower() not in seen:
             result.append(word)
             seen.add(word.lower())
+    return ''.join(result)
+
+
+def remove_non_adjacent_duplicates(s: str) -> str:
+    """Remove non-adjacent duplicate words from the given string."""
+    words = re.findall('[A-Z][^A-Z]*', s)
+    seen = set()
+    result = []
+
+    for word in words:
+        word_lower = word.lower()
+        if word_lower not in seen:
+            result.append(word)
+            seen.add(word_lower)
     return ''.join(result)
