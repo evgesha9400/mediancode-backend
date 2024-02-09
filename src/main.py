@@ -30,10 +30,12 @@ def generate_fastapi(api: InputAPI, dry_run: bool = False):
 
     if dry_run:
         logger.info("Dry run enabled. No files will be written.")
-        logger.info(f"models.py:\n{rendered_models}")
-        logger.info(f"views.py:\n{rendered_views}")
+        logger.info(f"\nmodels.py:\n{rendered_models}")
+        logger.info(f"\nviews.py:\n{rendered_views}")
     else:
-        path = os.path.join(curr_dir, "generated")
-        create_dir(path)
-        write_file(os.path.join(path, "models.py"), rendered_models)
-        write_file(os.path.join(path, "views.py"), rendered_views)
+        project_name = api.name.lower()
+        project_directory = os.path.join(curr_dir, project_name)
+        src_directory = os.path.join(project_directory, "src")
+        create_dir(src_directory)
+        write_file(os.path.join(src_directory, "models.py"), rendered_models)
+        write_file(os.path.join(src_directory, "views.py"), rendered_views)

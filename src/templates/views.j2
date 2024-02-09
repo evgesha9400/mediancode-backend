@@ -12,7 +12,7 @@ api_router = APIRouter()
     path="{{ view.path }}",
     response_model={{ view.response.name }}
 )
-async def {{ view.name }}():
+def {{ view.name }}():
     # TODO: implement your view
     pass
 {% endfor -%}
