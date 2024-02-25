@@ -1,8 +1,9 @@
 {#- Template Parameters: -#}
-{#- models (list): A list of models, where each model is an instance of the Model Pydantic class -#}
-{#-  containing 'name' (str) and 'fields' (list of Field instances). -#}
+{#- requests: List[TemplateRequest] -#}
+{#- typing_imports: Set[str] -#}
 from pydantic import BaseModel
-{%- for model in models %}
+{% if typing_imports %}from typing import {{ typing_imports | join(", ") }}{% endif %}
+{% for model in requests %}
 
 class {{ model.name }}(BaseModel):
 {%- for field in model.fields %}

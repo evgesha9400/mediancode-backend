@@ -1,0 +1,23 @@
+{#- Parameters: -#}
+{#- api : TemplateApi -#}
+[tool.poetry]
+name = "{{ api.spaced_name }}"
+version = "{{ api.version }}"
+description = "{{ api.description }}"
+authors = ["{{ api.author }}"]
+readme = "README.md"
+
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.109.2"
+uvicorn = "^0.27.1"
+
+
+[tool.poetry.group.dev.dependencies]
+pyyaml = "^6.0.1"
+httpx = "^0.26.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

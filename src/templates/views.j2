@@ -1,18 +1,31 @@
 {#- Template Parameters: -#}
 {#- views (list): A list of views to generate -#}
 from fastapi import APIRouter
-from models import (
-{%- for view in views %}
-    {{ view.response.name }}{% if not loop.last %},{% endif %}
-{%- endfor %}
-)
+import path
+import query
+import requests
+import responses
+
+
 api_router = APIRouter()
 {%- for view in views %}
+
+ 
 @api_router.{{ view.method }}(
     path="{{ view.path }}",
-    response_model={{ view.response.name }}
+    response_model=responses.{{ view.response.name }}
 )
-def {{ view.name }}():
+async def {{ view.snake_name }}(
+    {%- for p_param in view.path_params %}
+    {{ p_param.snake_name }}: path.{{ p_param.camel_name }},
+    {%- endfor %}
+    {%- if view.request %}
+    request: requests.{{ view.request.name }},
+    {%- endif %}
+    {%- for q_param in view.query_params %}
+    {{ q_param.snake_name }}: query.{{ q_param.camel_name }}{% if not q_param.required %} = None{% endif %},
+    {%- endfor %}
+):
     # TODO: implement your view
-    pass
+    return responses.{{ view.response.name }}()
 {% endfor -%}
