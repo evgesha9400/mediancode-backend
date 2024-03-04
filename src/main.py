@@ -21,6 +21,7 @@ from renderers import (
     render_main,
     render_pyproject,
     render_makefile,
+    render_dockerfile,
 )
 from transformers import transform_api
 from utils import create_dir, write_file, camel_to_snake, copy_file, apply_black_formatting
@@ -44,6 +45,7 @@ def generate_fastapi(api: InputAPI, path: str = curr_dir, dry_run: bool = False)
     main_template = env.get_template("main.j2")
     pyproject_template = env.get_template("pyproject.j2")
     makefile_template = env.get_template("makefile.j2")
+    dockerfile_template = env.get_template("dockerfile.j2")
 
     # Transform the InputAPI instance to a TemplateAPI instance
     template_api = transform_api(api)
@@ -72,6 +74,7 @@ def generate_fastapi(api: InputAPI, path: str = curr_dir, dry_run: bool = False)
     rendered_main = render_main(template_api, main_template)
     rendered_pyproject = render_pyproject(template_api, pyproject_template)
     rendered_makefile = render_makefile(template_api, makefile_template)
+    rendered_dockerfile = render_dockerfile(template_api, dockerfile_template)
 
     if dry_run:
         logger.info("Dry run enabled. No files will be written.")
@@ -83,6 +86,7 @@ def generate_fastapi(api: InputAPI, path: str = curr_dir, dry_run: bool = False)
         logger.info(f"\nsrc/main.py:\n{rendered_main}")
         logger.info(f"\npyproject.toml:\n{rendered_pyproject}")
         logger.info(f"\nMakefile:\n{rendered_makefile}")
+        logger.info(f"\nDockerfile:\n{rendered_dockerfile}")
 
     else:
         project_name = camel_to_snake(api.name)
@@ -99,5 +103,6 @@ def generate_fastapi(api: InputAPI, path: str = curr_dir, dry_run: bool = False)
             os.path.join(project_directory, "pyproject.toml"), rendered_pyproject
         )
         write_file(os.path.join(project_directory, "Makefile"), rendered_makefile)
+        write_file(os.path.join(project_directory, "Dockerfile"), rendered_dockerfile)
         copy_file(os.path.join(static_dir, "swagger.py"), os.path.join(project_directory, "swagger.py"))
         # apply_black_formatting(src_directory)

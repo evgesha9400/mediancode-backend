@@ -62,3 +62,8 @@ def render_pyproject(api: TemplateAPI, pyproject_template: Template) -> str:
 def render_makefile(api: TemplateAPI, makefile_template: Template) -> str:
     rendered_makefile = makefile_template.render(api=api)
     return rendered_makefile
+
+
+def render_dockerfile(api: TemplateAPI, dockerfile_template: Template) -> str:
+    rendered_dockerfile = dockerfile_template.render(api=api)
+    return rendered_dockerfile

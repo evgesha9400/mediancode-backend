@@ -1,6 +1,6 @@
 {#- Template Parameters: -#}
 {#- api: TemplateApi-#}
-.PHONY: run-local requirements build clean run-container swagger deploy diff
+.PHONY: run-local requirements build clean run-container swagger
 
 PROJECT_NAME={{ api.snake_name }}
 
@@ -23,9 +23,3 @@ run-container: clean build
 
 swagger:
 	@PYTHONPATH=src python3 swagger.py
-
-deploy: requirements
-	@cd deploy && cdk deploy
-
-diff:
-	@cd deploy && cdk diff
