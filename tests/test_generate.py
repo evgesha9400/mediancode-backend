@@ -117,7 +117,7 @@ class TestGenerateFastAPI(TestCase):
 
         items_api = {
             "name": "ItemsApi",
-            "version": "1.0",
+            "version": "0.1.0",
             "views": [
                 get_item_view,
                 list_items_view,
