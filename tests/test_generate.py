@@ -1,8 +1,7 @@
 from unittest import TestCase
-from models.input import InputAPI
+
 from main import generate_fastapi
-import utils
-import pathlib
+from models.input import InputAPI
 
 
 class TestGenerateFastAPI(TestCase):
@@ -11,30 +10,16 @@ class TestGenerateFastAPI(TestCase):
         return {
             "name": "Item",
             "fields": [
-                {
-                    "type": "int",
-                    "name": "id",
-                    "required": True
-                },
-                {
-                    "type": "str",
-                    "name": "name",
-                    "required": True
-                }
-            ]
+                {"type": "int", "name": "id", "required": True},
+                {"type": "str", "name": "name", "required": True},
+            ],
         }
 
     @staticmethod
     def items_response():
         return {
             "name": "Items",
-            "fields": [
-                {
-                    "type": "List[GetItem]",
-                    "name": "items",
-                    "required": True
-                }
-            ]
+            "fields": [{"type": "List[GetItem]", "name": "items", "required": True}],
         }
 
     @staticmethod
@@ -49,6 +34,7 @@ class TestGenerateFastAPI(TestCase):
             "name": "GetItem",
             "path": "/items/{item_id}",
             "method": "GET",
+            "tag": "Items",
             "response": self.item_response(),
             "path_params": [self.item_id_path_param()],
         }
@@ -57,19 +43,12 @@ class TestGenerateFastAPI(TestCase):
             "name": "ListItems",
             "path": "/items",
             "method": "GET",
+            "tag": "Items",
             "query_params": [
-                {
-                    "name": "limit",
-                    "type": "int",
-                    "required": False
-                },
-                {
-                    "name": "offset",
-                    "type": "int",
-                    "required": False
-                }
+                {"name": "limit", "type": "int", "required": False},
+                {"name": "offset", "type": "int", "required": False},
             ],
-            "response": self.items_response()
+            "response": self.items_response(),
         }
 
         create_item_view = {
@@ -79,30 +58,19 @@ class TestGenerateFastAPI(TestCase):
             "response": self.item_response(),
             "request": {
                 "name": "Item",
-                "fields": [
-                    {
-                        "type": "str",
-                        "name": "name",
-                        "required": True
-                    }
-                ]
-            }
+                "fields": [{"type": "str", "name": "name", "required": True}],
+            },
         }
 
         update_item_view = {
             "name": "UpdateItem",
             "path": "/items/{item_id}",
             "method": "PUT",
+            "tag": "Items",
             "response": self.item_response(),
             "request": {
                 "name": "Item",
-                "fields": [
-                    {
-                        "type": "str",
-                        "name": "name",
-                        "required": True
-                    }
-                ]
+                "fields": [{"type": "str", "name": "name", "required": True}],
             },
             "path_params": [self.item_id_path_param()],
         }
@@ -110,6 +78,7 @@ class TestGenerateFastAPI(TestCase):
         delete_item_view = {
             "name": "DeleteItem",
             "path": "/items/{item_id}",
+            "tag": "Items",
             "method": "DELETE",
             "path_params": [self.item_id_path_param()],
             "response": self.item_response(),
@@ -124,29 +93,12 @@ class TestGenerateFastAPI(TestCase):
                 create_item_view,
                 update_item_view,
                 delete_item_view,
-            ]
+            ],
         }
         return InputAPI.model_validate(items_api)
 
     def test_generate(self):
-        generate_fastapi(
-            self.test_api(),
-            path="/Users/evgesha/Desktop"
-        )
+        generate_fastapi(self.test_api(), path="/Users/evgesha/Desktop")
 
     def test_generate_dry_run(self):
         generate_fastapi(self.test_api(), dry_run=True)
-
-
-
-class TestUtils(TestCase):
-    def test_create_project_structure(self):
-        base_path = str(pathlib.Path(__file__).parent.resolve())
-        structure = {
-            "test": {
-                "src": None,
-                "develop": None,
-                "tests": None
-            }
-        }
-        utils.create_project_structure(base_path, structure)
