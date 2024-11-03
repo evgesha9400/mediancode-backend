@@ -18,6 +18,7 @@ class TemplateRequest(BaseModel):
 class TemplateResponse(BaseModel):
     name: str
     fields: List[TemplateField]
+    placeholder: Optional[str] = None
 
 
 class TemplateQueryParam(BaseModel):
@@ -46,6 +47,11 @@ class TemplateView(BaseModel):
     path_params: List[TemplatePathParam]
 
 
+class TemplateAPIConfig(BaseModel):
+    healthcheck: Optional[str]
+    response_placeholders: bool
+
+
 class TemplateAPI(BaseModel):
     snake_name: str
     camel_name: str
@@ -54,4 +60,4 @@ class TemplateAPI(BaseModel):
     author: str
     description: str
     views: List[TemplateView]
-    healthcheck_endpoint: Optional[str]
+    config: TemplateAPIConfig

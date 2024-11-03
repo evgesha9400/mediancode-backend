@@ -3,7 +3,7 @@ import os
 
 from jinja2 import Environment, FileSystemLoader
 
-from extractors import (
+from api_craft.extractors import (
     extract_request_models,
     extract_response_models,
     extract_views,
@@ -11,8 +11,8 @@ from extractors import (
     extract_query_parameters,
     extract_types_from_models,
 )
-from models.input import InputAPI
-from renderers import (
+from api_craft.models.input import InputAPI
+from api_craft.renderers import (
     render_requests,
     render_responses,
     render_views,
@@ -23,8 +23,8 @@ from renderers import (
     render_makefile,
     render_dockerfile,
 )
-from transformers import transform_api
-from utils import create_dir, write_file, camel_to_snake, copy_file, apply_black_formatting
+from api_craft.transformers import transform_api
+from api_craft.utils import create_dir, write_file, camel_to_snake, copy_file
 
 
 logging.basicConfig(level="INFO")

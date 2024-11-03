@@ -1,7 +1,7 @@
 from unittest import TestCase
 
-from main import generate_fastapi
-from models.input import InputAPI
+from api_craft.main import generate_fastapi
+from api_craft.models.input import InputAPI
 
 
 class TestGenerateFastAPI(TestCase):

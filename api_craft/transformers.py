@@ -1,7 +1,7 @@
 """Transformers for input models to template models."""
 from typing import List
 
-from models.input import (
+from api_craft.models.input import (
     InputAPI,
     InputView,
     InputModel,
@@ -9,7 +9,7 @@ from models.input import (
     InputQueryParam,
     InputPathParam,
 )
-from models.template import (
+from api_craft.models.template import (
     TemplateAPI,
     TemplateView,
     TemplateRequest,
@@ -17,8 +17,9 @@ from models.template import (
     TemplateField,
     TemplateQueryParam,
     TemplatePathParam,
+    TemplateAPIConfig
 )
-from utils import (
+from api_craft.utils import (
     snake_to_camel,
     camel_to_snake,
     remove_duplicates,
@@ -123,5 +124,8 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
         views=transformed_views,
         author=input_api.author,
         description=input_api.description,
-        healthcheck_endpoint="/healthcheck",
+        config=TemplateAPIConfig(
+            healthcheck=input_api.config.healthcheck,
+            response_placeholders=input_api.config.response_placeholders,
+        )
     )

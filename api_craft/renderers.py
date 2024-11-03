@@ -2,7 +2,7 @@ from typing import List, Set
 
 from jinja2 import Template
 
-from models.template import (
+from api_craft.models.template import (
     TemplateRequest,
     TemplateResponse,
     TemplateView,
