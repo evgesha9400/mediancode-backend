@@ -1,4 +1,5 @@
 """This file contains the pydantic models for the Jinja2 templates that will be used to generate the FastAPI code."""
+
 from pydantic import BaseModel
 
 from typing import List, Optional

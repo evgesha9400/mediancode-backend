@@ -1,4 +1,5 @@
 """Utility functions for the project."""
+
 import os
 import re
 import shutil
@@ -95,7 +96,3 @@ def create_project_structure(base_path, structure):
         # If the current directory has a sub-structure, recursively create it
         if sub_structure is not None:
             create_project_structure(dir_path, sub_structure)
-
-
-
-

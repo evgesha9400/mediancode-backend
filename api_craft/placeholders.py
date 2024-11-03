@@ -36,4 +36,3 @@ def generate_datetime(index: int) -> datetime.datetime:
     minute = minute % 60
 
     return datetime.datetime(year, month, day, hour, minute, second)
-

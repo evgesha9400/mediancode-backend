@@ -104,5 +104,8 @@ def generate_fastapi(api: InputAPI, path: str = curr_dir, dry_run: bool = False)
         )
         write_file(os.path.join(project_directory, "Makefile"), rendered_makefile)
         write_file(os.path.join(project_directory, "Dockerfile"), rendered_dockerfile)
-        copy_file(os.path.join(static_dir, "swagger.py"), os.path.join(project_directory, "swagger.py"))
+        copy_file(
+            os.path.join(static_dir, "swagger.py"),
+            os.path.join(project_directory, "swagger.py"),
+        )
         # apply_black_formatting(src_directory)

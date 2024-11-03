@@ -31,7 +31,9 @@ def render_requests(
     typing_imports: Set[str],
     requests_template: Template,
 ) -> str:
-    rendered_requests = requests_template.render(requests=requests, typing_imports=typing_imports)
+    rendered_requests = requests_template.render(
+        requests=requests, typing_imports=typing_imports
+    )
     return rendered_requests
 
 
@@ -40,7 +42,9 @@ def render_responses(
     typing_imports: Set[str],
     responses_template: Template,
 ) -> str:
-    rendered_responses = responses_template.render(responses=responses, typing_imports=typing_imports)
+    rendered_responses = responses_template.render(
+        responses=responses, typing_imports=typing_imports
+    )
     return rendered_responses
 
 

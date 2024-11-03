@@ -1,4 +1,5 @@
 """Transformers for input models to template models."""
+
 from typing import List
 
 from api_craft.models.input import (
@@ -17,7 +18,7 @@ from api_craft.models.template import (
     TemplateField,
     TemplateQueryParam,
     TemplatePathParam,
-    TemplateAPIConfig
+    TemplateAPIConfig,
 )
 from api_craft.utils import (
     snake_to_camel,
@@ -127,5 +128,5 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
         config=TemplateAPIConfig(
             healthcheck=input_api.config.healthcheck,
             response_placeholders=input_api.config.response_placeholders,
-        )
+        ),
     )
