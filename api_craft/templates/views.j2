@@ -27,5 +27,13 @@ async def {{ view.snake_name }}(
     {%- endfor %}
 ):
     # TODO: implement your view
+    {% if view.response.placeholder_values %}
+    return responses.{{ view.response.name }}(
+        {%- for field_name, value in view.response.placeholder_values.items() %}
+        {{ field_name }}={{ value.__repr__() }},
+        {%- endfor %}
+    )
+    {% else %}
     return responses.{{ view.response.name }}()
+    {% endif %}
 {% endfor -%}

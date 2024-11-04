@@ -1,6 +1,6 @@
 """Transformers for input models to template models."""
 
-from typing import List
+from typing import List, Any
 
 from api_craft.models.input import (
     InputAPI,
@@ -20,12 +20,43 @@ from api_craft.models.template import (
     TemplatePathParam,
     TemplateAPIConfig,
 )
+from api_craft.placeholders import (
+    generate_string,
+    generate_int,
+    generate_bool,
+    generate_float,
+    generate_datetime,
+)
 from api_craft.utils import (
     snake_to_camel,
     camel_to_snake,
     remove_duplicates,
     add_spaces_to_camel_case,
 )
+
+
+def generate_placeholder_value(field_type: str, index: int) -> Any:
+    """Generate a placeholder value based on the field type."""
+    # Extract base type from List[] if present
+    base_type = field_type
+    if "[" in field_type:
+        base_type = field_type.split("[")[1].split("]")[0]
+
+    type_mapping = {
+        "str": lambda i: generate_string(i, "example"),
+        "int": lambda i: generate_int(i, 1),
+        "bool": generate_bool,
+        "float": lambda i: generate_float(i, 1.5),
+        "datetime.datetime": generate_datetime,
+    }
+
+    generator = type_mapping.get(base_type, type_mapping["str"])
+    value = generator(index)
+
+    # If it's a list type, wrap the value in a list
+    if "[" in field_type:
+        return [value]
+    return value
 
 
 def transform_field(input_field: InputField) -> TemplateField:
@@ -44,13 +75,25 @@ def transform_request(input_request: InputModel, prefix: str = "") -> TemplateRe
 
 
 def transform_response(
-    input_response: InputModel, prefix: str = ""
+    input_response: InputModel, prefix: str = "", generate_placeholders: bool = False
 ) -> TemplateResponse:
     """Transforms an InputModel instance to a TemplateResponse instance."""
     transformed_fields = [transform_field(field) for field in input_response.fields]
     name = f"{prefix}{input_response.name}"
     transformed_name = remove_duplicates(name)
-    return TemplateResponse(name=transformed_name, fields=transformed_fields)
+
+    placeholder_values = None
+    if generate_placeholders:
+        placeholder_values = {
+            field.name: generate_placeholder_value(field.type, idx)
+            for idx, field in enumerate(transformed_fields, 1)
+        }
+
+    return TemplateResponse(
+        name=transformed_name,
+        fields=transformed_fields,
+        placeholder_values=placeholder_values,
+    )
 
 
 def transform_query_params(
@@ -90,7 +133,9 @@ def transform_path_params(
     )
 
 
-def transform_view(input_view: InputView) -> TemplateView:
+def transform_view(
+    input_view: InputView, generate_placeholders: bool = False
+) -> TemplateView:
     """Transforms an InputView instance to a TemplateView instance."""
     prefix = f"{input_view.name}"
 
@@ -98,7 +143,9 @@ def transform_view(input_view: InputView) -> TemplateView:
     if input_view.request:
         transformed_request = transform_request(input_view.request, prefix)
 
-    transformed_response = transform_response(input_view.response, prefix)
+    transformed_response = transform_response(
+        input_view.response, prefix, generate_placeholders=generate_placeholders
+    )
     transformed_query_params = transform_query_params(input_view.query_params)
     transformed_path_params = transform_path_params(input_view.path_params)
 
@@ -116,7 +163,13 @@ def transform_view(input_view: InputView) -> TemplateView:
 
 def transform_api(input_api: InputAPI) -> TemplateAPI:
     """Transforms an InputAPI instance to a TemplateAPI instance."""
-    transformed_views = [transform_view(view) for view in input_api.views]
+    transformed_views = [
+        transform_view(
+            view, generate_placeholders=input_api.config.response_placeholders
+        )
+        for view in input_api.views
+    ]
+
     return TemplateAPI(
         snake_name=camel_to_snake(input_api.name),
         camel_name=input_api.name,

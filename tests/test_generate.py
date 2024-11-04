@@ -84,6 +84,11 @@ class TestGenerateFastAPI(TestCase):
             "response": self.item_response(),
         }
 
+        config = {
+            "healthcheck": "/healthcheck",
+            "response_placeholders": True
+        }
+
         items_api = {
             "name": "ItemsApi",
             "version": "0.1.0",
@@ -94,6 +99,7 @@ class TestGenerateFastAPI(TestCase):
                 update_item_view,
                 delete_item_view,
             ],
+            "config": config,
         }
         return InputAPI.model_validate(items_api)
 

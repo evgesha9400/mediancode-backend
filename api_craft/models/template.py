@@ -1,8 +1,7 @@
 """This file contains the pydantic models for the Jinja2 templates that will be used to generate the FastAPI code."""
 
 from pydantic import BaseModel
-
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 
 class TemplateField(BaseModel):
@@ -19,7 +18,7 @@ class TemplateRequest(BaseModel):
 class TemplateResponse(BaseModel):
     name: str
     fields: List[TemplateField]
-    placeholder: Optional[str] = None
+    placeholder_values: Optional[Dict[str, Any]] = None
 
 
 class TemplateQueryParam(BaseModel):
