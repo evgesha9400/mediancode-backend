@@ -1,6 +1,6 @@
 """Transformers for input models to template models."""
 
-from typing import List, Any
+from typing import List, Any, Dict
 
 from api_craft.models.input import (
     InputAPI,
@@ -35,13 +35,34 @@ from api_craft.utils import (
 )
 
 
+def generate_model_placeholder(model_name: str, fields: List[TemplateField], index: int) -> Dict[str, Any]:
+    """Generate placeholder values for a model instance."""
+    return {
+        field.name: generate_placeholder_value(field.type, index)
+        for field in fields
+    }
+
+
 def generate_placeholder_value(field_type: str, index: int) -> Any:
     """Generate a placeholder value based on the field type."""
-    # Extract base type from List[] if present
-    base_type = field_type
-    if "[" in field_type:
-        base_type = field_type.split("[")[1].split("]")[0]
+    # Handle List type
+    if field_type.startswith("List["):
+        inner_type = field_type[5:-1]  # Extract type between List[ and ]
+        # Generate 2 examples for lists
+        return [
+            generate_placeholder_value(inner_type, i)
+            for i in range(index, index + 2)
+        ]
 
+    # Handle reference to another model
+    if field_type.startswith(("Get", "Create", "Update", "Delete", "List")):
+        # This is a reference to another model, we'll create it with index-based values
+        return {
+            "id": generate_int(index, 1),
+            "name": generate_string(index, "example"),
+        }
+
+    # Handle primitive types
     type_mapping = {
         "str": lambda i: generate_string(i, "example"),
         "int": lambda i: generate_int(i, 1),
@@ -50,13 +71,11 @@ def generate_placeholder_value(field_type: str, index: int) -> Any:
         "datetime.datetime": generate_datetime,
     }
 
-    generator = type_mapping.get(base_type, type_mapping["str"])
-    value = generator(index)
+    generator = type_mapping.get(field_type)
+    if not generator:
+        return generate_string(index, f"example_{field_type.lower()}")
 
-    # If it's a list type, wrap the value in a list
-    if "[" in field_type:
-        return [value]
-    return value
+    return generator(index)
 
 
 def transform_field(input_field: InputField) -> TemplateField:
