@@ -1,0 +1,3 @@
+ignore_folders=[".venv", ".idea", ".vscode", ".git"]
+ignore_file_extensions=["pdf", "jpg", "png", "pyc"]
+ignore_name_includes=["claude_pyrojects", "poetry.lock", ".DS_Store"]
