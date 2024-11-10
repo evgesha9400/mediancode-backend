@@ -1,7 +1,10 @@
+"""Main module for API generation with improved organization and clear execution flow."""
+
 import logging
 import os
+from typing import Dict, Any, Optional
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, Template
 
 from api_craft.extractors import (
     extract_request_models,
@@ -12,6 +15,7 @@ from api_craft.extractors import (
     extract_types_from_models,
 )
 from api_craft.models.input import InputAPI
+from api_craft.models.template import TemplateAPI
 from api_craft.renderers import (
     render_requests,
     render_responses,
@@ -26,86 +30,239 @@ from api_craft.renderers import (
 from api_craft.transformers import transform_api
 from api_craft.utils import create_dir, write_file, camel_to_snake, copy_file
 
-
+# Configure logging
 logging.basicConfig(level="INFO")
 logger = logging.getLogger(__name__)
-curr_dir = os.path.dirname(__file__)
-template_dir = os.path.join(curr_dir, "templates")
-static_dir = os.path.join(template_dir, "static")
-env = Environment(loader=FileSystemLoader(template_dir))
 
 
-def generate_fastapi(api: InputAPI, path: str = curr_dir, dry_run: bool = False):
-    # Load Jinja2 templates
-    requests_template = env.get_template("requests.j2")
-    responses_template = env.get_template("responses.j2")
-    views_template = env.get_template("views.j2")
-    path_template = env.get_template("path.j2")
-    query_template = env.get_template("query.j2")
-    main_template = env.get_template("main.j2")
-    pyproject_template = env.get_template("pyproject.j2")
-    makefile_template = env.get_template("makefile.j2")
-    dockerfile_template = env.get_template("dockerfile.j2")
+class APIGenerator:
+    """Class to handle the generation of API code with a clear, linear flow."""
 
-    # Transform the InputAPI instance to a TemplateAPI instance
-    template_api = transform_api(api)
+    def __init__(self, template_dir: str = None):
+        """Initialize the generator with template directory.
 
-    # Extract from the TemplateAPI instance
-    template_requests = extract_request_models(template_api)
-    template_responses = extract_response_models(template_api)
-    template_views = extract_views(template_api)
-    template_path = extract_path_parameters(template_api)
-    template_query = extract_query_parameters(template_api)
-
-    # Extract imports
-    request_imports = extract_types_from_models(template_requests)
-    response_imports = extract_types_from_models(template_responses)
-
-    # Render the templates
-    rendered_requests = render_requests(
-        template_requests, request_imports, requests_template
-    )
-    rendered_responses = render_responses(
-        template_responses, response_imports, responses_template
-    )
-    rendered_views = render_views(template_views, views_template)
-    rendered_path_params = render_path_params(template_path, path_template)
-    rendered_query_params = render_query_params(template_query, query_template)
-    rendered_main = render_main(template_api, main_template)
-    rendered_pyproject = render_pyproject(template_api, pyproject_template)
-    rendered_makefile = render_makefile(template_api, makefile_template)
-    rendered_dockerfile = render_dockerfile(template_api, dockerfile_template)
-
-    if dry_run:
-        logger.info("Dry run enabled. No files will be written.")
-        logger.info(f"\nsrc/requests.py:\n{rendered_requests}")
-        logger.info(f"\nsrc/responses.py:\n{rendered_responses}")
-        logger.info(f"\nsrc/views.py:\n{rendered_views}")
-        logger.info(f"\nsrc/path.py:\n{rendered_path_params}")
-        logger.info(f"\nsrc/query.py:\n{rendered_query_params}")
-        logger.info(f"\nsrc/main.py:\n{rendered_main}")
-        logger.info(f"\npyproject.toml:\n{rendered_pyproject}")
-        logger.info(f"\nMakefile:\n{rendered_makefile}")
-        logger.info(f"\nDockerfile:\n{rendered_dockerfile}")
-
-    else:
-        project_name = camel_to_snake(api.name)
-        project_directory = os.path.join(path, project_name)
-        src_directory = os.path.join(project_directory, "src")
-        create_dir(src_directory)
-        write_file(os.path.join(src_directory, "requests.py"), rendered_requests)
-        write_file(os.path.join(src_directory, "responses.py"), rendered_responses)
-        write_file(os.path.join(src_directory, "views.py"), rendered_views)
-        write_file(os.path.join(src_directory, "path.py"), rendered_path_params)
-        write_file(os.path.join(src_directory, "query.py"), rendered_query_params)
-        write_file(os.path.join(src_directory, "main.py"), rendered_main)
-        write_file(
-            os.path.join(project_directory, "pyproject.toml"), rendered_pyproject
+        Args:
+            template_dir: Optional custom template directory path. If not provided,
+                        uses the default templates directory.
+        """
+        self.template_dir = template_dir or os.path.join(
+            os.path.dirname(__file__), "templates"
         )
-        write_file(os.path.join(project_directory, "Makefile"), rendered_makefile)
-        write_file(os.path.join(project_directory, "Dockerfile"), rendered_dockerfile)
-        copy_file(
-            os.path.join(static_dir, "swagger.py"),
-            os.path.join(project_directory, "swagger.py"),
-        )
-        # apply_black_formatting(src_directory)
+        self.env: Optional[Environment] = None
+        self.templates: Dict[str, Template] = {}
+
+    def load_templates(self) -> None:
+        """Load all required Jinja2 templates.
+
+        Raises:
+            FileNotFoundError: If template files are missing
+        """
+        try:
+            self.env = Environment(loader=FileSystemLoader(self.template_dir))
+
+            # Load all templates up front
+            template_files = {
+                'requests': "requests.j2",
+                'responses': "responses.j2",
+                'views': "views.j2",
+                'path': "path.j2",
+                'query': "query.j2",
+                'main': "main.j2",
+                'pyproject': "pyproject.j2",
+                'makefile': "makefile.j2",
+                'dockerfile': "dockerfile.j2"
+            }
+
+            self.templates = {
+                key: self.env.get_template(filename)
+                for key, filename in template_files.items()
+            }
+        except Exception as e:
+            logger.error(f"Failed to load templates: {str(e)}")
+            raise
+
+    def transform_api(self, api: InputAPI) -> TemplateAPI:
+        """Transform input API into template format.
+
+        Args:
+            api: Input API model to transform
+
+        Returns:
+            Transformed template API
+
+        Raises:
+            ValueError: If transformation fails
+        """
+        try:
+            return transform_api(api)
+        except Exception as e:
+            logger.error(f"Failed to transform API: {str(e)}")
+            raise ValueError("API transformation failed") from e
+
+    def extract_components(self, template_api: TemplateAPI) -> Dict[str, Any]:
+        """Extract all components from the template API.
+
+        Args:
+            template_api: Transformed template API
+
+        Returns:
+            Dictionary containing extracted components
+
+        Raises:
+            ValueError: If component extraction fails
+        """
+        try:
+            return {
+                'requests': extract_request_models(template_api),
+                'responses': extract_response_models(template_api),
+                'views': extract_views(template_api),
+                'path_params': extract_path_parameters(template_api),
+                'query_params': extract_query_parameters(template_api)
+            }
+        except Exception as e:
+            logger.error(f"Failed to extract components: {str(e)}")
+            raise ValueError("Component extraction failed") from e
+
+    def render_components(
+        self, components: Dict[str, Any], template_api: TemplateAPI
+    ) -> Dict[str, str]:
+        """Render all components using templates.
+
+        Args:
+            components: Extracted API components
+            template_api: Transformed template API
+
+        Returns:
+            Dictionary mapping filenames to rendered content
+
+        Raises:
+            ValueError: If rendering fails
+        """
+        try:
+            request_imports = extract_types_from_models(components['requests'])
+            response_imports = extract_types_from_models(components['responses'])
+
+            return {
+                'requests.py': render_requests(
+                    components['requests'], request_imports, self.templates['requests']
+                ),
+                'responses.py': render_responses(
+                    components['responses'], response_imports, self.templates['responses']
+                ),
+                'views.py': render_views(components['views'], self.templates['views']),
+                'path.py': render_path_params(
+                    components['path_params'], self.templates['path']
+                ),
+                'query.py': render_query_params(
+                    components['query_params'], self.templates['query']
+                ),
+                'main.py': render_main(template_api, self.templates['main']),
+                'pyproject.toml': render_pyproject(
+                    template_api, self.templates['pyproject']
+                ),
+                'Makefile': render_makefile(template_api, self.templates['makefile']),
+                'Dockerfile': render_dockerfile(template_api, self.templates['dockerfile'])
+            }
+        except Exception as e:
+            logger.error(f"Failed to render components: {str(e)}")
+            raise ValueError("Component rendering failed") from e
+
+    def write_files(
+        self, rendered_components: Dict[str, str], api: InputAPI, path: str
+    ) -> None:
+        """Write rendered components to files.
+
+        Args:
+            rendered_components: Dictionary of filename to content mappings
+            api: Original input API
+            path: Output directory path
+
+        Raises:
+            IOError: If file writing fails
+        """
+        try:
+            project_name = camel_to_snake(api.name)
+            project_directory = os.path.join(path, project_name)
+            src_directory = os.path.join(project_directory, "src")
+
+            # Create directories
+            create_dir(src_directory)
+
+            # Write source files
+            for filename, content in rendered_components.items():
+                if filename in ['pyproject.toml', 'Makefile', 'Dockerfile']:
+                    file_path = os.path.join(project_directory, filename)
+                else:
+                    file_path = os.path.join(src_directory, filename)
+                write_file(file_path, content)
+
+            # Copy static files
+            static_dir = os.path.join(self.template_dir, "static")
+            copy_file(
+                os.path.join(static_dir, "swagger.py"),
+                os.path.join(project_directory, "swagger.py"),
+            )
+        except Exception as e:
+            logger.error(f"Failed to write files: {str(e)}")
+            raise IOError("File writing failed") from e
+
+    def generate(self, api: InputAPI, path: str = None, dry_run: bool = False) -> None:
+        """Main generation method with clear steps.
+
+        Args:
+            api: Input API to generate code for
+            path: Optional output directory path
+            dry_run: If True, only logs what would be generated
+
+        Raises:
+            Exception: If any step fails
+        """
+        try:
+            logger.info("Starting API generation...")
+
+            # 1. Load templates
+            logger.info("Loading templates...")
+            self.load_templates()
+
+            # 2. Transform API
+            logger.info("Transforming API...")
+            template_api = self.transform_api(api)
+
+            # 3. Extract components
+            logger.info("Extracting components...")
+            components = self.extract_components(template_api)
+
+            # 4. Render components
+            logger.info("Rendering components...")
+            rendered_components = self.render_components(components, template_api)
+
+            # 5. Write files or display dry run
+            if not dry_run:
+                logger.info("Writing files...")
+                output_path = path or os.path.dirname(__file__)
+                self.write_files(rendered_components, api, output_path)
+                logger.info("API generation completed successfully.")
+            else:
+                logger.info("Dry run enabled. Would generate these files:")
+                for filename, content in rendered_components.items():
+                    logger.info(f"\n{filename}:\n{content}")
+                logger.info("Dry run completed successfully.")
+
+        except Exception as e:
+            logger.error(f"API generation failed: {str(e)}")
+            raise
+
+
+def generate_fastapi(api: InputAPI, path: str = None, dry_run: bool = False) -> None:
+    """Generate FastAPI code from input API specification.
+
+    Args:
+        api: Input API specification
+        path: Optional output directory path
+        dry_run: If True, only logs what would be generated
+
+    Raises:
+        Exception: If generation fails
+    """
+    generator = APIGenerator()
+    generator.generate(api, path, dry_run)
