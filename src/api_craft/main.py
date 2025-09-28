@@ -2,33 +2,33 @@
 
 import logging
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from jinja2 import Environment, FileSystemLoader, Template
 
-from api_craft.extractors import (
-    extract_request_models,
-    extract_response_models,
-    extract_views,
+from src.api_craft.extractors import (
     extract_path_parameters,
     extract_query_parameters,
+    extract_request_models,
+    extract_response_models,
     extract_types_from_models,
+    extract_views,
 )
-from api_craft.models.input import InputAPI
-from api_craft.models.template import TemplateAPI
-from api_craft.renderers import (
+from src.api_craft.models.input import InputAPI
+from src.api_craft.models.template import TemplateAPI
+from src.api_craft.renderers import (
+    render_dockerfile,
+    render_main,
+    render_makefile,
+    render_path_params,
+    render_pyproject,
+    render_query_params,
     render_requests,
     render_responses,
     render_views,
-    render_path_params,
-    render_query_params,
-    render_main,
-    render_pyproject,
-    render_makefile,
-    render_dockerfile,
 )
-from api_craft.transformers import transform_api
-from api_craft.utils import create_dir, write_file, camel_to_snake, copy_file
+from src.api_craft.transformers import transform_api
+from src.api_craft.utils import camel_to_snake, copy_file, create_dir, write_file
 
 # Configure logging
 logging.basicConfig(level="INFO")
@@ -45,9 +45,7 @@ class APIGenerator:
             template_dir: Optional custom template directory path. If not provided,
                         uses the default templates directory.
         """
-        self.template_dir = template_dir or os.path.join(
-            os.path.dirname(__file__), "templates"
-        )
+        self.template_dir = template_dir or os.path.join(os.path.dirname(__file__), "templates")
         self.env: Optional[Environment] = None
         self.templates: Dict[str, Template] = {}
 
@@ -62,21 +60,18 @@ class APIGenerator:
 
             # Load all templates up front
             template_files = {
-                'requests': "requests.j2",
-                'responses': "responses.j2",
-                'views': "views.j2",
-                'path': "path.j2",
-                'query': "query.j2",
-                'main': "main.j2",
-                'pyproject': "pyproject.j2",
-                'makefile': "makefile.j2",
-                'dockerfile': "dockerfile.j2"
+                "requests": "requests.j2",
+                "responses": "responses.j2",
+                "views": "views.j2",
+                "path": "path.j2",
+                "query": "query.j2",
+                "main": "main.j2",
+                "pyproject": "pyproject.j2",
+                "makefile": "makefile.j2",
+                "dockerfile": "dockerfile.j2",
             }
 
-            self.templates = {
-                key: self.env.get_template(filename)
-                for key, filename in template_files.items()
-            }
+            self.templates = {key: self.env.get_template(filename) for key, filename in template_files.items()}
         except Exception as e:
             logger.error(f"Failed to load templates: {str(e)}")
             raise
@@ -113,19 +108,17 @@ class APIGenerator:
         """
         try:
             return {
-                'requests': extract_request_models(template_api),
-                'responses': extract_response_models(template_api),
-                'views': extract_views(template_api),
-                'path_params': extract_path_parameters(template_api),
-                'query_params': extract_query_parameters(template_api)
+                "requests": extract_request_models(template_api),
+                "responses": extract_response_models(template_api),
+                "views": extract_views(template_api),
+                "path_params": extract_path_parameters(template_api),
+                "query_params": extract_query_parameters(template_api),
             }
         except Exception as e:
             logger.error(f"Failed to extract components: {str(e)}")
             raise ValueError("Component extraction failed") from e
 
-    def render_components(
-        self, components: Dict[str, Any], template_api: TemplateAPI
-    ) -> Dict[str, str]:
+    def render_components(self, components: Dict[str, Any], template_api: TemplateAPI) -> Dict[str, str]:
         """Render all components using templates.
 
         Args:
@@ -139,37 +132,27 @@ class APIGenerator:
             ValueError: If rendering fails
         """
         try:
-            request_imports = extract_types_from_models(components['requests'])
-            response_imports = extract_types_from_models(components['responses'])
+            request_imports = extract_types_from_models(components["requests"])
+            response_imports = extract_types_from_models(components["responses"])
 
             return {
-                'requests.py': render_requests(
-                    components['requests'], request_imports, self.templates['requests']
+                "requests.py": render_requests(components["requests"], request_imports, self.templates["requests"]),
+                "responses.py": render_responses(
+                    components["responses"], response_imports, self.templates["responses"]
                 ),
-                'responses.py': render_responses(
-                    components['responses'], response_imports, self.templates['responses']
-                ),
-                'views.py': render_views(components['views'], self.templates['views']),
-                'path.py': render_path_params(
-                    components['path_params'], self.templates['path']
-                ),
-                'query.py': render_query_params(
-                    components['query_params'], self.templates['query']
-                ),
-                'main.py': render_main(template_api, self.templates['main']),
-                'pyproject.toml': render_pyproject(
-                    template_api, self.templates['pyproject']
-                ),
-                'Makefile': render_makefile(template_api, self.templates['makefile']),
-                'Dockerfile': render_dockerfile(template_api, self.templates['dockerfile'])
+                "views.py": render_views(components["views"], self.templates["views"]),
+                "path.py": render_path_params(components["path_params"], self.templates["path"]),
+                "query.py": render_query_params(components["query_params"], self.templates["query"]),
+                "main.py": render_main(template_api, self.templates["main"]),
+                "pyproject.toml": render_pyproject(template_api, self.templates["pyproject"]),
+                "Makefile": render_makefile(template_api, self.templates["makefile"]),
+                "Dockerfile": render_dockerfile(template_api, self.templates["dockerfile"]),
             }
         except Exception as e:
             logger.error(f"Failed to render components: {str(e)}")
             raise ValueError("Component rendering failed") from e
 
-    def write_files(
-        self, rendered_components: Dict[str, str], api: InputAPI, path: str
-    ) -> None:
+    def write_files(self, rendered_components: Dict[str, str], api: InputAPI, path: str) -> None:
         """Write rendered components to files.
 
         Args:
@@ -190,7 +173,7 @@ class APIGenerator:
 
             # Write source files
             for filename, content in rendered_components.items():
-                if filename in ['pyproject.toml', 'Makefile', 'Dockerfile']:
+                if filename in ["pyproject.toml", "Makefile", "Dockerfile"]:
                     file_path = os.path.join(project_directory, filename)
                 else:
                     file_path = os.path.join(src_directory, filename)

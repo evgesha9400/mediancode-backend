@@ -2,26 +2,22 @@ from typing import List, Set
 
 from jinja2 import Template
 
-from api_craft.models.template import (
+from src.api_craft.models.template import (
+    TemplateAPI,
+    TemplatePathParam,
+    TemplateQueryParam,
     TemplateRequest,
     TemplateResponse,
     TemplateView,
-    TemplatePathParam,
-    TemplateQueryParam,
-    TemplateAPI,
 )
 
 
-def render_query_params(
-    query_params: List[TemplateQueryParam], query_template: Template
-) -> str:
+def render_query_params(query_params: List[TemplateQueryParam], query_template: Template) -> str:
     rendered_query_params = query_template.render(params=query_params)
     return rendered_query_params
 
 
-def render_path_params(
-    path_params: List[TemplatePathParam], paths_template: Template
-) -> str:
+def render_path_params(path_params: List[TemplatePathParam], paths_template: Template) -> str:
     rendered_paths = paths_template.render(params=path_params)
     return rendered_paths
 
@@ -31,9 +27,7 @@ def render_requests(
     typing_imports: Set[str],
     requests_template: Template,
 ) -> str:
-    rendered_requests = requests_template.render(
-        requests=requests, typing_imports=typing_imports
-    )
+    rendered_requests = requests_template.render(requests=requests, typing_imports=typing_imports)
     return rendered_requests
 
 
@@ -42,9 +36,7 @@ def render_responses(
     typing_imports: Set[str],
     responses_template: Template,
 ) -> str:
-    rendered_responses = responses_template.render(
-        responses=responses, typing_imports=typing_imports
-    )
+    rendered_responses = responses_template.render(responses=responses, typing_imports=typing_imports)
     return rendered_responses
 
 

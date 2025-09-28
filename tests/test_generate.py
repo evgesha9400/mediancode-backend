@@ -2,11 +2,14 @@ import json
 from pathlib import Path
 from unittest import TestCase
 
-from api_craft.main import generate_fastapi
-from api_craft.models.input import InputAPI
+from src.api_craft.main import generate_fastapi
+from src.api_craft.models.input import InputAPI
+
+DATA_PATH = Path(__file__).parent / "data"
+OUTPUT_PATH = Path(__file__).parent / "output"
 
 
-class TestGenerateFastAPI(TestCase):
+class TestGenerateItemsAPI(TestCase):
     def _get_api_data(self) -> InputAPI:
         """Load API configuration from JSON file."""
         json_path = Path(__file__).parent / "data" / "items_api_input.json"
@@ -15,7 +18,7 @@ class TestGenerateFastAPI(TestCase):
         return InputAPI.model_validate(api_data)
 
     def test_generate(self):
-        generate_fastapi(self._get_api_data(), path="/Users/evgesha/Desktop")
+        generate_fastapi(self._get_api_data(), path=OUTPUT_PATH / "items_api")
 
     def test_generate_dry_run(self):
         generate_fastapi(self._get_api_data(), dry_run=True)

@@ -1,46 +1,43 @@
 """Transformers for input models to template models."""
 
-from typing import List, Any, Dict
+from typing import Any, Dict, List
 
-from api_craft.models.input import (
+from src.api_craft.models.input import (
     InputAPI,
-    InputView,
-    InputModel,
     InputField,
-    InputQueryParam,
+    InputModel,
     InputPathParam,
+    InputQueryParam,
+    InputView,
 )
-from api_craft.models.template import (
+from src.api_craft.models.template import (
     TemplateAPI,
-    TemplateView,
+    TemplateAPIConfig,
+    TemplateField,
+    TemplatePathParam,
+    TemplateQueryParam,
     TemplateRequest,
     TemplateResponse,
-    TemplateField,
-    TemplateQueryParam,
-    TemplatePathParam,
-    TemplateAPIConfig,
+    TemplateView,
 )
-from api_craft.placeholders import (
-    generate_string,
-    generate_int,
+from src.api_craft.placeholders import (
     generate_bool,
-    generate_float,
     generate_datetime,
+    generate_float,
+    generate_int,
+    generate_string,
 )
-from api_craft.utils import (
-    snake_to_camel,
+from src.api_craft.utils import (
+    add_spaces_to_camel_case,
     camel_to_snake,
     remove_duplicates,
-    add_spaces_to_camel_case,
+    snake_to_camel,
 )
 
 
 def generate_model_placeholder(model_name: str, fields: List[TemplateField], index: int) -> Dict[str, Any]:
     """Generate placeholder values for a model instance."""
-    return {
-        field.name: generate_placeholder_value(field.type, index)
-        for field in fields
-    }
+    return {field.name: generate_placeholder_value(field.type, index) for field in fields}
 
 
 def generate_placeholder_value(field_type: str, index: int) -> Any:
@@ -49,10 +46,7 @@ def generate_placeholder_value(field_type: str, index: int) -> Any:
     if field_type.startswith("List["):
         inner_type = field_type[5:-1]  # Extract type between List[ and ]
         # Generate 2 examples for lists
-        return [
-            generate_placeholder_value(inner_type, i)
-            for i in range(index, index + 2)
-        ]
+        return [generate_placeholder_value(inner_type, i) for i in range(index, index + 2)]
 
     # Handle reference to another model
     if field_type.startswith(("Get", "Create", "Update", "Delete", "List")):
@@ -80,9 +74,7 @@ def generate_placeholder_value(field_type: str, index: int) -> Any:
 
 def transform_field(input_field: InputField) -> TemplateField:
     """Transforms an InputField instance to a TemplateField instance."""
-    return TemplateField(
-        type=input_field.type, name=input_field.name, required=input_field.required
-    )
+    return TemplateField(type=input_field.type, name=input_field.name, required=input_field.required)
 
 
 def transform_request(input_request: InputModel, prefix: str = "") -> TemplateRequest:
@@ -104,8 +96,7 @@ def transform_response(
     placeholder_values = None
     if generate_placeholders:
         placeholder_values = {
-            field.name: generate_placeholder_value(field.type, idx)
-            for idx, field in enumerate(transformed_fields, 1)
+            field.name: generate_placeholder_value(field.type, idx) for idx, field in enumerate(transformed_fields, 1)
         }
 
     return TemplateResponse(
@@ -152,9 +143,7 @@ def transform_path_params(
     )
 
 
-def transform_view(
-    input_view: InputView, generate_placeholders: bool = False
-) -> TemplateView:
+def transform_view(input_view: InputView, generate_placeholders: bool = False) -> TemplateView:
     """Transforms an InputView instance to a TemplateView instance."""
     prefix = f"{input_view.name}"
 
@@ -162,9 +151,7 @@ def transform_view(
     if input_view.request:
         transformed_request = transform_request(input_view.request, prefix)
 
-    transformed_response = transform_response(
-        input_view.response, prefix, generate_placeholders=generate_placeholders
-    )
+    transformed_response = transform_response(input_view.response, prefix, generate_placeholders=generate_placeholders)
     transformed_query_params = transform_query_params(input_view.query_params)
     transformed_path_params = transform_path_params(input_view.path_params)
 
@@ -183,10 +170,7 @@ def transform_view(
 def transform_api(input_api: InputAPI) -> TemplateAPI:
     """Transforms an InputAPI instance to a TemplateAPI instance."""
     transformed_views = [
-        transform_view(
-            view, generate_placeholders=input_api.config.response_placeholders
-        )
-        for view in input_api.views
+        transform_view(view, generate_placeholders=input_api.config.response_placeholders) for view in input_api.views
     ]
 
     return TemplateAPI(

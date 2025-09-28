@@ -1,17 +1,16 @@
-from typing import List, Union, Set
-from api_craft.models.template import (
+from typing import List, Set, Union
+
+from src.api_craft.models.template import (
     TemplateAPI,
-    TemplateView,
-    TemplateRequest,
-    TemplateResponse,
     TemplatePathParam,
     TemplateQueryParam,
+    TemplateRequest,
+    TemplateResponse,
+    TemplateView,
 )
 
 
-def extract_types_from_models(
-    models: Union[List[TemplateRequest], List[TemplateResponse]]
-) -> Set[str]:
+def extract_types_from_models(models: Union[List[TemplateRequest], List[TemplateResponse]]) -> Set[str]:
     """Extracts and returns a list of unique types from the fields of the models."""
     typing_imports = set()
     for model in models:

@@ -1,6 +1,8 @@
-import yaml
 import json
-from src.main import app
+
+import yaml
+
+from api_craft.main import app
 
 SWAGGER_PATH = "swagger.yaml"
 
