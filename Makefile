@@ -2,6 +2,5 @@
 PYTHON := python3
 POETRY := poetry
 
-claude-update:
-	@echo "Updating Claude project..."
-	@$(POETRY) run python -m claude-pyrojects.cli update
+test:
+	@$(POETRY) run pytest tests/test_generate.py
