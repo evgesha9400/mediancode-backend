@@ -50,3 +50,6 @@ Thumbs.db
 
 /template_api/
 /claude_pyrojects.key
+
+# Test output directory
+tests/output/

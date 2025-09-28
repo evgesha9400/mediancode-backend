@@ -1,0 +1,94 @@
+{
+  "name": "MedianCodeApi",
+  "version": "0.1.0",
+  "author": "Median Code",
+  "description": "API Generator Service - Generate FastAPI applications from JSON specifications",
+  "views": [
+    {
+      "name": "GenerateApi",
+      "path": "/generate",
+      "method": "POST",
+      "tag": "Generation",
+      "response": {
+        "name": "GenerationResult",
+        "fields": [
+          {
+            "type": "str",
+            "name": "message",
+            "required": true
+          },
+          {
+            "type": "str",
+            "name": "project_name",
+            "required": true
+          },
+          {
+            "type": "List[str]",
+            "name": "generated_files",
+            "required": true
+          }
+        ]
+      },
+      "request": {
+        "name": "ApiSpecification",
+        "fields": [
+          {
+            "type": "str",
+            "name": "name",
+            "required": true
+          },
+          {
+            "type": "str",
+            "name": "version",
+            "required": false
+          },
+          {
+            "type": "str",
+            "name": "author",
+            "required": false
+          },
+          {
+            "type": "str",
+            "name": "description",
+            "required": false
+          },
+          {
+            "type": "List[ViewSpecification]",
+            "name": "views",
+            "required": true
+          },
+          {
+            "type": "ConfigSpecification",
+            "name": "config",
+            "required": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "HealthCheck",
+      "path": "/health",
+      "method": "GET",
+      "tag": "Health",
+      "response": {
+        "name": "HealthStatus",
+        "fields": [
+          {
+            "type": "str",
+            "name": "status",
+            "required": true
+          },
+          {
+            "type": "str",
+            "name": "version",
+            "required": true
+          }
+        ]
+      }
+    }
+  ],
+  "config": {
+    "healthcheck": "/health",
+    "response_placeholders": true
+  }
+}
