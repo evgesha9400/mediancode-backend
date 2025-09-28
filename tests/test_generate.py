@@ -18,7 +18,7 @@ class TestGenerateItemsAPI(TestCase):
         return InputAPI.model_validate(api_data)
 
     def test_generate(self):
-        generate_fastapi(self._get_api_data(), path=OUTPUT_PATH / "items_api")
+        generate_fastapi(self._get_api_data(), path=OUTPUT_PATH)
 
     def test_generate_dry_run(self):
         generate_fastapi(self._get_api_data(), dry_run=True)
