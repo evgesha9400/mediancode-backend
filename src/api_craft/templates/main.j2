@@ -1,7 +1,9 @@
 {#- Template Parameters: -#}
 {#- api: TemplateApi -#}
 from fastapi import FastAPI
+{%- if api.healthcheck_endpoint %}
 from starlette.responses import Response
+{% endif -%}
 
 from views import api_router
 

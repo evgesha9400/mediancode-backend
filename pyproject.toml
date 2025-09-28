@@ -1,21 +1,23 @@
-[tool.poetry]
+[project]
 name = "api-craft"
 version = "0.1.0"
 description = ""
-authors = ["Evgeny Aleshin"]
+authors = [
+    {name = "Evgeny Aleshin",email = "evgeny@aleshingroup.com"}
+]
 readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic (>=2.11.9,<3.0.0)",
+    "jinja2 (>=3.1.6,<4.0.0)"
+]
 
-[tool.poetry.dependencies]
-python = "^3.13"
-black = "^25.9.0"
-jinja2 = "^3.1.4"
-pydantic = "^2.9.2"
+[dependency-groups]
+dev = [
+    "black (>=25.9.0,<26.0.0)"
+]
 
-
-[tool.poetry.group.dev.dependencies]
-claude-pyrojects = "^0.2.1"
-pytest = "^8.3.4"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"

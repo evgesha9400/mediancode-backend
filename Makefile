@@ -4,3 +4,11 @@ POETRY := poetry
 
 test:
 	@$(POETRY) run pytest tests/test_generate.py
+
+clean:
+	@find . -type d -name "__pycache__" -exec rm -rf {} +
+	@find . -name "*.pyc" -delete
+	@find . -name "*.pyo" -delete
+	@find . -name "*.pyd" -delete
+	@find . -name ".pytest_cache" -type d -exec rm -rf {} +
+	@echo "Cleaned all Python caches"
