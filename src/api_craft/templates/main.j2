@@ -1,9 +1,12 @@
 {#- Template Parameters: -#}
 {#- api: TemplateApi -#}
 from fastapi import FastAPI
-{%- if api.healthcheck_endpoint %}
+
+{%- if api.config.healthcheck %}
 from starlette.responses import Response
 {% endif -%}
+
+
 
 from views import api_router
 
@@ -15,11 +18,11 @@ app = FastAPI(
 app.include_router(api_router)
 
 
-{%- if api.healthcheck_endpoint %}
+{%- if api.config.healthcheck %}
 
 
 # Health check for ECS
-@app.get(path="{{ api.healthcheck_endpoint }}", include_in_schema=False)
+@app.get(path="{{ api.config.healthcheck }}", include_in_schema=False)
 async def healthcheck():
     return Response(content="OK", status_code=200)
 {% endif -%}

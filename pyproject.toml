@@ -1,7 +1,7 @@
 [project]
 name = "api-craft"
 version = "0.1.0"
-description = ""
+description = "FastAPI Generator"
 authors = [
     {name = "Evgeny Aleshin",email = "evgeny@aleshingroup.com"}
 ]

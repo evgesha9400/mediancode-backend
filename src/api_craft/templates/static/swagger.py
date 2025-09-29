@@ -1,4 +1,4 @@
-import json
+template = """import json
 
 import yaml
 
@@ -8,7 +8,7 @@ SWAGGER_PATH = "swagger.yaml"
 
 
 def export():
-    """Update swagger file"""
+    \"\"\"Update swagger file\"\"\"
     swagger_json = app.openapi()
     swagger_yaml = yaml.load(json.dumps(swagger_json), Loader=yaml.FullLoader)
     with open(SWAGGER_PATH, "w") as f:
@@ -18,3 +18,4 @@ def export():
 
 if __name__ == "__main__":
     export()
+"""
