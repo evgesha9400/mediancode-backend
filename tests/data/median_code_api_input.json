@@ -3,92 +3,90 @@
   "version": "0.1.0",
   "author": "Median Code",
   "description": "API Generator Service - Generate FastAPI applications from JSON specifications",
+  "objects": [
+    {
+      "name": "InputField",
+      "fields": [
+        { "type": "str", "name": "type", "required": true },
+        { "type": "str", "name": "name", "required": true },
+        { "type": "bool", "name": "required", "required": false }
+      ]
+    },
+    {
+      "name": "InputModel",
+      "fields": [
+        { "type": "str", "name": "name", "required": true },
+        { "type": "List[$InputField]", "name": "fields", "required": true }
+      ]
+    },
+    {
+      "name": "InputQueryParam",
+      "fields": [
+        { "type": "str", "name": "name", "required": true },
+        { "type": "str", "name": "type", "required": true },
+        { "type": "bool", "name": "required", "required": false }
+      ]
+    },
+    {
+      "name": "InputPathParam",
+      "fields": [
+        { "type": "str", "name": "name", "required": true },
+        { "type": "str", "name": "type", "required": true }
+      ]
+    },
+    {
+      "name": "InputView",
+      "fields": [
+        { "type": "str", "name": "name", "required": true },
+        { "type": "str", "name": "path", "required": true },
+        { "type": "str", "name": "method", "required": true },
+        { "type": "str", "name": "tag", "required": false },
+        { "type": "str", "name": "response", "required": false },
+        { "type": "str", "name": "request", "required": false },
+        { "type": "List[$InputQueryParam]", "name": "query_params", "required": false },
+        { "type": "List[$InputPathParam]", "name": "path_params", "required": false }
+      ]
+    },
+    {
+      "name": "InputApiConfig",
+      "fields": [
+        { "type": "str", "name": "healthcheck", "required": false },
+        { "type": "bool", "name": "response_placeholders", "required": true }
+      ]
+    },
+    {
+      "name": "GenerateApiRequest",
+      "fields": [
+        { "type": "str", "name": "name", "required": true },
+        { "type": "str", "name": "version", "required": false },
+        { "type": "str", "name": "author", "required": false },
+        { "type": "str", "name": "description", "required": false },
+        { "type": "List[$InputModel]", "name": "objects", "required": true },
+        { "type": "List[$InputView]", "name": "views", "required": true },
+        { "type": "$InputApiConfig", "name": "config", "required": false }
+      ]
+    },
+    {
+      "name": "GenerateApiResponse",
+      "fields": [
+        { "type": "str", "name": "message", "required": true },
+        { "type": "str", "name": "project_name", "required": true },
+        { "type": "List[str]", "name": "generated_files", "required": true }
+      ]
+    }
+  ],
   "views": [
     {
       "name": "GenerateApi",
       "path": "/generate",
       "method": "POST",
       "tag": "Generation",
-      "response": {
-        "name": "GenerationResult",
-        "fields": [
-          {
-            "type": "str",
-            "name": "message",
-            "required": true
-          },
-          {
-            "type": "str",
-            "name": "project_name",
-            "required": true
-          },
-          {
-            "type": "List[str]",
-            "name": "generated_files",
-            "required": true
-          }
-        ]
-      },
-      "request": {
-        "name": "ApiSpecification",
-        "fields": [
-          {
-            "type": "str",
-            "name": "name",
-            "required": true
-          },
-          {
-            "type": "str",
-            "name": "version",
-            "required": false
-          },
-          {
-            "type": "str",
-            "name": "author",
-            "required": false
-          },
-          {
-            "type": "str",
-            "name": "description",
-            "required": false
-          },
-          {
-            "type": "List[ViewSpecification]",
-            "name": "views",
-            "required": true
-          },
-          {
-            "type": "ConfigSpecification",
-            "name": "config",
-            "required": false
-          }
-        ]
-      }
-    },
-    {
-      "name": "HealthCheck",
-      "path": "/health",
-      "method": "GET",
-      "tag": "Health",
-      "response": {
-        "name": "HealthStatus",
-        "fields": [
-          {
-            "type": "str",
-            "name": "status",
-            "required": true
-          },
-          {
-            "type": "str",
-            "name": "version",
-            "required": true
-          }
-        ]
-      }
+      "response": null,
+      "request": "$GenerateApiRequest"
     }
   ],
   "config": {
-    "healthcheck": "/health",
+    "healthcheck": "/healthcheck",
     "response_placeholders": true
   }
 }

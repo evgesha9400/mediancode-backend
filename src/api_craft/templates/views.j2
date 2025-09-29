@@ -15,8 +15,14 @@ from models import (
     {{ name }}{% if not loop.last %},{% endif %}
 {%- endfor %}
 )
+{%- set has_path_params = (views | selectattr('path_params') | list | length) > 0 %}
+{%- set has_query_params = (views | selectattr('query_params') | list | length) > 0 %}
+{%- if has_path_params %}
 import path
+{%- endif %}
+{%- if has_query_params %}
 import query
+{%- endif %}
 
 
 api_router = APIRouter()
