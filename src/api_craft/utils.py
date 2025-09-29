@@ -32,10 +32,26 @@ def write_file(path, content):
 
 
 def apply_black_formatting(path):
-    """Apply black formatting to all python files in the given path and its subdirectories."""
-    for root, dirs, files in os.walk(path):
-        for file in files:
-            if file.endswith(".py"):
+    """Apply Black to Python files under ``src/`` and ``tests/`` only.
+
+    Parameters
+    ----------
+    path : str
+        Project root directory. Only ``src/`` and ``tests/`` within this
+        directory are traversed if they exist.
+    """
+    target_dirs = [
+        os.path.join(path, "src"),
+        os.path.join(path, "tests"),
+    ]
+
+    for target in target_dirs:
+        if not os.path.isdir(target):
+            continue
+        for root, dirs, files in os.walk(target):
+            for file in files:
+                if not file.endswith(".py"):
+                    continue
                 file_path = os.path.join(root, file)
                 print(f"Formatting {file_path}")
                 subprocess.run(["black", file_path], check=True)
@@ -44,6 +60,11 @@ def apply_black_formatting(path):
 def camel_to_snake(name):
     """Convert the given name from camel case to snake case."""
     return "".join(["_" + i.lower() if i.isupper() else i for i in name]).lstrip("_")
+
+
+def camel_to_kebab(name):
+    """Convert the given name from camel case to kebab case."""
+    return "".join(["-" + i.lower() if i.isupper() else i for i in name]).lstrip("-")
 
 
 def snake_to_camel(name):

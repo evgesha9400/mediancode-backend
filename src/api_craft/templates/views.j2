@@ -1,10 +1,22 @@
 {#- Template Parameters: -#}
 {#- views (list): A list of views to generate -#}
 from fastapi import APIRouter
+{%- set model_names = [] %}
+{%- for view in views %}
+{%- if view.response_model and view.response_model not in model_names %}
+{%- set _ = model_names.append(view.response_model) %}
+{%- endif %}
+{%- if view.request_model and view.request_model not in model_names %}
+{%- set _ = model_names.append(view.request_model) %}
+{%- endif %}
+{%- endfor %}
+from models import (
+{%- for name in model_names %}
+    {{ name }}{% if not loop.last %},{% endif %}
+{%- endfor %}
+)
 import path
 import query
-import requests
-import responses
 
 
 api_router = APIRouter()
@@ -13,27 +25,27 @@ api_router = APIRouter()
  
 @api_router.{{ view.method }}(
     path="{{ view.path }}",
-    response_model=responses.{{ view.response.name }}
+    response_model={{ view.response_model }}
 )
 async def {{ view.snake_name }}(
     {%- for p_param in view.path_params %}
     {{ p_param.snake_name }}: path.{{ p_param.camel_name }},
     {%- endfor %}
-    {%- if view.request %}
-    request: requests.{{ view.request.name }},
+    {%- if view.request_model %}
+    request: {{ view.request_model }},
     {%- endif %}
     {%- for q_param in view.query_params %}
     {{ q_param.snake_name }}: query.{{ q_param.camel_name }}{% if not q_param.required %} = None{% endif %},
     {%- endfor %}
 ):
     # TODO: implement your view
-    {% if view.response.placeholder_values %}
-    return responses.{{ view.response.name }}(
-        {%- for field_name, value in view.response.placeholder_values.items() %}
+    {% if view.response_placeholders %}
+    return {{ view.response_model }}(
+        {%- for field_name, value in view.response_placeholders.items() %}
         {{ field_name }}={{ value.__repr__() }},
         {%- endfor %}
     )
     {% else %}
-    return responses.{{ view.response.name }}()
+    return {{ view.response_model }}()
     {% endif %}
 {% endfor -%}

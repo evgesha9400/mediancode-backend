@@ -54,7 +54,7 @@ class InputPathParam(BaseModel):
 class InputView(BaseModel):
     """HTTP endpoint definition referencing shared request and response objects.
 
-    :ivar name: Optional explicit operation name used in generated code.
+    :ivar name: Explicit operation name used in generated code.
     :ivar path: Route pattern compatible with FastAPI routing.
     :ivar method: HTTP verb for the view.
     :ivar tag: Optional OpenAPI tag for documentation grouping.
@@ -64,7 +64,7 @@ class InputView(BaseModel):
     :ivar path_params: Optional path parameter definitions scoped to the view.
     """
 
-    name: str | None = None
+    name: str
     path: str
     method: str
     tag: str | None = None

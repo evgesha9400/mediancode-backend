@@ -4,10 +4,9 @@ from jinja2 import Template
 
 from src.api_craft.models.template import (
     TemplateAPI,
+    TemplateModel,
     TemplatePathParam,
     TemplateQueryParam,
-    TemplateRequest,
-    TemplateResponse,
     TemplateView,
 )
 
@@ -22,22 +21,9 @@ def render_path_params(path_params: List[TemplatePathParam], paths_template: Tem
     return rendered_paths
 
 
-def render_requests(
-    requests: List[TemplateRequest],
-    typing_imports: Set[str],
-    requests_template: Template,
-) -> str:
-    rendered_requests = requests_template.render(requests=requests, typing_imports=typing_imports)
-    return rendered_requests
-
-
-def render_responses(
-    responses: List[TemplateResponse],
-    typing_imports: Set[str],
-    responses_template: Template,
-) -> str:
-    rendered_responses = responses_template.render(responses=responses, typing_imports=typing_imports)
-    return rendered_responses
+def render_models(models: List[TemplateModel], typing_imports: Set[str], models_template: Template) -> str:
+    rendered_models = models_template.render(models=models, typing_imports=typing_imports)
+    return rendered_models
 
 
 def render_views(views: List[TemplateView], views_template: Template) -> str:

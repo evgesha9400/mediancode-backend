@@ -15,10 +15,9 @@ from src.api_craft.models.template import (
     TemplateAPI,
     TemplateAPIConfig,
     TemplateField,
+    TemplateModel,
     TemplatePathParam,
     TemplateQueryParam,
-    TemplateRequest,
-    TemplateResponse,
     TemplateView,
 )
 from src.api_craft.placeholders import (
@@ -30,6 +29,7 @@ from src.api_craft.placeholders import (
 )
 from src.api_craft.utils import (
     add_spaces_to_camel_case,
+    camel_to_kebab,
     camel_to_snake,
     remove_duplicates,
     snake_to_camel,
@@ -66,35 +66,6 @@ def resolve_type_annotation(raw_type: str, object_map: Dict[str, InputModel]) ->
         return candidate
 
     return REFERENCE_PATTERN.sub(_replace, raw_type)
-
-
-def derive_view_camel_name(
-    input_view: InputView,
-    response_name: str | None,
-    request_name: str | None,
-) -> str:
-    """Derive a CamelCase view name using referenced objects and route metadata.
-
-    :param input_view: Original view definition from the input spec.
-    :param response_name: Response object name, if any.
-    :param request_name: Request object name, if any.
-    :returns: CamelCase operation name used for templates.
-    """
-
-    def _strip_suffix(name: str, suffix: str) -> str:
-        return name[: -len(suffix)] if name.endswith(suffix) else name
-
-    for candidate in (response_name, request_name):
-        if candidate:
-            base = _strip_suffix(candidate, "Response")
-            base = _strip_suffix(base, "Request")
-            if base:
-                return remove_duplicates(base)
-
-    method = input_view.method.lower()
-    parts = [segment for segment in input_view.path.split("/") if segment and not segment.startswith("{")]
-    resource = "_".join(parts) or "root"
-    return remove_duplicates(snake_to_camel(f"{method}_{resource}"))
 
 
 def generate_model_placeholder(
@@ -184,65 +155,11 @@ def transform_field(input_field: InputField, object_map: Dict[str, InputModel]) 
     return TemplateField(type=resolved_type, name=input_field.name, required=input_field.required)
 
 
-def clone_fields(fields: List[TemplateField]) -> List[TemplateField]:
-    """Deep copy template fields to avoid shared state.
+def transform_model(input_model: InputModel, object_map: Dict[str, InputModel]) -> TemplateModel:
+    """Convert an :class:`InputModel` to a :class:`TemplateModel`."""
 
-    :param fields: Collection of template fields to clone.
-    :returns: New list with cloned :class:`TemplateField` instances.
-    """
-
-    return [TemplateField(type=field.type, name=field.name, required=field.required) for field in fields]
-
-
-def build_request_model(
-    request_name: str | None,
-    field_map: Dict[str, List[TemplateField]],
-) -> TemplateRequest | None:
-    """Create a :class:`TemplateRequest` from a shared object name.
-
-    :param request_name: Name of the request object reference.
-    :param field_map: Registry of transformed object fields.
-    :returns: Instance of :class:`TemplateRequest` or ``None`` when no request is declared.
-    :raises ValueError: If the requested object is not defined.
-    """
-
-    if not request_name:
-        return None
-
-    if request_name not in field_map:
-        raise ValueError(f"Request object '{request_name}' is not declared")
-
-    return TemplateRequest(name=request_name, fields=clone_fields(field_map[request_name]))
-
-
-def build_response_model(
-    response_name: str,
-    field_map: Dict[str, List[TemplateField]],
-    generate_placeholders: bool,
-) -> TemplateResponse:
-    """Create a :class:`TemplateResponse` from a shared object name.
-
-    :param response_name: Name of the response object reference.
-    :param field_map: Registry of transformed object fields.
-    :param generate_placeholders: Flag controlling placeholder generation.
-    :returns: Instance of :class:`TemplateResponse` with optional placeholders.
-    :raises ValueError: If the response object is not declared.
-    """
-
-    if response_name not in field_map:
-        raise ValueError(f"Response object '{response_name}' is not declared")
-
-    fields = clone_fields(field_map[response_name])
-    placeholder_values = None
-    if generate_placeholders:
-        placeholder_values = generate_model_placeholder(
-            response_name,
-            fields,
-            index=1,
-            field_map=field_map,
-        )
-
-    return TemplateResponse(name=response_name, fields=fields, placeholder_values=placeholder_values)
+    transformed_fields = [transform_field(field, object_map) for field in input_model.fields]
+    return TemplateModel(name=input_model.name, fields=transformed_fields)
 
 
 def transform_query_params(
@@ -293,21 +210,35 @@ def transform_view(
     if not response_name:
         raise ValueError(f"View at path '{input_view.path}' must declare a response object")
 
-    request_name = normalize_reference_name(input_view.request)
+    if response_name not in field_map:
+        raise ValueError(f"Response object '{response_name}' is not declared")
 
-    if input_view.name:
-        camel_name = remove_duplicates(input_view.name)
-    else:
-        camel_name = derive_view_camel_name(input_view, response_name, request_name)
+    request_name = normalize_reference_name(input_view.request)
+    if request_name and request_name not in field_map:
+        raise ValueError(f"Request object '{request_name}' is not declared")
+
+    camel_name = remove_duplicates(input_view.name)
+    if not camel_name:
+        raise ValueError(f"View name '{input_view.name}' resolved to an empty identifier")
     snake_name = camel_to_snake(camel_name)
+
+    response_placeholders = None
+    if generate_placeholders:
+        response_placeholders = generate_model_placeholder(
+            response_name,
+            field_map[response_name],
+            index=1,
+            field_map=field_map,
+        )
 
     return TemplateView(
         snake_name=snake_name,
         camel_name=camel_name,
         path=input_view.path,
         method=input_view.method.lower(),
-        response=build_response_model(response_name, field_map, generate_placeholders),
-        request=build_request_model(request_name, field_map),
+        response_model=response_name,
+        request_model=request_name,
+        response_placeholders=response_placeholders,
         query_params=transform_query_params(input_view.query_params),
         path_params=transform_path_params(input_view.path_params),
     )
@@ -317,9 +248,8 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
     """Transform an :class:`InputAPI` instance to a :class:`TemplateAPI` instance."""
 
     object_map = {model.name: model for model in input_api.objects}
-    field_map = {
-        name: [transform_field(field, object_map) for field in model.fields] for name, model in object_map.items()
-    }
+    template_models = [transform_model(model, object_map) for model in input_api.objects]
+    field_map = {template_model.name: template_model.fields for template_model in template_models}
 
     transformed_views = [
         transform_view(
@@ -333,8 +263,10 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
     return TemplateAPI(
         snake_name=camel_to_snake(input_api.name),
         camel_name=input_api.name,
+        kebab_name=camel_to_kebab(input_api.name),
         spaced_name=add_spaces_to_camel_case(input_api.name),
         version=input_api.version,
+        models=template_models,
         views=transformed_views,
         author=input_api.author,
         description=input_api.description,

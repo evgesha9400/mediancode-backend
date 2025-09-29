@@ -1,16 +1,15 @@
-from typing import List, Set, Union
+from typing import List, Set
 
 from src.api_craft.models.template import (
     TemplateAPI,
+    TemplateModel,
     TemplatePathParam,
     TemplateQueryParam,
-    TemplateRequest,
-    TemplateResponse,
     TemplateView,
 )
 
 
-def extract_types_from_models(models: Union[List[TemplateRequest], List[TemplateResponse]]) -> Set[str]:
+def extract_types_from_models(models: List[TemplateModel]) -> Set[str]:
     """Extracts and returns a list of unique types from the fields of the models."""
     typing_imports = set()
     for model in models:
@@ -26,26 +25,9 @@ def extract_views(template_api: TemplateAPI) -> List[TemplateView]:
     return template_api.views
 
 
-def extract_request_models(template_api: TemplateAPI) -> List[TemplateRequest]:
-    """Extracts  a list of unique TemplateModels from the request of the views of the TemplateAPI instance."""
-    model_names = set()
-    models = []
-    for view in template_api.views:
-        if view.request and view.request.name not in model_names:
-            models.append(view.request)
-            model_names.add(view.request.name)
-    return models
-
-
-def extract_response_models(template_api: TemplateAPI) -> List[TemplateResponse]:
-    """Extracts a list of unique TemplateModels from the response of the views of the TemplateAPI instance."""
-    model_names = set()
-    models = []
-    for view in template_api.views:
-        if view.response.name not in model_names:
-            models.append(view.response)
-            model_names.add(view.response.name)
-    return models
+def extract_models(template_api: TemplateAPI) -> List[TemplateModel]:
+    """Return the list of shared template models defined in the API."""
+    return template_api.models
 
 
 def extract_path_parameters(template_api: TemplateAPI) -> List[TemplatePathParam]:

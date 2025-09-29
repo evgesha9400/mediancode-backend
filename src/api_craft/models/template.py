@@ -1,7 +1,8 @@
 """This file contains the pydantic models for the Jinja2 templates that will be used to generate the FastAPI code."""
 
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
 
 
 class TemplateField(BaseModel):
@@ -10,15 +11,11 @@ class TemplateField(BaseModel):
     required: bool
 
 
-class TemplateRequest(BaseModel):
+class TemplateModel(BaseModel):
+    """Generic model definition used by rendered templates."""
+
     name: str
     fields: List[TemplateField]
-
-
-class TemplateResponse(BaseModel):
-    name: str
-    fields: List[TemplateField]
-    placeholder_values: Optional[Dict[str, Any]] = None
 
 
 class TemplateQueryParam(BaseModel):
@@ -41,8 +38,9 @@ class TemplateView(BaseModel):
     camel_name: str
     path: str
     method: str
-    response: TemplateResponse
-    request: Optional[TemplateRequest]
+    response_model: str
+    request_model: Optional[str]
+    response_placeholders: Optional[Dict[str, Any]]
     query_params: List[TemplateQueryParam]
     path_params: List[TemplatePathParam]
 
@@ -59,5 +57,6 @@ class TemplateAPI(BaseModel):
     version: str
     author: str
     description: str
+    models: List[TemplateModel]
     views: List[TemplateView]
     config: TemplateAPIConfig
