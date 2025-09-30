@@ -1,6 +1,6 @@
 from typing import List, Set
 
-from src.api_craft.models.template import (
+from api_craft.models.template import (
     TemplateAPI,
     TemplateModel,
     TemplatePathParam,

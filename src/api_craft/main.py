@@ -6,16 +6,16 @@ from typing import Any, Dict, Optional
 
 from jinja2 import Environment, FileSystemLoader, Template
 
-from src.api_craft.extractors import (
+from api_craft.extractors import (
     extract_models,
     extract_path_parameters,
     extract_query_parameters,
     extract_types_from_models,
     extract_views,
 )
-from src.api_craft.models.input import InputAPI
-from src.api_craft.models.template import TemplateAPI
-from src.api_craft.renderers import (
+from api_craft.models.input import InputAPI
+from api_craft.models.template import TemplateAPI
+from api_craft.renderers import (
     render_dockerfile,
     render_main,
     render_makefile,
@@ -25,8 +25,8 @@ from src.api_craft.renderers import (
     render_query_params,
     render_views,
 )
-from src.api_craft.transformers import transform_api
-from src.api_craft.utils import camel_to_kebab, copy_file, create_dir, write_file
+from api_craft.transformers import transform_api
+from api_craft.utils import camel_to_kebab, copy_file, create_dir, write_file
 
 # Configure logging
 logging.basicConfig(level="INFO")

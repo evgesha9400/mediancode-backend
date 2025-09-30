@@ -3,7 +3,7 @@
 import re
 from typing import Any, Dict, List
 
-from src.api_craft.models.input import (
+from api_craft.models.input import (
     InputAPI,
     InputField,
     InputModel,
@@ -11,7 +11,7 @@ from src.api_craft.models.input import (
     InputQueryParam,
     InputView,
 )
-from src.api_craft.models.template import (
+from api_craft.models.template import (
     TemplateAPI,
     TemplateAPIConfig,
     TemplateField,
@@ -20,14 +20,14 @@ from src.api_craft.models.template import (
     TemplateQueryParam,
     TemplateView,
 )
-from src.api_craft.placeholders import (
+from api_craft.placeholders import (
     generate_bool,
     generate_datetime,
     generate_float,
     generate_int,
     generate_string,
 )
-from src.api_craft.utils import (
+from api_craft.utils import (
     add_spaces_to_camel_case,
     camel_to_kebab,
     camel_to_snake,

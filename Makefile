@@ -11,4 +11,5 @@ clean:
 	@find . -name "*.pyo" -delete
 	@find . -name "*.pyd" -delete
 	@find . -name ".pytest_cache" -type d -exec rm -rf {} +
-	@echo "Cleaned all Python caches"
+	@rm -rf tests/output/
+	@echo "Cleaned all Python caches and test output"

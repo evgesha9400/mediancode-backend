@@ -1,7 +1,7 @@
 {
-  "name": "MedianCodeApi",
+  "name": "ApiCraftApi",
   "version": "0.1.0",
-  "author": "Median Code",
+  "author": "Median Code Generator",
   "description": "API Generator Service - Generate FastAPI applications from JSON specifications",
   "objects": [
     {
@@ -73,6 +73,14 @@
         { "type": "str", "name": "project_name", "required": true },
         { "type": "List[str]", "name": "generated_files", "required": true }
       ]
+    },
+    {
+      "name": "GenerateApiResponse",
+      "fields": [
+        { "type": "str", "name": "message", "required": true },
+        { "type": "str", "name": "project_name", "required": true },
+        { "type": "List[str]", "name": "generated_files", "required": true }
+      ]
     }
   ],
   "views": [
@@ -81,7 +89,7 @@
       "path": "/generate",
       "method": "POST",
       "tag": "Generation",
-      "response": null,
+      "response": "$GenerateApiResponse",
       "request": "$GenerateApiRequest"
     }
   ],
