@@ -4,13 +4,15 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-from jinja2 import Environment, FileSystemLoader, Template
+from mako.exceptions import TopLevelLookupException
+from mako.lookup import TemplateLookup
+from mako.template import Template
 
 from api_craft.extractors import (
+    collect_model_typing_imports,
     extract_models,
     extract_path_parameters,
     extract_query_parameters,
-    extract_types_from_models,
     extract_views,
 )
 from api_craft.models.input import InputAPI
@@ -44,31 +46,35 @@ class APIGenerator:
                         uses the default templates directory.
         """
         self.template_dir = template_dir or os.path.join(os.path.dirname(__file__), "templates")
-        self.env: Optional[Environment] = None
+        self.template_lookup: Optional[TemplateLookup] = None
         self.templates: Dict[str, Template] = {}
 
     def load_templates(self) -> None:
-        """Load all required Jinja2 templates.
+        """Load all required Mako templates.
 
-        Raises:
-            FileNotFoundError: If template files are missing
+        :raises FileNotFoundError: If template files are missing.
         """
         try:
-            self.env = Environment(loader=FileSystemLoader(self.template_dir))
+            self.template_lookup = TemplateLookup(directories=[self.template_dir])
 
             # Load all templates up front
             template_files = {
-                "models": "models.j2",
-                "views": "views.j2",
-                "path": "path.j2",
-                "query": "query.j2",
-                "main": "main.j2",
-                "pyproject": "pyproject.j2",
-                "makefile": "makefile.j2",
-                "dockerfile": "dockerfile.j2",
+                "models": "models.mako",
+                "views": "views.mako",
+                "path": "path.mako",
+                "query": "query.mako",
+                "main": "main.mako",
+                "pyproject": "pyproject.mako",
+                "makefile": "makefile.mako",
+                "dockerfile": "dockerfile.mako",
             }
 
-            self.templates = {key: self.env.get_template(filename) for key, filename in template_files.items()}
+            self.templates = {
+                key: self.template_lookup.get_template(filename) for key, filename in template_files.items()
+            }
+        except TopLevelLookupException as exc:
+            logger.error(f"Failed to load templates: {str(exc)}")
+            raise FileNotFoundError("Template files are missing") from exc
         except Exception as e:
             logger.error(f"Failed to load templates: {str(e)}")
             raise
@@ -128,7 +134,7 @@ class APIGenerator:
             ValueError: If rendering fails
         """
         try:
-            model_imports = extract_types_from_models(components["models"])
+            model_imports = collect_model_typing_imports(components["models"])
 
             rendered_components = {
                 "models.py": render_models(components["models"], model_imports, self.templates["models"]),

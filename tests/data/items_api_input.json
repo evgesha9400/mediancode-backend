@@ -23,7 +23,7 @@
       "name": "GetItemsResponse",
       "fields": [
         {
-          "type": "List[$GetItemResponse]",
+          "type": "List[GetItemResponse]",
           "name": "items",
           "required": true
         }
@@ -56,7 +56,7 @@
       "path": "/items/{item_id}",
       "method": "GET",
       "tag": "Items",
-      "response": "$GetItemResponse",
+      "response": "GetItemResponse",
       "path_params": [
         {
           "name": "item_id",
@@ -81,23 +81,23 @@
           "required": false
         }
       ],
-      "response": "$GetItemsResponse"
+      "response": "GetItemsResponse"
     },
     {
       "name": "CreateItem",
       "path": "/items",
       "method": "POST",
       "tag": "Items",
-      "response": "$GetItemResponse",
-      "request": "$CreateItemRequest"
+      "response": "GetItemResponse",
+      "request": "CreateItemRequest"
     },
     {
       "name": "UpdateItem",
       "path": "/items/{item_id}",
       "method": "PUT",
       "tag": "Items",
-      "response": "$GetItemResponse",
-      "request": "$UpdateItemRequest",
+      "response": "GetItemResponse",
+      "request": "UpdateItemRequest",
       "path_params": [
         {
           "name": "item_id",
@@ -110,7 +110,7 @@
       "path": "/items/{item_id}",
       "method": "DELETE",
       "tag": "Items",
-      "response": "$GetItemResponse",
+      "response": "GetItemResponse",
       "path_params": [
         {
           "name": "item_id",

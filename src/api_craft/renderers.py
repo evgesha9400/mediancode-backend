@@ -1,6 +1,6 @@
 from typing import List, Set
 
-from jinja2 import Template
+from mako.template import Template
 
 from api_craft.models.template import (
     TemplateAPI,

@@ -1,8 +1,10 @@
-{#- Template Parameters: -#}
-{#- api: TemplateApi-#}
+<%doc>
+- Template Parameters:
+- api: TemplateApi
+</%doc>\
 .PHONY: run-local requirements build clean run-container swagger
 
-PROJECT_NAME={{ api.snake_name }}
+PROJECT_NAME=${api.snake_name}
 
 run-local:
 	@PYTHONPATH=src uvicorn main:app --reload --port 8000

@@ -1,4 +1,4 @@
-"""This file contains the pydantic models for the Jinja2 templates that will be used to generate the FastAPI code."""
+"""Pydantic models used by the Mako templates that generate the FastAPI code."""
 
 from typing import Any, Dict, List, Optional
 
@@ -53,6 +53,7 @@ class TemplateAPIConfig(BaseModel):
 class TemplateAPI(BaseModel):
     snake_name: str
     camel_name: str
+    kebab_name: str
     spaced_name: str
     version: str
     author: str

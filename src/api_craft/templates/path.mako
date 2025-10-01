@@ -1,0 +1,17 @@
+<%doc>
+- Template Parameters:
+- path (list): List of TemplatePathParam
+</%doc>\
+"""This module contains validators for path parameters."""
+from typing import Annotated
+from fastapi import Path
+% for param in params:
+
+${param.camel_name} = Annotated[
+    ${param.type},
+    Path(
+        title="${param.title}",
+    ),
+]
+% endfor
+

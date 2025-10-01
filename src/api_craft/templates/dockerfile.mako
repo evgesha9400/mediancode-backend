@@ -1,9 +1,11 @@
-{#- Parameters: -#}
-{#- api : TemplateApi -#}
+<%doc>
+- Parameters:
+- api : TemplateApi
+</%doc>\
 # Use an official lightweight Python image.
 # https://hub.docker.com/_/python
 FROM python:3.13-slim
-LABEL org.opencontainers.image.title="{{ api.snake_name }}"
+LABEL org.opencontainers.image.title="${api.snake_name}"
 
 # Set the working directory in the container
 WORKDIR /app

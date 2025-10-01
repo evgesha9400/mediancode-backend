@@ -9,8 +9,13 @@ from api_craft.models.template import (
 )
 
 
-def extract_types_from_models(models: List[TemplateModel]) -> Set[str]:
-    """Extracts and returns a list of unique types from the fields of the models."""
+def collect_model_typing_imports(models: List[TemplateModel]) -> Set[str]:
+    """Collect required typing imports for the generated models.
+
+    :param models: Collection of template-ready models.
+    :returns: Set with the unique generic type names referenced in model fields.
+    """
+
     typing_imports = set()
     for model in models:
         for field in model.fields:

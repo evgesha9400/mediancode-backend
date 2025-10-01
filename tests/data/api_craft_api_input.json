@@ -16,7 +16,7 @@
       "name": "InputModel",
       "fields": [
         { "type": "str", "name": "name", "required": true },
-        { "type": "List[$InputField]", "name": "fields", "required": true }
+        { "type": "List[InputField]", "name": "fields", "required": true }
       ]
     },
     {
@@ -43,8 +43,8 @@
         { "type": "str", "name": "tag", "required": false },
         { "type": "str", "name": "response", "required": false },
         { "type": "str", "name": "request", "required": false },
-        { "type": "List[$InputQueryParam]", "name": "query_params", "required": false },
-        { "type": "List[$InputPathParam]", "name": "path_params", "required": false }
+        { "type": "List[InputQueryParam]", "name": "query_params", "required": false },
+        { "type": "List[InputPathParam]", "name": "path_params", "required": false }
       ]
     },
     {
@@ -61,9 +61,9 @@
         { "type": "str", "name": "version", "required": false },
         { "type": "str", "name": "author", "required": false },
         { "type": "str", "name": "description", "required": false },
-        { "type": "List[$InputModel]", "name": "objects", "required": true },
-        { "type": "List[$InputView]", "name": "views", "required": true },
-        { "type": "$InputApiConfig", "name": "config", "required": false }
+        { "type": "List[InputModel]", "name": "objects", "required": true },
+        { "type": "List[InputView]", "name": "views", "required": true },
+        { "type": "InputApiConfig", "name": "config", "required": false }
       ]
     },
     {
@@ -89,8 +89,8 @@
       "path": "/generate",
       "method": "POST",
       "tag": "Generation",
-      "response": "$GenerateApiResponse",
-      "request": "$GenerateApiRequest"
+      "response": "GenerateApiResponse",
+      "request": "GenerateApiRequest"
     }
   ],
   "config": {

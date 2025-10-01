@@ -1,6 +1,5 @@
 """Transformers for input models to template models."""
 
-import re
 from typing import Any, Dict, List
 
 from api_craft.models.input import (
@@ -34,38 +33,6 @@ from api_craft.utils import (
     remove_duplicates,
     snake_to_camel,
 )
-
-REFERENCE_PATTERN = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)")
-
-
-def normalize_reference_name(reference: str | None) -> str | None:
-    """Strip the ``$`` prefix from an object reference.
-
-    :param reference: Raw reference value from the input specification.
-    :returns: Clean name without the prefix or ``None`` when the input is falsy.
-    """
-
-    if not reference:
-        return None
-    return reference[1:] if reference.startswith("$") else reference
-
-
-def resolve_type_annotation(raw_type: str, object_map: Dict[str, InputModel]) -> str:
-    """Resolve a type annotation, validating referenced objects.
-
-    :param raw_type: Original type string, potentially containing ``$`` references.
-    :param object_map: Mapping of object names declared in ``InputAPI``.
-    :returns: Type annotation with resolved object names.
-    :raises ValueError: If a referenced object is not declared.
-    """
-
-    def _replace(match: re.Match[str]) -> str:
-        candidate = match.group(1)
-        if candidate not in object_map:
-            raise ValueError(f"Unknown object reference: {candidate}")
-        return candidate
-
-    return REFERENCE_PATTERN.sub(_replace, raw_type)
 
 
 def generate_model_placeholder(
@@ -143,22 +110,20 @@ def generate_placeholder_value(
     return generate_string(index, f"example_{field_type.lower()}")
 
 
-def transform_field(input_field: InputField, object_map: Dict[str, InputModel]) -> TemplateField:
+def transform_field(input_field: InputField) -> TemplateField:
     """Transform an :class:`InputField` into a :class:`TemplateField`.
 
     :param input_field: Source field definition.
-    :param object_map: Registry of declared objects for resolving references.
     :returns: Template-ready field definition with resolved types.
     """
 
-    resolved_type = resolve_type_annotation(input_field.type, object_map)
-    return TemplateField(type=resolved_type, name=input_field.name, required=input_field.required)
+    return TemplateField(type=input_field.type, name=input_field.name, required=input_field.required)
 
 
-def transform_model(input_model: InputModel, object_map: Dict[str, InputModel]) -> TemplateModel:
+def transform_model(input_model: InputModel) -> TemplateModel:
     """Convert an :class:`InputModel` to a :class:`TemplateModel`."""
 
-    transformed_fields = [transform_field(field, object_map) for field in input_model.fields]
+    transformed_fields = [transform_field(field) for field in input_model.fields]
     return TemplateModel(name=input_model.name, fields=transformed_fields)
 
 
@@ -206,14 +171,14 @@ def transform_view(
 ) -> TemplateView:
     """Transform an :class:`InputView` into a :class:`TemplateView`."""
 
-    response_name = normalize_reference_name(input_view.response)
+    response_name = input_view.response
     if not response_name:
         raise ValueError(f"View at path '{input_view.path}' must declare a response object")
 
     if response_name not in field_map:
         raise ValueError(f"Response object '{response_name}' is not declared")
 
-    request_name = normalize_reference_name(input_view.request)
+    request_name = input_view.request
     if request_name and request_name not in field_map:
         raise ValueError(f"Request object '{request_name}' is not declared")
 
@@ -247,8 +212,7 @@ def transform_view(
 def transform_api(input_api: InputAPI) -> TemplateAPI:
     """Transform an :class:`InputAPI` instance to a :class:`TemplateAPI` instance."""
 
-    object_map = {model.name: model for model in input_api.objects}
-    template_models = [transform_model(model, object_map) for model in input_api.objects]
+    template_models = [transform_model(model) for model in input_api.objects]
     field_map = {template_model.name: template_model.fields for template_model in template_models}
 
     transformed_views = [

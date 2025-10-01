@@ -1,11 +1,13 @@
-{#- Parameters: -#}
-{#- api : TemplateApi -#}
+<%doc>
+- Parameters:
+- api : TemplateApi
+</%doc>\
 [tool.poetry]
-name = "{{ api.kebab_name }}"
-version = "{{ api.version }}"
-description = "{{ api.description }}"
+name = "${api.kebab_name}"
+version = "${api.version}"
+description = "${api.description}"
 authors = [
-    {name = "{{ api.author }}"}
+    {name = "${api.author}"}
 ]
 readme = "README.md"
 requires-python = ">=3.13"
