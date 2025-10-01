@@ -130,16 +130,28 @@ class APIGenerator:
         try:
             model_imports = extract_types_from_models(components["models"])
 
-            return {
+            rendered_components = {
                 "models.py": render_models(components["models"], model_imports, self.templates["models"]),
                 "views.py": render_views(components["views"], self.templates["views"]),
-                "path.py": render_path_params(components["path_params"], self.templates["path"]),
-                "query.py": render_query_params(components["query_params"], self.templates["query"]),
                 "main.py": render_main(template_api, self.templates["main"]),
                 "pyproject.toml": render_pyproject(template_api, self.templates["pyproject"]),
                 "Makefile": render_makefile(template_api, self.templates["makefile"]),
                 "Dockerfile": render_dockerfile(template_api, self.templates["dockerfile"]),
             }
+
+            if components["path_params"]:
+                rendered_components["path.py"] = render_path_params(
+                    components["path_params"],
+                    self.templates["path"],
+                )
+
+            if components["query_params"]:
+                rendered_components["query.py"] = render_query_params(
+                    components["query_params"],
+                    self.templates["query"],
+                )
+
+            return rendered_components
         except Exception as e:
             logger.error(f"Failed to render components: {str(e)}")
             raise ValueError("Component rendering failed") from e
