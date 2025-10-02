@@ -3,35 +3,19 @@
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
 
+from api_craft.models.validators import validate_pascal_case_name
 
-class PascalCaseName(str):
+
+class Name(str):
     """A string that must be in PascalCase and provides derived naming variants.
 
     This type validates that the input is a valid PascalCase identifier and
     automatically provides snake_case, camelCase, and kebab-case variants.
     """
 
-    def __new__(cls, value: str) -> "PascalCaseName":
-        if not isinstance(value, str):
-            raise TypeError("PascalCaseName must be a string")
-
-        # Validate PascalCase format
-        if not value:
-            raise ValueError("PascalCaseName cannot be empty")
-
-        if not value[0].isupper():
-            raise ValueError(f"PascalCaseName must start with uppercase letter, got: {value}")
-
-        if not value.replace("_", "").isalnum():
-            raise ValueError(f"PascalCaseName must contain only letters and numbers, got: {value}")
-
-        # Check for consecutive uppercase letters (should be avoided in PascalCase)
-        for i in range(1, len(value)):
-            if value[i].isupper() and value[i - 1].isupper():
-                raise ValueError(f"PascalCaseName should not have consecutive uppercase letters, got: {value}")
-
-        instance = super().__new__(cls, value)
-        return instance
+    def __new__(cls, value: str) -> "Name":
+        validate_pascal_case_name(value)
+        return super().__new__(cls, value)
 
     @property
     def camel_name(self) -> str:
