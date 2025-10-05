@@ -34,11 +34,8 @@ def write_file(path, content):
 def apply_black_formatting(path):
     """Apply Black to Python files under ``src/`` and ``tests/`` only.
 
-    Parameters
-    ----------
-    path : str
-        Project root directory. Only ``src/`` and ``tests/`` within this
-        directory are traversed if they exist.
+    :param path: Project root directory. Only ``src/`` and ``tests/`` within
+        this directory are traversed if they exist.
     """
     target_dirs = [
         os.path.join(path, "src"),

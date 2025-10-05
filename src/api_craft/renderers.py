@@ -1,4 +1,4 @@
-from typing import List, Set
+from typing import Set
 
 from mako.template import Template
 
@@ -11,22 +11,22 @@ from api_craft.models.template import (
 )
 
 
-def render_query_params(query_params: List[TemplateQueryParam], query_template: Template) -> str:
+def render_query_params(query_params: list[TemplateQueryParam], query_template: Template) -> str:
     rendered_query_params = query_template.render(params=query_params)
     return rendered_query_params
 
 
-def render_path_params(path_params: List[TemplatePathParam], paths_template: Template) -> str:
+def render_path_params(path_params: list[TemplatePathParam], paths_template: Template) -> str:
     rendered_paths = paths_template.render(params=path_params)
     return rendered_paths
 
 
-def render_models(models: List[TemplateModel], typing_imports: Set[str], models_template: Template) -> str:
+def render_models(models: list[TemplateModel], typing_imports: Set[str], models_template: Template) -> str:
     rendered_models = models_template.render(models=models, typing_imports=typing_imports)
     return rendered_models
 
 
-def render_views(views: List[TemplateView], views_template: Template) -> str:
+def render_views(views: list[TemplateView], views_template: Template) -> str:
     rendered_views = views_template.render(views=views)
     return rendered_views
 

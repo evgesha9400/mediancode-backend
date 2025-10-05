@@ -1,4 +1,8 @@
-"""Main module for API generation with improved organization and clear execution flow."""
+"""Main module for API generation.
+
+This module orchestrates transforming a high-level API specification into a
+fully scaffolded FastAPI project using Mako templates.
+"""
 
 import logging
 import os
@@ -36,14 +40,22 @@ logger = logging.getLogger(__name__)
 
 
 class APIGenerator:
-    """Class to handle the generation of API code with a clear, linear flow."""
+    """Generate a FastAPI project from an input specification.
+
+    The generator performs the following steps:
+
+    1. Load Mako templates.
+    2. Transform input models to template models.
+    3. Extract components used by templates.
+    4. Render template files.
+    5. Write files into the target project structure.
+    """
 
     def __init__(self, template_dir: str = None):
-        """Initialize the generator with template directory.
+        """Initialize the generator.
 
-        Args:
-            template_dir: Optional custom template directory path. If not provided,
-                        uses the default templates directory.
+        :param template_dir: Optional templates directory. If ``None``, the
+            default ``templates/`` bundled with this package is used.
         """
         self.template_dir = template_dir or os.path.join(os.path.dirname(__file__), "templates")
         self.template_lookup: Optional[TemplateLookup] = None
@@ -82,14 +94,9 @@ class APIGenerator:
     def transform_api(self, api: InputAPI) -> TemplateAPI:
         """Transform input API into template format.
 
-        Args:
-            api: Input API model to transform
-
-        Returns:
-            Transformed template API
-
-        Raises:
-            ValueError: If transformation fails
+        :param api: Input API model to transform.
+        :returns: Transformed :class:`api_craft.models.template.TemplateAPI`.
+        :raises ValueError: If transformation fails.
         """
         try:
             return transform_api(api)
@@ -100,14 +107,9 @@ class APIGenerator:
     def extract_components(self, template_api: TemplateAPI) -> Dict[str, Any]:
         """Extract all components from the template API.
 
-        Args:
-            template_api: Transformed template API
-
-        Returns:
-            Dictionary containing extracted components
-
-        Raises:
-            ValueError: If component extraction fails
+        :param template_api: Transformed template API.
+        :returns: Mapping of component names to values used by templates.
+        :raises ValueError: If component extraction fails.
         """
         try:
             return {
@@ -123,15 +125,10 @@ class APIGenerator:
     def render_components(self, components: Dict[str, Any], template_api: TemplateAPI) -> Dict[str, str]:
         """Render all components using templates.
 
-        Args:
-            components: Extracted API components
-            template_api: Transformed template API
-
-        Returns:
-            Dictionary mapping filenames to rendered content
-
-        Raises:
-            ValueError: If rendering fails
+        :param components: Extracted API components.
+        :param template_api: Transformed template API.
+        :returns: Mapping of filenames to rendered text content.
+        :raises ValueError: If rendering fails.
         """
         try:
             model_imports = collect_model_typing_imports(components["models"])
@@ -165,13 +162,10 @@ class APIGenerator:
     def write_files(self, rendered_components: Dict[str, str], api: InputAPI, path: str) -> None:
         """Write rendered components to files.
 
-        Args:
-            rendered_components: Dictionary of filename to content mappings
-            api: Original input API
-            path: Output directory path
-
-        Raises:
-            IOError: If file writing fails
+        :param rendered_components: Mapping of filename to content.
+        :param api: Original input API.
+        :param path: Output directory path.
+        :raises IOError: If file writing fails.
         """
         try:
             project_name = camel_to_kebab(api.name)
@@ -200,15 +194,12 @@ class APIGenerator:
             raise IOError("File writing failed") from e
 
     def generate(self, api: InputAPI, path: str = None, dry_run: bool = False) -> None:
-        """Main generation method with clear steps.
+        """Run the end-to-end generation flow.
 
-        Args:
-            api: Input API to generate code for
-            path: Optional output directory path
-            dry_run: If True, only logs what would be generated
-
-        Raises:
-            Exception: If any step fails
+        :param api: Input API to generate code for.
+        :param path: Optional output directory path.
+        :param dry_run: If ``True``, log the rendered content without writing files.
+        :raises Exception: If any step fails.
         """
         try:
             logger.info("Starting API generation...")
@@ -248,15 +239,12 @@ class APIGenerator:
 
 
 def generate_fastapi(api: InputAPI, path: str = None, dry_run: bool = False) -> None:
-    """Generate FastAPI code from input API specification.
+    """Generate FastAPI code from an input specification.
 
-    Args:
-        api: Input API specification
-        path: Optional output directory path
-        dry_run: If True, only logs what would be generated
-
-    Raises:
-        Exception: If generation fails
+    :param api: Input API specification.
+    :param path: Optional output directory path.
+    :param dry_run: If ``True``, only log what would be generated.
+    :raises Exception: If generation fails.
     """
     generator = APIGenerator()
     generator.generate(api, path, dry_run)

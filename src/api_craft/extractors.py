@@ -1,4 +1,4 @@
-from typing import List, Set
+from typing import Set
 
 from api_craft.models.template import (
     TemplateAPI,
@@ -9,7 +9,7 @@ from api_craft.models.template import (
 )
 
 
-def collect_model_typing_imports(models: List[TemplateModel]) -> Set[str]:
+def collect_model_typing_imports(models: list[TemplateModel]) -> Set[str]:
     """Collect required typing imports for the generated models.
 
     :param models: Collection of template-ready models.
@@ -25,17 +25,17 @@ def collect_model_typing_imports(models: List[TemplateModel]) -> Set[str]:
     return typing_imports
 
 
-def extract_views(template_api: TemplateAPI) -> List[TemplateView]:
+def extract_views(template_api: TemplateAPI) -> list[TemplateView]:
     """Extracts and returns a list of views from the TemplateAPI instance."""
     return template_api.views
 
 
-def extract_models(template_api: TemplateAPI) -> List[TemplateModel]:
+def extract_models(template_api: TemplateAPI) -> list[TemplateModel]:
     """Return the list of shared template models defined in the API."""
     return template_api.models
 
 
-def extract_path_parameters(template_api: TemplateAPI) -> List[TemplatePathParam]:
+def extract_path_parameters(template_api: TemplateAPI) -> list[TemplatePathParam]:
     """Extracts and returns a list of unique TemplatePathParams from the views of the TemplateAPI instance."""
     path_param_names = set()
     path_params = []
@@ -47,7 +47,7 @@ def extract_path_parameters(template_api: TemplateAPI) -> List[TemplatePathParam
     return path_params
 
 
-def extract_query_parameters(template_api: TemplateAPI) -> List[TemplateQueryParam]:
+def extract_query_parameters(template_api: TemplateAPI) -> list[TemplateQueryParam]:
     """Extracts and returns a list of unique TemplateQueryParams from the views of the TemplateAPI instance."""
     query_param_names = set()
     query_params = []
