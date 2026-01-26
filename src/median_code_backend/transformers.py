@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List
 
-from api_craft.models.input import (
+from median_code_backend.models.input import (
     InputAPI,
     InputField,
     InputModel,
@@ -10,7 +10,7 @@ from api_craft.models.input import (
     InputQueryParam,
     InputView,
 )
-from api_craft.models.template import (
+from median_code_backend.models.template import (
     TemplateAPI,
     TemplateAPIConfig,
     TemplateField,
@@ -19,14 +19,14 @@ from api_craft.models.template import (
     TemplateQueryParam,
     TemplateView,
 )
-from api_craft.placeholders import (
+from median_code_backend.placeholders import (
     generate_bool,
     generate_datetime,
     generate_float,
     generate_int,
     generate_string,
 )
-from api_craft.utils import (
+from median_code_backend.utils import (
     add_spaces_to_camel_case,
     camel_to_kebab,
     camel_to_snake,

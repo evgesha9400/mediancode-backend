@@ -1,9 +1,9 @@
-"""Custom types for the API Craft models."""
+"""Custom types for the Median Code Backend models."""
 
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
 
-from api_craft.models.validators import validate_pascal_case_name
+from median_code_backend.models.validators import validate_pascal_case_name
 
 
 class Name(str):

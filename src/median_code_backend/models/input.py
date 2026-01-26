@@ -2,8 +2,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
 
-from api_craft.models.types import Name
-from api_craft.models.validators import (
+from median_code_backend.models.types import Name
+from median_code_backend.models.validators import (
     validate_model_field_types,
     validate_path_parameters,
     validate_unique_object_names,

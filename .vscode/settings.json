@@ -8,5 +8,5 @@
     ],
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
-    "python.defaultInterpreterPath": "/Users/evgesha/Documents/Projects/Median Code/api-craft/.venv/bin/python"
+    "python.defaultInterpreterPath": "/Users/evgesha/Documents/Projects/median-code-backend/.venv/bin/python"
 }

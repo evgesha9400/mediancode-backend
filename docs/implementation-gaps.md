@@ -4,7 +4,7 @@ This document compares the current backend implementation against the API specif
 
 ## Executive Summary
 
-The current backend (`api_craft`) is a **code generation library** that transforms JSON API specifications into FastAPI project scaffolds. However, the API specification defines a **full REST API service** with entity management (CRUD operations) and Clerk JWT authentication. **The backend does not currently implement any HTTP endpoints** - it is purely a local code generation tool.
+The current backend (`median_code_backend`) is a **code generation library** that transforms JSON API specifications into FastAPI project scaffolds. However, the API specification defines a **full REST API service** with entity management (CRUD operations) and Clerk JWT authentication. **The backend does not currently implement any HTTP endpoints** - it is purely a local code generation tool.
 
 ---
 
@@ -12,21 +12,21 @@ The current backend (`api_craft`) is a **code generation library** that transfor
 
 ### What Exists
 
-The backend contains a code generation library (`api_craft`) with the following components:
+The backend contains a code generation library (`median_code_backend`) with the following components:
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| `main.py` | `src/api_craft/main.py` | `APIGenerator` class and `generate_fastapi()` function |
-| `models/input.py` | `src/api_craft/models/input.py` | Input Pydantic models for code generation |
-| `models/template.py` | `src/api_craft/models/template.py` | Template-ready Pydantic models |
-| `models/types.py` | `src/api_craft/models/types.py` | Custom `Name` type with case conversions |
-| `models/validators.py` | `src/api_craft/models/validators.py` | Validation helpers for input models |
-| `transformers.py` | `src/api_craft/transformers.py` | Input-to-template transformation logic |
-| `extractors.py` | `src/api_craft/extractors.py` | Component extraction from template API |
-| `renderers.py` | `src/api_craft/renderers.py` | Mako template rendering |
-| `placeholders.py` | `src/api_craft/placeholders.py` | Placeholder value generation |
-| `utils.py` | `src/api_craft/utils.py` | File I/O and string utilities |
-| `templates/*.mako` | `src/api_craft/templates/` | Mako templates for code generation |
+| `main.py` | `src/median_code_backend/main.py` | `APIGenerator` class and `generate_fastapi()` function |
+| `models/input.py` | `src/median_code_backend/models/input.py` | Input Pydantic models for code generation |
+| `models/template.py` | `src/median_code_backend/models/template.py` | Template-ready Pydantic models |
+| `models/types.py` | `src/median_code_backend/models/types.py` | Custom `Name` type with case conversions |
+| `models/validators.py` | `src/median_code_backend/models/validators.py` | Validation helpers for input models |
+| `transformers.py` | `src/median_code_backend/transformers.py` | Input-to-template transformation logic |
+| `extractors.py` | `src/median_code_backend/extractors.py` | Component extraction from template API |
+| `renderers.py` | `src/median_code_backend/renderers.py` | Mako template rendering |
+| `placeholders.py` | `src/median_code_backend/placeholders.py` | Placeholder value generation |
+| `utils.py` | `src/median_code_backend/utils.py` | File I/O and string utilities |
+| `templates/*.mako` | `src/median_code_backend/templates/` | Mako templates for code generation |
 
 ### What Does NOT Exist
 
@@ -68,7 +68,7 @@ The backend contains a code generation library (`api_craft`) with the following 
 **Schema Required:** `Api` (id, namespaceId, title, version, description, baseUrl, serverUrl, createdAt, updatedAt)
 
 **Notes:**
-- The code generation logic exists in `api_craft.main.generate_fastapi()` but is not exposed via HTTP
+- The code generation logic exists in `median_code_backend.main.generate_fastapi()` but is not exposed via HTTP
 - The existing generation expects `InputAPI` format, not the new `Api` schema
 - Needs adapter to convert persisted entities into `InputAPI` for generation
 
@@ -320,7 +320,7 @@ ApiEndpoint:
 ### Phase 1: Foundation
 
 1. **Add FastAPI Application**
-   - Create `src/api_craft/server/main.py` with FastAPI app
+   - Create `src/median_code_backend/server/main.py` with FastAPI app
    - Configure CORS, middleware, error handlers
    - Add health check endpoint
 
@@ -418,7 +418,7 @@ ApiEndpoint:
 
 ```
 src/
-  api_craft/
+  median_code_backend/
     # Existing code generation
     main.py
     transformers.py

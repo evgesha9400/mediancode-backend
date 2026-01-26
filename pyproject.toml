@@ -1,7 +1,7 @@
 [project]
-name = "api-craft"
+name = "median-code-backend"
 version = "0.1.0"
-description = "FastAPI Generator"
+description = "Median Code Backend - FastAPI Code Generation API"
 authors = [
     {name = "Evgeny Aleshin",email = "evgeny@aleshingroup.com"}
 ]
@@ -23,4 +23,4 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-packages = [{ include = "api_craft", from = "src" }]
+packages = [{ include = "median_code_backend", from = "src" }]
