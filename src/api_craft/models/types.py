@@ -3,7 +3,7 @@
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
 
-from median_code_backend.models.validators import validate_pascal_case_name
+from api_craft.models.validators import validate_pascal_case_name
 
 
 class Name(str):

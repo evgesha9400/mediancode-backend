@@ -1,4 +1,4 @@
-"""Validation helpers for :mod:`median_code_backend.models.input`."""
+"""Validation helpers for :mod:`api_craft.models.input`."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import re
 from typing import TYPE_CHECKING, Iterable
 
 if TYPE_CHECKING:  # pragma: no cover - imports used for type checking only
-    from median_code_backend.models.input import InputModel, InputView
+    from api_craft.models.input import InputModel, InputView
 
 TYPE_IDENTIFIER_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 

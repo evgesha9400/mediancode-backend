@@ -12,16 +12,16 @@ from mako.exceptions import TopLevelLookupException
 from mako.lookup import TemplateLookup
 from mako.template import Template
 
-from median_code_backend.extractors import (
+from api_craft.extractors import (
     collect_model_typing_imports,
     extract_models,
     extract_path_parameters,
     extract_query_parameters,
     extract_views,
 )
-from median_code_backend.models.input import InputAPI
-from median_code_backend.models.template import TemplateAPI
-from median_code_backend.renderers import (
+from api_craft.models.input import InputAPI
+from api_craft.models.template import TemplateAPI
+from api_craft.renderers import (
     render_dockerfile,
     render_main,
     render_makefile,
@@ -31,8 +31,8 @@ from median_code_backend.renderers import (
     render_query_params,
     render_views,
 )
-from median_code_backend.transformers import transform_api
-from median_code_backend.utils import camel_to_kebab, copy_file, create_dir, write_file
+from api_craft.transformers import transform_api
+from api_craft.utils import camel_to_kebab, copy_file, create_dir, write_file
 
 # Configure logging
 logging.basicConfig(level="INFO")
@@ -95,7 +95,7 @@ class APIGenerator:
         """Transform input API into template format.
 
         :param api: Input API model to transform.
-        :returns: Transformed :class:`median_code_backend.models.template.TemplateAPI`.
+        :returns: Transformed :class:`api_craft.models.template.TemplateAPI`.
         :raises ValueError: If transformation fails.
         """
         try:

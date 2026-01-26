@@ -2,7 +2,7 @@ from typing import Set
 
 from mako.template import Template
 
-from median_code_backend.models.template import (
+from api_craft.models.template import (
     TemplateAPI,
     TemplateModel,
     TemplatePathParam,

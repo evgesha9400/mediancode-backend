@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 from unittest import TestCase
 
-from median_code_backend.main import generate_fastapi
-from median_code_backend.models.input import InputAPI
+from api_craft.main import generate_fastapi
+from api_craft.models.input import InputAPI
 
 DATA_PATH = Path(__file__).parent / "data"
 OUTPUT_PATH = Path(__file__).parent / "output"

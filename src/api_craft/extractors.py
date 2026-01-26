@@ -1,6 +1,6 @@
 from typing import Set
 
-from median_code_backend.models.template import (
+from api_craft.models.template import (
     TemplateAPI,
     TemplateModel,
     TemplatePathParam,
