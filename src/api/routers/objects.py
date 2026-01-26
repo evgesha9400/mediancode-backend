@@ -1,0 +1,208 @@
+# src/api/routers/objects.py
+"""Router for Object endpoints."""
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from api.auth import CurrentUser
+from api.database import get_db
+from api.schemas.object import (
+    ObjectCreate,
+    ObjectFieldReferenceSchema,
+    ObjectResponse,
+    ObjectUpdate,
+)
+from api.services.object import ObjectService, get_object_service
+
+router = APIRouter(prefix="/objects", tags=["Objects"])
+
+DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+def get_service(db: DbSession) -> ObjectService:
+    """Get object service instance.
+
+    :param db: Database session.
+    :returns: ObjectService instance.
+    """
+    return get_object_service(db)
+
+
+async def _to_response(obj, service: ObjectService) -> ObjectResponse:
+    """Convert an object model to response schema.
+
+    :param obj: Object database model.
+    :param service: ObjectService for fetching usage.
+    :returns: ObjectResponse schema.
+    """
+    fields = [
+        ObjectFieldReferenceSchema(field_id=fa.field_id, required=fa.required)
+        for fa in sorted(obj.field_associations, key=lambda x: x.position)
+    ]
+    used_in_apis = await service.get_used_in_apis(obj.id)
+    return ObjectResponse(
+        id=obj.id,
+        namespace_id=obj.namespace_id,
+        name=obj.name,
+        description=obj.description,
+        fields=fields,
+        used_in_apis=used_in_apis,
+    )
+
+
+@router.get(
+    "",
+    response_model=list[ObjectResponse],
+    summary="List all objects",
+    description="Retrieve all object definitions accessible to the authenticated user.",
+)
+async def list_objects(
+    user_id: CurrentUser,
+    db: DbSession,
+    namespace_id: str | None = None,
+) -> list[ObjectResponse]:
+    """List all objects accessible to the user.
+
+    :param user_id: Authenticated user ID.
+    :param db: Database session.
+    :param namespace_id: Optional namespace filter.
+    :returns: List of object responses.
+    """
+    service = get_service(db)
+    objects = await service.list_for_user(user_id, namespace_id)
+    return [await _to_response(obj, service) for obj in objects]
+
+
+@router.post(
+    "",
+    response_model=ObjectResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new object",
+    description="Create a new object definition.",
+)
+async def create_object(
+    data: ObjectCreate,
+    user_id: CurrentUser,
+    db: DbSession,
+) -> ObjectResponse:
+    """Create a new object.
+
+    :param data: Object creation data.
+    :param user_id: Authenticated user ID.
+    :param db: Database session.
+    :returns: Created object response.
+    """
+    service = get_service(db)
+    obj = await service.create_for_user(user_id, data)
+    # Reload with field associations
+    obj = await service.get_by_id_for_user(obj.id, user_id)
+    return await _to_response(obj, service)
+
+
+@router.get(
+    "/{object_id}",
+    response_model=ObjectResponse,
+    summary="Get object by ID",
+    description="Retrieve a specific object by its ID.",
+)
+async def get_object(
+    object_id: str,
+    user_id: CurrentUser,
+    db: DbSession,
+) -> ObjectResponse:
+    """Get an object by ID.
+
+    :param object_id: Object unique identifier.
+    :param user_id: Authenticated user ID.
+    :param db: Database session.
+    :returns: Object response.
+    :raises HTTPException: If object not found.
+    """
+    service = get_service(db)
+    obj = await service.get_by_id_for_user(object_id, user_id)
+    if not obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Object with ID '{object_id}' not found",
+        )
+    return await _to_response(obj, service)
+
+
+@router.put(
+    "/{object_id}",
+    response_model=ObjectResponse,
+    summary="Update object",
+    description="Update an existing object definition.",
+)
+async def update_object(
+    object_id: str,
+    data: ObjectUpdate,
+    user_id: CurrentUser,
+    db: DbSession,
+) -> ObjectResponse:
+    """Update an object.
+
+    :param object_id: Object unique identifier.
+    :param data: Object update data.
+    :param user_id: Authenticated user ID.
+    :param db: Database session.
+    :returns: Updated object response.
+    :raises HTTPException: If object not found.
+    """
+    service = get_service(db)
+    obj = await service.get_by_id_for_user(object_id, user_id)
+    if not obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Object with ID '{object_id}' not found",
+        )
+
+    # Verify ownership
+    if obj.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot modify object in locked namespace",
+        )
+
+    updated = await service.update_object(obj, data)
+    # Reload with field associations
+    updated = await service.get_by_id_for_user(updated.id, user_id)
+    return await _to_response(updated, service)
+
+
+@router.delete(
+    "/{object_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete object",
+    description="Delete an object. Cannot delete if used in endpoints.",
+)
+async def delete_object(
+    object_id: str,
+    user_id: CurrentUser,
+    db: DbSession,
+) -> None:
+    """Delete an object.
+
+    :param object_id: Object unique identifier.
+    :param user_id: Authenticated user ID.
+    :param db: Database session.
+    :raises HTTPException: If object not found or in use.
+    """
+    service = get_service(db)
+    obj = await service.get_by_id_for_user(object_id, user_id)
+    if not obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Object with ID '{object_id}' not found",
+        )
+
+    # Verify ownership
+    if obj.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete object in locked namespace",
+        )
+
+    await service.delete_object(obj)

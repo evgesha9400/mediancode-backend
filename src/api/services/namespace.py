@@ -1,0 +1,179 @@
+# src/api/services/namespace.py
+"""Service layer for Namespace operations."""
+
+from fastapi import HTTPException, status
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from api.models.database import (
+    ApiEndpoint,
+    ApiModel,
+    EndpointTag,
+    FieldModel,
+    Namespace,
+    ObjectDefinition,
+)
+from api.schemas.namespace import NamespaceCreate, NamespaceUpdate
+from api.services.base import BaseService
+from api.settings import get_settings
+
+
+class NamespaceService(BaseService[Namespace]):
+    """Service for Namespace CRUD operations.
+
+    :ivar model_class: The Namespace model class.
+    """
+
+    model_class = Namespace
+
+    async def list_for_user(self, user_id: str) -> list[Namespace]:
+        """List namespaces accessible to a user (their own + global).
+
+        :param user_id: The authenticated user's ID.
+        :returns: List of accessible namespaces.
+        """
+        settings = get_settings()
+        query = select(Namespace).where(
+            or_(
+                Namespace.user_id == user_id,
+                Namespace.id == settings.global_namespace_id,
+            )
+        )
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
+    async def get_by_id_for_user(
+        self, namespace_id: str, user_id: str
+    ) -> Namespace | None:
+        """Get a namespace if accessible to the user.
+
+        :param namespace_id: The namespace's unique identifier.
+        :param user_id: The authenticated user's ID.
+        :returns: The namespace if accessible, None otherwise.
+        """
+        settings = get_settings()
+        query = select(Namespace).where(
+            Namespace.id == namespace_id,
+            or_(
+                Namespace.user_id == user_id,
+                Namespace.id == settings.global_namespace_id,
+            ),
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def create_for_user(self, user_id: str, data: NamespaceCreate) -> Namespace:
+        """Create a new namespace for a user.
+
+        :param user_id: The authenticated user's ID.
+        :param data: Namespace creation data.
+        :returns: The created namespace.
+        """
+        namespace = Namespace(
+            user_id=user_id,
+            name=data.name,
+            description=data.description,
+            locked=False,
+        )
+        self.db.add(namespace)
+        await self.db.flush()
+        await self.db.refresh(namespace)
+        return namespace
+
+    async def update_namespace(
+        self,
+        namespace: Namespace,
+        data: NamespaceUpdate,
+    ) -> Namespace:
+        """Update a namespace.
+
+        :param namespace: The namespace to update.
+        :param data: Update data.
+        :returns: The updated namespace.
+        :raises HTTPException: If namespace is locked.
+        """
+        if namespace.locked:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot modify locked namespace",
+            )
+
+        if data.name is not None:
+            namespace.name = data.name
+        if data.description is not None:
+            namespace.description = data.description
+
+        await self.db.flush()
+        await self.db.refresh(namespace)
+        return namespace
+
+    async def delete_namespace(self, namespace: Namespace) -> None:
+        """Delete a namespace if empty and not locked.
+
+        :param namespace: The namespace to delete.
+        :raises HTTPException: If namespace is locked or has entities.
+        """
+        if namespace.locked:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete locked namespace",
+            )
+
+        # Count entities in namespace
+        counts = await self._count_entities(namespace.id)
+
+        if any(counts.values()):
+            parts = []
+            if counts["fields"] > 0:
+                parts.append(f"{counts['fields']} fields")
+            if counts["objects"] > 0:
+                parts.append(f"{counts['objects']} objects")
+            if counts["endpoints"] > 0:
+                parts.append(f"{counts['endpoints']} endpoints")
+            if counts["apis"] > 0:
+                parts.append(f"{counts['apis']} APIs")
+            if counts["tags"] > 0:
+                parts.append(f"{counts['tags']} tags")
+
+            detail = f"Cannot delete namespace: contains {', '.join(parts)}"
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=detail,
+            )
+
+        await self.db.delete(namespace)
+        await self.db.flush()
+
+    async def _count_entities(self, namespace_id: str) -> dict[str, int]:
+        """Count all entity types in a namespace.
+
+        :param namespace_id: The namespace ID.
+        :returns: Dictionary of entity type to count.
+        """
+        counts = {}
+
+        for model, name in [
+            (FieldModel, "fields"),
+            (ObjectDefinition, "objects"),
+            (ApiEndpoint, "endpoints"),
+            (ApiModel, "apis"),
+            (EndpointTag, "tags"),
+        ]:
+            query = (
+                select(func.count())
+                .select_from(model)
+                .where(model.namespace_id == namespace_id)
+            )
+            result = await self.db.execute(query)
+            counts[name] = result.scalar() or 0
+
+        return counts
+
+
+def get_namespace_service(db: AsyncSession) -> NamespaceService:
+    """Factory function for NamespaceService.
+
+    :param db: Database session.
+    :returns: NamespaceService instance.
+    """
+    return NamespaceService(db)

@@ -1,0 +1,85 @@
+# src/api/schemas/api.py
+"""Pydantic schemas for Api entity."""
+
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+class ApiCreate(BaseModel):
+    """Request schema for creating an API.
+
+    :ivar namespace_id: Namespace this API belongs to.
+    :ivar title: API title for OpenAPI spec.
+    :ivar version: Semantic version string.
+    :ivar description: API description.
+    :ivar base_url: Base path for all endpoints.
+    :ivar server_url: Full server URL.
+    """
+
+    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-user"])
+    title: str = Field(..., examples=["User Management API"])
+    version: str = Field(..., examples=["1.0.0"])
+    description: str | None = Field(
+        default="", examples=["API for managing user accounts"]
+    )
+    base_url: str | None = Field(default="", alias="baseUrl", examples=["/api/v1"])
+    server_url: str | None = Field(
+        default="", alias="serverUrl", examples=["https://api.example.com"]
+    )
+
+
+class ApiUpdate(BaseModel):
+    """Request schema for updating an API.
+
+    :ivar title: Updated API title.
+    :ivar version: Updated version string.
+    :ivar description: Updated API description.
+    :ivar base_url: Updated base path.
+    :ivar server_url: Updated server URL.
+    """
+
+    title: str | None = Field(default=None, examples=["Updated API Title"])
+    version: str | None = Field(default=None, examples=["2.0.0"])
+    description: str | None = Field(default=None, examples=["Updated API description"])
+    base_url: str | None = Field(default=None, alias="baseUrl", examples=["/api/v2"])
+    server_url: str | None = Field(
+        default=None, alias="serverUrl", examples=["https://api.example.com"]
+    )
+
+
+class ApiResponse(BaseModel):
+    """Response schema for API data.
+
+    :ivar id: Unique identifier for the API.
+    :ivar namespace_id: Namespace this API belongs to.
+    :ivar title: API title.
+    :ivar version: Semantic version string.
+    :ivar description: API description.
+    :ivar base_url: Base path for all endpoints.
+    :ivar server_url: Full server URL.
+    :ivar created_at: Creation timestamp.
+    :ivar updated_at: Last update timestamp.
+    """
+
+    id: str = Field(..., examples=["api-1"])
+    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-global"])
+    title: str = Field(..., examples=["User Management API"])
+    version: str = Field(..., examples=["1.0.0"])
+    description: str = Field(..., examples=["Endpoints for user management"])
+    base_url: str = Field(..., alias="baseUrl", examples=["/api/v1"])
+    server_url: str = Field(
+        ..., alias="serverUrl", examples=["https://api.example.com"]
+    )
+    created_at: datetime = Field(
+        ..., alias="createdAt", examples=["2026-01-25T10:30:00Z"]
+    )
+    updated_at: datetime = Field(
+        ..., alias="updatedAt", examples=["2026-01-25T10:30:00Z"]
+    )
+
+    class Config:
+        """Pydantic model configuration."""
+
+        from_attributes = True
+        populate_by_name = True

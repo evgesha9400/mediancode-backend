@@ -1,0 +1,111 @@
+# src/api/services/base.py
+"""Base service class with common functionality."""
+
+from typing import Any, Generic, TypeVar
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from api.database import Base
+
+ModelT = TypeVar("ModelT", bound=Base)
+
+
+class BaseService(Generic[ModelT]):
+    """Base service class providing common CRUD operations.
+
+    :ivar model_class: The SQLAlchemy model class for this service.
+    """
+
+    model_class: type[ModelT]
+
+    def __init__(self, db: AsyncSession) -> None:
+        """Initialize the service with a database session.
+
+        :param db: Async database session.
+        """
+        self.db = db
+
+    async def get_by_id(
+        self, entity_id: str, user_id: str | None = None
+    ) -> ModelT | None:
+        """Get an entity by ID, optionally filtering by user.
+
+        :param entity_id: The entity's unique identifier.
+        :param user_id: Optional user ID for filtering.
+        :returns: The entity if found, None otherwise.
+        """
+        query = select(self.model_class).where(self.model_class.id == entity_id)
+        if user_id and hasattr(self.model_class, "user_id"):
+            query = query.where(self.model_class.user_id == user_id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def list_all(
+        self,
+        user_id: str | None = None,
+        namespace_id: str | None = None,
+    ) -> list[ModelT]:
+        """List all entities, optionally filtering by user and namespace.
+
+        :param user_id: Optional user ID for filtering.
+        :param namespace_id: Optional namespace ID for filtering.
+        :returns: List of matching entities.
+        """
+        query = select(self.model_class)
+        if user_id and hasattr(self.model_class, "user_id"):
+            query = query.where(self.model_class.user_id == user_id)
+        if namespace_id and hasattr(self.model_class, "namespace_id"):
+            query = query.where(self.model_class.namespace_id == namespace_id)
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
+    async def create(self, data: dict[str, Any]) -> ModelT:
+        """Create a new entity.
+
+        :param data: Dictionary of field values.
+        :returns: The created entity.
+        """
+        entity = self.model_class(**data)
+        self.db.add(entity)
+        await self.db.flush()
+        await self.db.refresh(entity)
+        return entity
+
+    async def update(self, entity: ModelT, data: dict[str, Any]) -> ModelT:
+        """Update an existing entity.
+
+        :param entity: The entity to update.
+        :param data: Dictionary of field values to update.
+        :returns: The updated entity.
+        """
+        for key, value in data.items():
+            if value is not None:
+                setattr(entity, key, value)
+        await self.db.flush()
+        await self.db.refresh(entity)
+        return entity
+
+    async def delete(self, entity: ModelT) -> None:
+        """Delete an entity.
+
+        :param entity: The entity to delete.
+        """
+        await self.db.delete(entity)
+        await self.db.flush()
+
+    async def count_by_field(self, field_name: str, field_value: Any) -> int:
+        """Count entities matching a field value.
+
+        :param field_name: Name of the field to filter by.
+        :param field_value: Value to match.
+        :returns: Count of matching entities.
+        """
+        field = getattr(self.model_class, field_name)
+        query = (
+            select(func.count())
+            .select_from(self.model_class)
+            .where(field == field_value)
+        )
+        result = await self.db.execute(query)
+        return result.scalar() or 0
