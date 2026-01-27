@@ -1107,6 +1107,12 @@ paths:
           schema:
             type: string
           description: Filter endpoints by namespace ID
+        - name: apiId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter endpoints by API ID
       responses:
         '200':
           description: Successfully retrieved endpoints
