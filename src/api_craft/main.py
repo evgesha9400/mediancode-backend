@@ -13,7 +13,9 @@ from mako.lookup import TemplateLookup
 from mako.template import Template
 
 from api_craft.extractors import (
-    collect_model_typing_imports,
+    collect_model_imports,
+    collect_path_params_imports,
+    collect_query_params_imports,
     extract_models,
     extract_path_parameters,
     extract_query_parameters,
@@ -131,10 +133,12 @@ class APIGenerator:
         :raises ValueError: If rendering fails.
         """
         try:
-            model_imports = collect_model_typing_imports(components["models"])
+            model_imports = collect_model_imports(components["models"])
 
             rendered_components = {
-                "models.py": render_models(components["models"], model_imports, self.templates["models"]),
+                "models.py": render_models(
+                    components["models"], model_imports, self.templates["models"]
+                ),
                 "views.py": render_views(components["views"], self.templates["views"]),
                 "main.py": render_main(template_api, self.templates["main"]),
                 "pyproject.toml": render_pyproject(template_api, self.templates["pyproject"]),
@@ -143,14 +147,18 @@ class APIGenerator:
             }
 
             if components["path_params"]:
+                path_imports = collect_path_params_imports(components["path_params"])
                 rendered_components["path.py"] = render_path_params(
                     components["path_params"],
+                    path_imports,
                     self.templates["path"],
                 )
 
             if components["query_params"]:
+                query_imports = collect_query_params_imports(components["query_params"])
                 rendered_components["query.py"] = render_query_params(
                     components["query_params"],
+                    query_imports,
                     self.templates["query"],
                 )
 

@@ -1,8 +1,12 @@
 <%doc>
 - Parameters:
-- param : List of TemplateQueryParam
+- params : List of TemplateQueryParam
+- imports : Set[str] - set of import statements
 </%doc>\
 """This module contains query parameter type definitions and validators."""
+% for import_stmt in sorted(imports):
+${import_stmt}
+% endfor
 from typing import Annotated
 from fastapi import Query
 % for param in params:

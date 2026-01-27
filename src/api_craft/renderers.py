@@ -11,18 +11,33 @@ from api_craft.models.template import (
 )
 
 
-def render_query_params(query_params: list[TemplateQueryParam], query_template: Template) -> str:
-    rendered_query_params = query_template.render(params=query_params)
+def render_query_params(
+    query_params: list[TemplateQueryParam],
+    imports: Set[str],
+    query_template: Template,
+) -> str:
+    rendered_query_params = query_template.render(params=query_params, imports=imports)
     return rendered_query_params
 
 
-def render_path_params(path_params: list[TemplatePathParam], paths_template: Template) -> str:
-    rendered_paths = paths_template.render(params=path_params)
+def render_path_params(
+    path_params: list[TemplatePathParam],
+    imports: Set[str],
+    paths_template: Template,
+) -> str:
+    rendered_paths = paths_template.render(params=path_params, imports=imports)
     return rendered_paths
 
 
-def render_models(models: list[TemplateModel], typing_imports: Set[str], models_template: Template) -> str:
-    rendered_models = models_template.render(models=models, typing_imports=typing_imports)
+def render_models(
+    models: list[TemplateModel],
+    imports: Set[str],
+    models_template: Template,
+) -> str:
+    rendered_models = models_template.render(
+        models=models,
+        imports=imports,
+    )
     return rendered_models
 
 

@@ -1,3 +1,4 @@
+import re
 from typing import Set
 
 from api_craft.models.template import (
@@ -8,21 +9,108 @@ from api_craft.models.template import (
     TemplateView,
 )
 
+# Mapping of module.Type patterns to their import statements
+MODULE_TYPE_IMPORTS = {
+    "datetime": "import datetime",
+    "uuid": "import uuid",
+    "decimal": "from decimal import Decimal",
+    "pathlib": "from pathlib import Path",
+    "enum": "from enum import Enum",
+}
 
-def collect_model_typing_imports(models: list[TemplateModel]) -> Set[str]:
-    """Collect required typing imports for the generated models.
+# Mapping of typing generics to their import from typing module
+TYPING_GENERICS = {
+    "List",
+    "Dict",
+    "Set",
+    "Tuple",
+    "Optional",
+    "Union",
+    "Any",
+    "Callable",
+    "Sequence",
+    "Mapping",
+    "Iterable",
+    "Iterator",
+    "Type",
+    "Literal",
+}
+
+
+def collect_imports(types: list[str]) -> Set[str]:
+    """Collect required import statements for a list of type strings.
+
+    This function analyzes type strings and determines which imports are needed.
+    It handles:
+    - Module-qualified types (e.g., 'datetime.datetime', 'uuid.UUID')
+    - Typing generics (e.g., 'List[str]', 'Optional[int]')
+    - Nested generics (e.g., 'Optional[List[datetime.datetime]]')
+
+    :param types: List of type strings (e.g., ["datetime.datetime", "List[str]", "Optional[int]"])
+    :returns: Set of import statements (e.g., {"import datetime", "from typing import List, Optional"})
+    """
+    imports = set()
+    typing_imports = set()
+
+    for type_str in types:
+        # Find all module.Type patterns (e.g., datetime.datetime, uuid.UUID)
+        module_patterns = re.findall(r"(\w+)\.\w+", type_str)
+        for module in module_patterns:
+            if module in MODULE_TYPE_IMPORTS:
+                imports.add(MODULE_TYPE_IMPORTS[module])
+
+        # Find all typing generics (e.g., List, Optional, Dict)
+        # Match word characters followed by [ to identify generics
+        generic_patterns = re.findall(r"(\w+)\[", type_str)
+        for generic in generic_patterns:
+            if generic in TYPING_GENERICS:
+                typing_imports.add(generic)
+
+        # Also check for standalone typing types (like Any, which doesn't use [])
+        words = re.findall(r"\b(\w+)\b", type_str)
+        for word in words:
+            if word in TYPING_GENERICS and word not in generic_patterns:
+                typing_imports.add(word)
+
+    # Combine typing imports into a single import statement if any exist
+    if typing_imports:
+        sorted_typing = sorted(typing_imports)
+        imports.add(f"from typing import {', '.join(sorted_typing)}")
+
+    return imports
+
+
+def collect_model_imports(models: list[TemplateModel]) -> Set[str]:
+    """Collect all required imports for the generated models.
 
     :param models: Collection of template-ready models.
-    :returns: Set with the unique generic type names referenced in model fields.
+    :returns: Set of import statements needed for the models.
     """
-
-    typing_imports = set()
+    types = []
     for model in models:
         for field in model.fields:
-            if "[" in field.type:
-                found_type = field.type.split("[")[0]
-                typing_imports.add(found_type)
-    return typing_imports
+            types.append(field.type)
+    return collect_imports(types)
+
+
+def collect_path_params_imports(path_params: list[TemplatePathParam]) -> Set[str]:
+    """Collect all required imports for path parameters.
+
+    :param path_params: Collection of path parameters.
+    :returns: Set of import statements needed for the path parameters.
+    """
+    types = [param.type for param in path_params]
+    return collect_imports(types)
+
+
+def collect_query_params_imports(query_params: list[TemplateQueryParam]) -> Set[str]:
+    """Collect all required imports for query parameters.
+
+    :param query_params: Collection of query parameters.
+    :returns: Set of import statements needed for the query parameters.
+    """
+    types = [param.type for param in query_params]
+    return collect_imports(types)
 
 
 def extract_views(template_api: TemplateAPI) -> list[TemplateView]:

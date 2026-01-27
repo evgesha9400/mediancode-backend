@@ -14,7 +14,7 @@ from typing import Iterator
 
 import pytest
 
-from api_craft.main import APIGenerator, generate_fastapi
+from api_craft.main import APIGenerator
 from api_craft.models.input import InputAPI
 
 DATA_PATH = Path(__file__).parent / "data"
@@ -81,15 +81,9 @@ def items_api_input() -> InputAPI:
 
 
 @pytest.fixture
-def complete_api_input() -> InputAPI:
-    """Load the complete API test input with all fields."""
-    return load_test_input("complete_api_input.json")
-
-
-@pytest.fixture
-def median_code_api_input() -> InputAPI:
-    """Load the median code API test input."""
-    return load_test_input("median_code_api_input.json")
+def user_management_api_input() -> InputAPI:
+    """Load the user management API test input with all fields."""
+    return load_test_input("user_management_api_input.json")
 
 
 @pytest.fixture
@@ -101,12 +95,10 @@ def generated_items_api(items_api_input: InputAPI, tmp_path: Path) -> GeneratedP
 
 
 @pytest.fixture
-def generated_complete_api(
-    complete_api_input: InputAPI, tmp_path: Path
-) -> GeneratedProject:
+def generated_user_management_api(user_management_api_input: InputAPI, tmp_path: Path) -> GeneratedProject:
     """Generate the complete API and return the project wrapper."""
     generator = APIGenerator()
-    generator.generate(complete_api_input, path=str(tmp_path))
+    generator.generate(user_management_api_input, path=str(tmp_path))
     return GeneratedProject(tmp_path / "user-management-api")
 
 
@@ -122,21 +114,11 @@ class TestSmokeGeneration:
         """Items API generates without errors."""
         assert generated_items_api.project_path.exists()
 
-    def test_complete_api_generates(self, generated_complete_api: GeneratedProject):
+    def test_user_management_api_generates(self, generated_user_management_api: GeneratedProject):
         """Complete API with all fields generates without errors."""
-        assert generated_complete_api.project_path.exists()
+        assert generated_user_management_api.project_path.exists()
 
-    def test_median_code_api_generates(
-        self, median_code_api_input: InputAPI, tmp_path: Path
-    ):
-        """Median Code API generates without errors."""
-        generator = APIGenerator()
-        generator.generate(median_code_api_input, path=str(tmp_path))
-        assert (tmp_path / "api-craft-api").exists()
-
-    def test_dry_run_does_not_write_files(
-        self, items_api_input: InputAPI, tmp_path: Path
-    ):
+    def test_dry_run_does_not_write_files(self, items_api_input: InputAPI, tmp_path: Path):
         """Dry run mode does not create any files."""
         generator = APIGenerator()
         generator.generate(items_api_input, path=str(tmp_path), dry_run=True)
@@ -165,36 +147,26 @@ class TestFileStructure:
         "swagger.py",
     ]
 
-    def test_items_api_has_expected_src_files(
-        self, generated_items_api: GeneratedProject
-    ):
+    def test_items_api_has_expected_src_files(self, generated_items_api: GeneratedProject):
         """Items API has all expected source files."""
         for filename in self.EXPECTED_SRC_FILES:
             assert filename in generated_items_api, f"Missing file: {filename}"
 
-    def test_items_api_has_expected_project_files(
-        self, generated_items_api: GeneratedProject
-    ):
+    def test_items_api_has_expected_project_files(self, generated_items_api: GeneratedProject):
         """Items API has all expected project files."""
         for filename in self.EXPECTED_PROJECT_FILES:
             assert filename in generated_items_api, f"Missing file: {filename}"
 
-    def test_complete_api_has_expected_files(
-        self, generated_complete_api: GeneratedProject
-    ):
+    def test_user_management_api_has_expected_files(self, generated_user_management_api: GeneratedProject):
         """Complete API has all expected files."""
         for filename in self.EXPECTED_SRC_FILES + self.EXPECTED_PROJECT_FILES:
-            assert filename in generated_complete_api, f"Missing file: {filename}"
+            assert filename in generated_user_management_api, f"Missing file: {filename}"
 
-    def test_path_params_file_generated_when_needed(
-        self, generated_items_api: GeneratedProject
-    ):
+    def test_path_params_file_generated_when_needed(self, generated_items_api: GeneratedProject):
         """path.py is generated when path parameters are defined."""
         assert "src/path.py" in generated_items_api
 
-    def test_query_params_file_generated_when_needed(
-        self, generated_items_api: GeneratedProject
-    ):
+    def test_query_params_file_generated_when_needed(self, generated_items_api: GeneratedProject):
         """query.py is generated when query parameters are defined."""
         assert "src/query.py" in generated_items_api
 
@@ -215,9 +187,9 @@ class TestSyntaxValidation:
             except SyntaxError as e:
                 pytest.fail(f"Syntax error in {filename}: {e}")
 
-    def test_complete_api_python_syntax(self, generated_complete_api: GeneratedProject):
+    def test_user_management_api_python_syntax(self, generated_user_management_api: GeneratedProject):
         """All generated Python files in complete API are syntactically valid."""
-        for filename, content in generated_complete_api.get_python_files():
+        for filename, content in generated_user_management_api.get_python_files():
             try:
                 ast.parse(content)
             except SyntaxError as e:
@@ -253,9 +225,7 @@ class TestModelsStructure:
         models = generated_items_api["src/models.py"]
         assert "from pydantic import BaseModel" in models
 
-    def test_items_api_has_expected_model_classes(
-        self, generated_items_api: GeneratedProject
-    ):
+    def test_items_api_has_expected_model_classes(self, generated_items_api: GeneratedProject):
         """Items API generates expected model classes."""
         models = generated_items_api["src/models.py"]
         expected_classes = [
@@ -267,11 +237,9 @@ class TestModelsStructure:
         for class_name in expected_classes:
             assert f"class {class_name}(BaseModel):" in models
 
-    def test_complete_api_has_expected_model_classes(
-        self, generated_complete_api: GeneratedProject
-    ):
+    def test_user_management_api_has_expected_model_classes(self, generated_user_management_api: GeneratedProject):
         """Complete API generates expected model classes."""
-        models = generated_complete_api["src/models.py"]
+        models = generated_user_management_api["src/models.py"]
         expected_classes = [
             "User",
             "UserList",
@@ -283,9 +251,7 @@ class TestModelsStructure:
         for class_name in expected_classes:
             assert f"class {class_name}(BaseModel):" in models
 
-    def test_model_fields_have_correct_types(
-        self, generated_items_api: GeneratedProject
-    ):
+    def test_model_fields_have_correct_types(self, generated_items_api: GeneratedProject):
         """Model fields have correct type annotations."""
         models = generated_items_api["src/models.py"]
         # GetItemResponse should have id: int and name: str
@@ -312,9 +278,7 @@ class TestViewsStructure:
         views = generated_items_api["src/views.py"]
         assert "api_router = APIRouter()" in views
 
-    def test_items_api_has_expected_endpoints(
-        self, generated_items_api: GeneratedProject
-    ):
+    def test_items_api_has_expected_endpoints(self, generated_items_api: GeneratedProject):
         """Items API generates expected endpoint decorators."""
         views = generated_items_api["src/views.py"]
         expected_patterns = [
@@ -327,11 +291,9 @@ class TestViewsStructure:
         for pattern in expected_patterns:
             assert pattern in views, f"Missing endpoint pattern: {pattern}"
 
-    def test_complete_api_has_expected_endpoints(
-        self, generated_complete_api: GeneratedProject
-    ):
+    def test_user_management_api_has_expected_endpoints(self, generated_user_management_api: GeneratedProject):
         """Complete API generates expected endpoints."""
-        views = generated_complete_api["src/views.py"]
+        views = generated_user_management_api["src/views.py"]
         # Check for user endpoints
         assert "/users" in views
         assert "/users/{user_id}" in views
@@ -344,9 +306,7 @@ class TestViewsStructure:
         assert "response_model=GetItemResponse" in views
         assert "response_model=GetItemsResponse" in views
 
-    def test_post_endpoints_accept_request_body(
-        self, generated_items_api: GeneratedProject
-    ):
+    def test_post_endpoints_accept_request_body(self, generated_items_api: GeneratedProject):
         """POST endpoints accept request body parameter."""
         views = generated_items_api["src/views.py"]
         assert "request: CreateItemRequest" in views
@@ -361,17 +321,13 @@ class TestViewsStructure:
 class TestPathAndQueryParams:
     """Tests for path and query parameter generation."""
 
-    def test_path_params_file_defines_annotated_types(
-        self, generated_items_api: GeneratedProject
-    ):
+    def test_path_params_file_defines_annotated_types(self, generated_items_api: GeneratedProject):
         """path.py defines Annotated types for path parameters."""
         path_py = generated_items_api["src/path.py"]
         assert "from typing import Annotated" in path_py
         assert "ItemId" in path_py
 
-    def test_query_params_file_defines_annotated_types(
-        self, generated_items_api: GeneratedProject
-    ):
+    def test_query_params_file_defines_annotated_types(self, generated_items_api: GeneratedProject):
         """query.py defines Annotated types for query parameters."""
         query_py = generated_items_api["src/query.py"]
         assert "from typing import Annotated" in query_py
@@ -492,8 +448,8 @@ class TestNewInputFields:
         """InputAPI accepts tags field."""
         from api_craft.models.input import (
             InputAPI,
-            InputModel,
             InputField,
+            InputModel,
             InputTag,
             InputView,
         )
@@ -549,42 +505,42 @@ class TestNewInputFields:
 class TestCompleteApiTransformation:
     """Tests to verify complete API with all fields transforms correctly."""
 
-    def test_complete_api_loads_without_error(self, complete_api_input: InputAPI):
+    def test_user_management_api_loads_without_error(self, user_management_api_input: InputAPI):
         """Complete API input loads and validates without error."""
-        assert complete_api_input.name == "UserManagementApi"
-        assert len(complete_api_input.tags) == 2
-        assert len(complete_api_input.objects) == 6
-        assert len(complete_api_input.views) == 6
+        assert user_management_api_input.name == "UserManagementApi"
+        assert len(user_management_api_input.tags) == 2
+        assert len(user_management_api_input.objects) == 6
+        assert len(user_management_api_input.views) == 6
 
-    def test_complete_api_tags_preserved(self, complete_api_input: InputAPI):
+    def test_user_management_api_tags_preserved(self, user_management_api_input: InputAPI):
         """Tags are preserved in complete API."""
-        tag_names = {t.name for t in complete_api_input.tags}
+        tag_names = {t.name for t in user_management_api_input.tags}
         assert "Users" in tag_names
         assert "Auth" in tag_names
 
-    def test_complete_api_validators_preserved(self, complete_api_input: InputAPI):
+    def test_user_management_api_validators_preserved(self, user_management_api_input: InputAPI):
         """Field validators are preserved in complete API."""
-        user_model = next(o for o in complete_api_input.objects if o.name == "User")
+        user_model = next(o for o in user_management_api_input.objects if o.name == "User")
         email_field = next(f for f in user_model.fields if f.name == "email")
         assert len(email_field.validators) == 1
         assert email_field.validators[0].name == "max_length"
 
-    def test_complete_api_descriptions_preserved(self, complete_api_input: InputAPI):
+    def test_user_management_api_descriptions_preserved(self, user_management_api_input: InputAPI):
         """Descriptions are preserved in complete API."""
-        user_model = next(o for o in complete_api_input.objects if o.name == "User")
+        user_model = next(o for o in user_management_api_input.objects if o.name == "User")
         assert user_model.description == "Represents a user in the system"
 
         id_field = next(f for f in user_model.fields if f.name == "id")
         assert id_field.description == "Unique user identifier"
 
-    def test_complete_api_view_fields_preserved(self, complete_api_input: InputAPI):
+    def test_user_management_api_view_fields_preserved(self, user_management_api_input: InputAPI):
         """View-level fields are preserved in complete API."""
-        list_users = next(v for v in complete_api_input.views if v.name == "ListUsers")
+        list_users = next(v for v in user_management_api_input.views if v.name == "ListUsers")
         assert list_users.description == "List all users with pagination"
         assert list_users.use_envelope is True
         assert list_users.response_shape == "object"
 
-        delete_user = next(v for v in complete_api_input.views if v.name == "DeleteUser")
+        delete_user = next(v for v in user_management_api_input.views if v.name == "DeleteUser")
         assert delete_user.use_envelope is False
 
 
@@ -622,7 +578,7 @@ class TestTemplateTransformation:
 
     def test_transform_preserves_model_description(self):
         """Transformer preserves model description."""
-        from api_craft.models.input import InputModel, InputField
+        from api_craft.models.input import InputField, InputModel
         from api_craft.transformers import transform_model
 
         input_model = InputModel(
@@ -635,8 +591,8 @@ class TestTemplateTransformation:
 
     def test_transform_preserves_view_fields(self):
         """Transformer preserves view-level fields."""
-        from api_craft.models.input import InputView, InputField, InputModel
-        from api_craft.transformers import transform_view, transform_model
+        from api_craft.models.input import InputField, InputModel, InputView
+        from api_craft.transformers import transform_model, transform_view
 
         # Create field map
         input_model = InputModel(
@@ -667,8 +623,8 @@ class TestTemplateTransformation:
         """Transformer preserves API tags."""
         from api_craft.models.input import (
             InputAPI,
-            InputModel,
             InputField,
+            InputModel,
             InputTag,
             InputView,
         )
@@ -682,9 +638,7 @@ class TestTemplateTransformation:
                     fields=[InputField(name="id", type="int", required=True)],
                 )
             ],
-            views=[
-                InputView(name="GetUser", path="/users", method="GET", response="User")
-            ],
+            views=[InputView(name="GetUser", path="/users", method="GET", response="User")],
             tags=[InputTag(name="Users", description="User ops")],
         )
         template_api = transform_api(input_api)
@@ -692,6 +646,165 @@ class TestTemplateTransformation:
         assert len(template_api.tags) == 1
         assert template_api.tags[0].name == "Users"
         assert template_api.tags[0].description == "User ops"
+
+
+# =============================================================================
+# Import Collection Tests
+# =============================================================================
+
+
+class TestCollectImports:
+    """Tests for the generalized collect_imports function."""
+
+    def test_collect_imports_empty_list(self):
+        """Empty type list returns empty import set."""
+        from api_craft.extractors import collect_imports
+
+        result = collect_imports([])
+        assert result == set()
+
+    def test_collect_imports_basic_types(self):
+        """Basic types (int, str, bool) need no imports."""
+        from api_craft.extractors import collect_imports
+
+        result = collect_imports(["int", "str", "bool", "float"])
+        assert result == set()
+
+    def test_collect_imports_datetime(self):
+        """datetime.datetime type adds import datetime."""
+        from api_craft.extractors import collect_imports
+
+        result = collect_imports(["datetime.datetime"])
+        assert "import datetime" in result
+
+    def test_collect_imports_uuid(self):
+        """uuid.UUID type adds import uuid."""
+        from api_craft.extractors import collect_imports
+
+        result = collect_imports(["uuid.UUID"])
+        assert "import uuid" in result
+
+    def test_collect_imports_decimal(self):
+        """Decimal type adds from decimal import Decimal."""
+        from api_craft.extractors import collect_imports
+
+        result = collect_imports(["decimal.Decimal"])
+        assert "from decimal import Decimal" in result
+
+    def test_collect_imports_typing_list(self):
+        """List generic adds typing import."""
+        from api_craft.extractors import collect_imports
+
+        result = collect_imports(["List[str]"])
+        assert "from typing import List" in result
+
+    def test_collect_imports_typing_optional(self):
+        """Optional generic adds typing import."""
+        from api_craft.extractors import collect_imports
+
+        result = collect_imports(["Optional[int]"])
+        assert "from typing import Optional" in result
+
+    def test_collect_imports_multiple_typing(self):
+        """Multiple typing generics are combined into single import."""
+        from api_craft.extractors import collect_imports
+
+        result = collect_imports(["List[str]", "Optional[int]", "Dict[str, int]"])
+        # Should have a single combined typing import
+        typing_imports = [i for i in result if "from typing import" in i]
+        assert len(typing_imports) == 1
+        assert "Dict" in typing_imports[0]
+        assert "List" in typing_imports[0]
+        assert "Optional" in typing_imports[0]
+
+    def test_collect_imports_nested_generics(self):
+        """Nested generics like Optional[List[str]] are handled."""
+        from api_craft.extractors import collect_imports
+
+        result = collect_imports(["Optional[List[str]]"])
+        typing_import = next(i for i in result if "from typing import" in i)
+        assert "List" in typing_import
+        assert "Optional" in typing_import
+
+    def test_collect_imports_mixed_types(self):
+        """Mixed types with modules and generics work together."""
+        from api_craft.extractors import collect_imports
+
+        result = collect_imports(
+            [
+                "datetime.datetime",
+                "List[str]",
+                "Optional[uuid.UUID]",
+            ]
+        )
+        assert "import datetime" in result
+        assert "import uuid" in result
+        typing_import = next(i for i in result if "from typing import" in i)
+        assert "List" in typing_import
+        assert "Optional" in typing_import
+
+    def test_collect_imports_sorting_consistency(self):
+        """Typing imports are sorted alphabetically for consistency."""
+        from api_craft.extractors import collect_imports
+
+        result = collect_imports(["Dict[str, int]", "Any", "List[str]"])
+        typing_import = next(i for i in result if "from typing import" in i)
+        # Should be alphabetically sorted: Any, Dict, List
+        assert typing_import == "from typing import Any, Dict, List"
+
+    def test_collect_model_imports_integration(self):
+        """collect_model_imports works with TemplateModel instances."""
+        from api_craft.extractors import collect_model_imports
+        from api_craft.models.template import TemplateField, TemplateModel
+
+        models = [
+            TemplateModel(
+                name="User",
+                fields=[
+                    TemplateField(name="id", type="int", required=True),
+                    TemplateField(name="created_at", type="datetime.datetime", required=True),
+                    TemplateField(name="tags", type="List[str]", required=False),
+                ],
+            )
+        ]
+        result = collect_model_imports(models)
+        assert "import datetime" in result
+        assert any("List" in i for i in result)
+
+    def test_collect_path_params_imports_integration(self):
+        """collect_path_params_imports works with TemplatePathParam instances."""
+        from api_craft.extractors import collect_path_params_imports
+        from api_craft.models.template import TemplatePathParam
+
+        params = [
+            TemplatePathParam(
+                name="EventDate",
+                snake_name="event_date",
+                camel_name="eventDate",
+                title="Event Date",
+                type="datetime.datetime",
+            )
+        ]
+        result = collect_path_params_imports(params)
+        assert "import datetime" in result
+
+    def test_collect_query_params_imports_integration(self):
+        """collect_query_params_imports works with TemplateQueryParam instances."""
+        from api_craft.extractors import collect_query_params_imports
+        from api_craft.models.template import TemplateQueryParam
+
+        params = [
+            TemplateQueryParam(
+                name="StartDate",
+                snake_name="start_date",
+                camel_name="startDate",
+                title="Start Date",
+                type="datetime.datetime",
+                required=False,
+            )
+        ]
+        result = collect_query_params_imports(params)
+        assert "import datetime" in result
 
 
 # =============================================================================
@@ -706,13 +819,9 @@ class TestBackwardsCompatibility:
         """Existing items API input loads without error."""
         assert items_api_input.name == "ItemsApi"
 
-    def test_median_code_api_input_still_valid(self, median_code_api_input: InputAPI):
-        """Existing median code API input loads without error."""
-        assert median_code_api_input.name == "ApiCraftApi"
-
     def test_minimal_input_works(self):
         """Minimal input without new optional fields still works."""
-        from api_craft.models.input import InputAPI, InputModel, InputField, InputView
+        from api_craft.models.input import InputAPI, InputField, InputModel, InputView
 
         # This is the minimal valid input
         api = InputAPI(

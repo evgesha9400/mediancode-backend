@@ -1,12 +1,12 @@
 <%doc>
 - Template Parameters:
 - models: List[TemplateModel]
-- typing_imports: Set[str]
+- imports: Set[str] - set of import statements
 </%doc>\
+% for import_stmt in sorted(imports):
+${import_stmt}
+% endfor
 from pydantic import BaseModel
-% if typing_imports:
-from typing import ${", ".join(typing_imports)}
-% endif
 % for model in models:
 
 
