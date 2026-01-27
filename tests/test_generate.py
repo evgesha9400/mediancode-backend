@@ -847,3 +847,43 @@ class TestBackwardsCompatibility:
         assert api.objects[0].description is None
         assert api.views[0].use_envelope is True
         assert api.views[0].response_shape == "object"
+
+
+# =============================================================================
+# Manual Generation - Run with: make generate
+# =============================================================================
+
+
+@pytest.fixture(scope="class")
+def output_path() -> Path:
+    """Clean output directory once and return the path."""
+    import shutil
+
+    if OUTPUT_PATH.exists():
+        shutil.rmtree(OUTPUT_PATH)
+    OUTPUT_PATH.mkdir(exist_ok=True)
+    return OUTPUT_PATH
+
+
+@pytest.mark.manual
+class TestManualGeneration:
+    """Generate API projects to tests/output/ for manual inspection.
+
+    Run with: make generate
+    """
+
+    def test_generate_items_api(
+        self, items_api_input: InputAPI, output_path: Path
+    ) -> None:
+        """Generate items API for manual inspection."""
+        generator = APIGenerator()
+        generator.generate(items_api_input, path=str(output_path))
+        print(f"\nGenerated: {output_path / items_api_input.name.kebab_name}")
+
+    def test_generate_user_management_api(
+        self, user_management_api_input: InputAPI, output_path: Path
+    ) -> None:
+        """Generate user management API for manual inspection."""
+        generator = APIGenerator()
+        generator.generate(user_management_api_input, path=str(output_path))
+        print(f"\nGenerated: {output_path / user_management_api_input.name.kebab_name}")

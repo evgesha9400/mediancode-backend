@@ -5,6 +5,9 @@ POETRY := poetry
 test:
 	@$(POETRY) run pytest tests/test_generate.py
 
+generate:
+	@$(POETRY) run pytest -m manual -v -s
+
 clean:
 	@find . -type d -name "__pycache__" -exec rm -rf {} +
 	@find . -name "*.pyc" -delete
