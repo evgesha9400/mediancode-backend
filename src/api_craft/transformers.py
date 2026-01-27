@@ -275,5 +275,6 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
         config=TemplateAPIConfig(
             healthcheck=input_api.config.healthcheck,
             response_placeholders=input_api.config.response_placeholders,
+            format_code=input_api.config.format_code,
         ),
     )

@@ -82,6 +82,7 @@ class TemplateAPIConfig(BaseModel):
 
     healthcheck: Optional[str]
     response_placeholders: bool
+    format_code: bool = True
 
 
 class TemplateAPI(BaseModel):

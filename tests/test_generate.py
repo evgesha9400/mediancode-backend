@@ -282,11 +282,11 @@ class TestViewsStructure:
         """Items API generates expected endpoint decorators."""
         views = generated_items_api["src/views.py"]
         expected_patterns = [
-            '@api_router.get(\n    path="/items/{item_id}"',
-            '@api_router.get(\n    path="/items"',
-            '@api_router.post(\n    path="/items"',
-            '@api_router.put(\n    path="/items/{item_id}"',
-            '@api_router.delete(\n    path="/items/{item_id}"',
+            '@api_router.get(path="/items/{item_id}"',
+            '@api_router.get(path="/items"',
+            '@api_router.post(path="/items"',
+            '@api_router.put(path="/items/{item_id}"',
+            '@api_router.delete(path="/items/{item_id}"',
         ]
         for pattern in expected_patterns:
             assert pattern in views, f"Missing endpoint pattern: {pattern}"

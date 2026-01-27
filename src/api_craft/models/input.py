@@ -139,10 +139,12 @@ class InputApiConfig(BaseModel):
 
     :ivar healthcheck: Optional path used to expose a healthcheck route.
     :ivar response_placeholders: Toggle for generating placeholder response bodies.
+    :ivar format_code: Toggle for formatting generated code with Black.
     """
 
     healthcheck: Optional[str] = None
     response_placeholders: bool = False
+    format_code: bool = True
 
 
 class InputAPI(BaseModel):

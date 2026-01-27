@@ -6,8 +6,10 @@ fully scaffolded FastAPI project using Mako templates.
 
 import logging
 import os
+from pathlib import Path
 from typing import Any, Dict, Optional
 
+import black
 from mako.exceptions import TopLevelLookupException
 from mako.lookup import TemplateLookup
 from mako.template import Template
@@ -39,6 +41,22 @@ from api_craft.utils import camel_to_kebab, copy_file, create_dir, write_file
 # Configure logging
 logging.basicConfig(level="INFO")
 logger = logging.getLogger(__name__)
+
+
+def format_python_files(directory: Path) -> None:
+    """Format all Python files in a directory using Black.
+
+    :param directory: Path to the directory containing Python files.
+    """
+    mode = black.Mode(line_length=120)
+    for py_file in directory.rglob("*.py"):
+        try:
+            content = py_file.read_text()
+            formatted = black.format_str(content, mode=mode)
+            py_file.write_text(formatted)
+            logger.debug(f"Formatted {py_file}")
+        except black.InvalidInput as e:
+            logger.warning(f"Could not format {py_file}: {e}")
 
 
 class APIGenerator:
@@ -233,7 +251,13 @@ class APIGenerator:
                 logger.info("Writing files...")
                 output_path = path or os.path.dirname(__file__)
                 self.write_files(rendered_components, api, output_path)
-                # apply_black_formatting(Path(output_path) / camel_to_kebab(api.name))
+
+                # 6. Format code if enabled
+                if template_api.config.format_code:
+                    logger.info("Formatting generated code...")
+                    project_dir = Path(output_path) / camel_to_kebab(api.name)
+                    format_python_files(project_dir)
+
                 logger.info("API generation completed successfully.")
             else:
                 logger.info("Dry run enabled. Would generate these files:")
