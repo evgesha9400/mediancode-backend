@@ -8,6 +8,8 @@ from api_craft.models.input import (
     InputModel,
     InputPathParam,
     InputQueryParam,
+    InputTag,
+    InputValidator,
     InputView,
 )
 from api_craft.models.template import (
@@ -17,6 +19,8 @@ from api_craft.models.template import (
     TemplateModel,
     TemplatePathParam,
     TemplateQueryParam,
+    TemplateTag,
+    TemplateValidator,
     TemplateView,
 )
 from api_craft.placeholders import (
@@ -110,21 +114,46 @@ def generate_placeholder_value(
     return generate_string(index, f"example_{field_type.lower()}")
 
 
+def transform_validator(input_validator: InputValidator) -> TemplateValidator:
+    """Transform an :class:`InputValidator` into a :class:`TemplateValidator`.
+
+    :param input_validator: Source validator definition.
+    :returns: Template-ready validator definition.
+    """
+    return TemplateValidator(name=input_validator.name, params=input_validator.params)
+
+
 def transform_field(input_field: InputField) -> TemplateField:
     """Transform an :class:`InputField` into a :class:`TemplateField`.
 
     :param input_field: Source field definition.
     :returns: Template-ready field definition with resolved types.
     """
-
-    return TemplateField(type=input_field.type, name=input_field.name, required=input_field.required)
+    validators = [transform_validator(v) for v in input_field.validators]
+    return TemplateField(
+        type=input_field.type,
+        name=input_field.name,
+        required=input_field.required,
+        description=input_field.description,
+        default_value=input_field.default_value,
+        validators=validators,
+    )
 
 
 def transform_model(input_model: InputModel) -> TemplateModel:
     """Convert an :class:`InputModel` to a :class:`TemplateModel`."""
 
     transformed_fields = [transform_field(field) for field in input_model.fields]
-    return TemplateModel(name=input_model.name, fields=transformed_fields)
+    return TemplateModel(
+        name=input_model.name,
+        fields=transformed_fields,
+        description=input_model.description,
+    )
+
+
+def transform_tag(input_tag: InputTag) -> TemplateTag:
+    """Convert an :class:`InputTag` to a :class:`TemplateTag`."""
+    return TemplateTag(name=input_tag.name, description=input_tag.description)
 
 
 def transform_query_params(
@@ -138,6 +167,7 @@ def transform_query_params(
                 camel_name=snake_to_camel(param.name),
                 title=snake_to_camel(param.name),
                 required=param.required,
+                description=param.description,
             )
             for param in input_query_params
         ]
@@ -156,6 +186,7 @@ def transform_path_params(
                 snake_name=param.name,
                 camel_name=snake_to_camel(param.name),
                 title=add_spaces_to_camel_case(snake_to_camel(param.name)),
+                description=param.description,
             )
             for param in input_path_params
         ]
@@ -206,6 +237,10 @@ def transform_view(
         response_placeholders=response_placeholders,
         query_params=transform_query_params(input_view.query_params),
         path_params=transform_path_params(input_view.path_params),
+        tag=input_view.tag,
+        description=input_view.description,
+        use_envelope=input_view.use_envelope,
+        response_shape=input_view.response_shape,
     )
 
 
@@ -224,6 +259,8 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
         for view in input_api.views
     ]
 
+    template_tags = [transform_tag(tag) for tag in input_api.tags]
+
     return TemplateAPI(
         snake_name=camel_to_snake(input_api.name),
         camel_name=input_api.name,
@@ -232,6 +269,7 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
         version=input_api.version,
         models=template_models,
         views=transformed_views,
+        tags=template_tags,
         author=input_api.author,
         description=input_api.description,
         config=TemplateAPIConfig(
