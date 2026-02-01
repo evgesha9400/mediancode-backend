@@ -16,6 +16,13 @@ app = FastAPI(
     title="${api.spaced_name}",
     description="${api.description}",
     version="${api.version}",
+% if api.tags:
+    openapi_tags=[
+% for tag in api.tags:
+        {"name": "${tag.name}"${ ', "description": "' + tag.description + '"' if tag.description else ''}},
+% endfor
+    ],
+% endif
 )
 app.include_router(api_router)
 

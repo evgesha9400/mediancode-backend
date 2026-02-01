@@ -44,7 +44,10 @@ api_router = APIRouter()
 %>
 @api_router.${view.method}(
     path="${view.path}",
-    response_model=${view.response_model}
+    response_model=${view.response_model},
+% if view.tag:
+    tags=["${view.tag}"],
+% endif
 )
 % if has_signature:
 async def ${view.snake_name}(
