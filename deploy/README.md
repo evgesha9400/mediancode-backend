@@ -6,18 +6,32 @@ This directory contains deployment configurations for different providers.
 
 | Provider | Directory | Command | Notes |
 |----------|-----------|---------|-------|
-| **Fly.io** | `fly/` | `make fly-deploy` | PaaS, simple, scale-to-zero |
+| **Railway** | `railway/` | `make railway-deploy` | PaaS, simple, managed PostgreSQL |
 | **AWS** | `aws/` | `make cdk-deploy` | Full IaC, ECS Fargate |
 
 ## Quick Start
 
-### Fly.io (Recommended for getting started)
+### Railway (Recommended)
 
 ```bash
-fly auth login
-fly apps create median-code-backend --config deploy/fly/fly.toml
-make fly-deploy
+# Install CLI
+npm install -g @railway/cli
+
+# Login and initialize
+railway login
+railway init
+
+# Add PostgreSQL database
+railway add --plugin postgresql
+
+# Set required environment variables
+railway variables set CLERK_ISSUER_URL=https://your-clerk.clerk.accounts.dev
+
+# Deploy
+make railway-deploy
 ```
+
+Or use the Railway dashboard: https://railway.app/new
 
 ### AWS
 
@@ -29,7 +43,7 @@ make cdk-deploy
 
 ## Adding New Providers
 
-Create a new directory (e.g., `railway/`, `render/`) with:
+Create a new directory (e.g., `render/`, `fly/`) with:
 1. Provider-specific config file
 2. README with setup instructions
 3. Makefile targets in root `Makefile`

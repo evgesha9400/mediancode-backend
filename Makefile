@@ -34,15 +34,15 @@ cdk-destroy:
 cdk-diff:
 	@cd deploy/aws && cdk diff
 
-# Fly.io commands
-fly-deploy:
-	@fly deploy --config deploy/fly/fly.toml
+# Railway commands
+railway-deploy:
+	@railway up
 
-fly-logs:
-	@fly logs --config deploy/fly/fly.toml
+railway-logs:
+	@railway logs
 
-fly-status:
-	@fly status --config deploy/fly/fly.toml
+railway-open:
+	@railway open
 
 # Docker commands
 docker-build:
