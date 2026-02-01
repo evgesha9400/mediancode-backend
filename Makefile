@@ -18,21 +18,31 @@ clean:
 	@rm -rf cdk.out/
 	@echo "Cleaned all Python caches and test output"
 
-# CDK commands
+# AWS CDK commands
 cdk-install:
-	@cd infra && pip install -r requirements.txt
+	@cd deploy/aws && pip install -r requirements.txt
 
 cdk-synth:
-	@cd infra && cdk synth
+	@cd deploy/aws && cdk synth
 
 cdk-deploy:
-	@cd infra && cdk deploy --require-approval never
+	@cd deploy/aws && cdk deploy --require-approval never
 
 cdk-destroy:
-	@cd infra && cdk destroy --force
+	@cd deploy/aws && cdk destroy --force
 
 cdk-diff:
-	@cd infra && cdk diff
+	@cd deploy/aws && cdk diff
+
+# Fly.io commands
+fly-deploy:
+	@fly deploy --config deploy/fly/fly.toml
+
+fly-logs:
+	@fly logs --config deploy/fly/fly.toml
+
+fly-status:
+	@fly status --config deploy/fly/fly.toml
 
 # Docker commands
 docker-build:

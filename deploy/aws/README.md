@@ -1,4 +1,4 @@
-# Infrastructure - AWS CDK
+# AWS CDK Deployment
 
 ECS Fargate deployment for the Median Code Backend.
 
@@ -15,7 +15,7 @@ ECS Fargate deployment for the Median Code Backend.
 make cdk-install
 
 # Or manually
-cd infra && pip install -r requirements.txt
+cd deploy/aws && pip install -r requirements.txt
 ```
 
 ## Commands
@@ -55,7 +55,7 @@ Modify `stacks/backend_stack.py` to adjust:
 
 ```bash
 # Bootstrap CDK (one-time per account/region)
-cd infra && cdk bootstrap
+cd deploy/aws && cdk bootstrap
 
 # Deploy
 make cdk-deploy
