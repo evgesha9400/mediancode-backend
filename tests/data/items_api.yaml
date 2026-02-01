@@ -1,0 +1,137 @@
+name: ItemsApi
+version: "0.1.0"
+author: Median Code
+description: Simple CRUD API for managing items
+
+tags:
+  - name: Items
+    description: Item management operations
+
+objects:
+  - name: GetItemResponse
+    description: Response containing a single item
+    fields:
+      - name: id
+        type: int
+        required: true
+        description: Unique item identifier
+        validators:
+          - name: ge
+            params: { value: 1 }
+
+      - name: name
+        type: str
+        required: true
+        description: Item display name
+        validators:
+          - name: min_length
+            params: { value: 1 }
+          - name: max_length
+            params: { value: 255 }
+
+  - name: GetItemsResponse
+    description: Response containing a list of items
+    fields:
+      - name: items
+        type: List[GetItemResponse]
+        required: true
+        description: List of item objects
+
+  - name: CreateItemRequest
+    description: Request body for creating a new item
+    fields:
+      - name: name
+        type: str
+        required: true
+        description: Name for the new item
+        validators:
+          - name: min_length
+            params: { value: 1 }
+          - name: max_length
+            params: { value: 255 }
+
+  - name: UpdateItemRequest
+    description: Request body for updating an existing item
+    fields:
+      - name: name
+        type: str
+        required: true
+        description: New name for the item
+        validators:
+          - name: min_length
+            params: { value: 1 }
+          - name: max_length
+            params: { value: 255 }
+
+views:
+  - name: GetItem
+    path: /items/{item_id}
+    method: GET
+    tag: Items
+    description: Retrieve a single item by its ID
+    response: GetItemResponse
+    response_shape: object
+    use_envelope: true
+    path_params:
+      - name: item_id
+        type: int
+        description: Unique identifier of the item to retrieve
+
+  - name: GetItems
+    path: /items
+    method: GET
+    tag: Items
+    description: List all items with optional pagination
+    response: GetItemsResponse
+    response_shape: object
+    use_envelope: true
+    query_params:
+      - name: limit
+        type: int
+        required: false
+        description: Maximum number of items to return
+      - name: offset
+        type: int
+        required: false
+        description: Number of items to skip for pagination
+
+  - name: CreateItem
+    path: /items
+    method: POST
+    tag: Items
+    description: Create a new item
+    response: GetItemResponse
+    request: CreateItemRequest
+    response_shape: object
+    use_envelope: true
+
+  - name: UpdateItem
+    path: /items/{item_id}
+    method: PUT
+    tag: Items
+    description: Update an existing item
+    response: GetItemResponse
+    request: UpdateItemRequest
+    response_shape: object
+    use_envelope: true
+    path_params:
+      - name: item_id
+        type: int
+        description: Unique identifier of the item to update
+
+  - name: DeleteItem
+    path: /items/{item_id}
+    method: DELETE
+    tag: Items
+    description: Delete an item by its ID
+    response: GetItemResponse
+    response_shape: object
+    use_envelope: false
+    path_params:
+      - name: item_id
+        type: int
+        description: Unique identifier of the item to delete
+
+config:
+  healthcheck: /healthcheck
+  response_placeholders: true

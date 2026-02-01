@@ -3,7 +3,7 @@ PYTHON := python3
 POETRY := poetry
 
 test:
-	@$(POETRY) run pytest tests/test_generate.py
+	@$(POETRY) run pytest tests/test_e2e.py
 
 generate:
 	@$(POETRY) run pytest -m manual -v -s
