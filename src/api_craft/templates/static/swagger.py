@@ -2,7 +2,7 @@ import json
 
 import yaml
 
-from api_craft.main import app
+from main import app
 
 SWAGGER_PATH = "swagger.yaml"
 
