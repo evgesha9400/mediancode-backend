@@ -1,15 +1,16 @@
 name: ItemsApi
 version: "0.1.0"
 author: Median Code
-description: Simple CRUD API for managing items
+description: E-commerce Items API with comprehensive validation
 
 tags:
   - name: Items
     description: Item management operations
 
 objects:
-  - name: GetItemResponse
-    description: Response containing a single item
+  # Response object for a single item with all field types and validators
+  - name: Item
+    description: Product item with validated fields
     fields:
       - name: id
         type: int
@@ -19,6 +20,18 @@ objects:
           - name: ge
             params: { value: 1 }
 
+      - name: sku
+        type: str
+        required: true
+        description: Stock keeping unit (alphanumeric code)
+        validators:
+          - name: min_length
+            params: { value: 3 }
+          - name: max_length
+            params: { value: 20 }
+          - name: pattern
+            params: { value: "^[A-Z0-9-]+$" }
+
       - name: name
         type: str
         required: true
@@ -27,41 +40,194 @@ objects:
           - name: min_length
             params: { value: 1 }
           - name: max_length
-            params: { value: 255 }
+            params: { value: 100 }
 
-  - name: GetItemsResponse
+      - name: description
+        type: str
+        required: false
+        description: Detailed item description
+        validators:
+          - name: max_length
+            params: { value: 1000 }
+
+      - name: price
+        type: float
+        required: true
+        description: Item price in dollars (must be positive, max 1M)
+        validators:
+          - name: gt
+            params: { value: 0 }
+          - name: le
+            params: { value: 1000000 }
+
+      - name: quantity
+        type: int
+        required: true
+        description: Available stock quantity
+        validators:
+          - name: ge
+            params: { value: 0 }
+          - name: le
+            params: { value: 100000 }
+
+      - name: discount_percent
+        type: int
+        required: false
+        description: Discount percentage (0-100, multiples of 5)
+        validators:
+          - name: ge
+            params: { value: 0 }
+          - name: le
+            params: { value: 100 }
+          - name: multiple_of
+            params: { value: 5 }
+
+      - name: rating
+        type: float
+        required: false
+        description: Average customer rating (0.0 to 5.0)
+        validators:
+          - name: ge
+            params: { value: 0 }
+          - name: le
+            params: { value: 5 }
+
+  # List response wrapper
+  - name: ItemList
     description: Response containing a list of items
     fields:
       - name: items
-        type: List[GetItemResponse]
+        type: List[Item]
         required: true
         description: List of item objects
 
+      - name: total
+        type: int
+        required: true
+        description: Total number of items available
+        validators:
+          - name: ge
+            params: { value: 0 }
+
+  # Request object for creating items - tests request body validation
   - name: CreateItemRequest
     description: Request body for creating a new item
     fields:
+      - name: sku
+        type: str
+        required: true
+        description: Stock keeping unit
+        validators:
+          - name: min_length
+            params: { value: 3 }
+          - name: max_length
+            params: { value: 20 }
+          - name: pattern
+            params: { value: "^[A-Z0-9-]+$" }
+
       - name: name
         type: str
         required: true
-        description: Name for the new item
+        description: Item name
         validators:
           - name: min_length
             params: { value: 1 }
           - name: max_length
-            params: { value: 255 }
+            params: { value: 100 }
 
+      - name: description
+        type: str
+        required: false
+        description: Item description
+        validators:
+          - name: max_length
+            params: { value: 1000 }
+
+      - name: price
+        type: float
+        required: true
+        description: Item price
+        validators:
+          - name: gt
+            params: { value: 0 }
+          - name: le
+            params: { value: 1000000 }
+
+      - name: quantity
+        type: int
+        required: true
+        description: Initial stock quantity
+        validators:
+          - name: ge
+            params: { value: 0 }
+          - name: le
+            params: { value: 100000 }
+
+      - name: discount_percent
+        type: int
+        required: false
+        description: Discount percentage
+        validators:
+          - name: ge
+            params: { value: 0 }
+          - name: le
+            params: { value: 100 }
+          - name: multiple_of
+            params: { value: 5 }
+
+  # Request object for updating items
   - name: UpdateItemRequest
     description: Request body for updating an existing item
     fields:
       - name: name
         type: str
-        required: true
-        description: New name for the item
+        required: false
+        description: New item name
         validators:
           - name: min_length
             params: { value: 1 }
           - name: max_length
-            params: { value: 255 }
+            params: { value: 100 }
+
+      - name: description
+        type: str
+        required: false
+        description: New item description
+        validators:
+          - name: max_length
+            params: { value: 1000 }
+
+      - name: price
+        type: float
+        required: false
+        description: New price
+        validators:
+          - name: gt
+            params: { value: 0 }
+          - name: le
+            params: { value: 1000000 }
+
+      - name: quantity
+        type: int
+        required: false
+        description: New stock quantity
+        validators:
+          - name: ge
+            params: { value: 0 }
+          - name: le
+            params: { value: 100000 }
+
+      - name: discount_percent
+        type: int
+        required: false
+        description: New discount percentage
+        validators:
+          - name: ge
+            params: { value: 0 }
+          - name: le
+            params: { value: 100 }
+          - name: multiple_of
+            params: { value: 5 }
 
 endpoints:
   - name: GetItem
@@ -69,7 +235,7 @@ endpoints:
     method: GET
     tag: Items
     description: Retrieve a single item by its ID
-    response: GetItemResponse
+    response: Item
     response_shape: object
     use_envelope: true
     path_params:
@@ -82,25 +248,37 @@ endpoints:
     method: GET
     tag: Items
     description: List all items with optional pagination
-    response: GetItemsResponse
+    response: ItemList
     response_shape: object
     use_envelope: true
     query_params:
       - name: limit
         type: int
         required: false
-        description: Maximum number of items to return
+        description: Maximum number of items to return (1-100)
       - name: offset
         type: int
         required: false
         description: Number of items to skip for pagination
+      - name: min_price
+        type: float
+        required: false
+        description: Filter by minimum price
+      - name: max_price
+        type: float
+        required: false
+        description: Filter by maximum price
+      - name: search
+        type: str
+        required: false
+        description: Search term for name/description
 
   - name: CreateItem
     path: /items
     method: POST
     tag: Items
     description: Create a new item
-    response: GetItemResponse
+    response: Item
     request: CreateItemRequest
     response_shape: object
     use_envelope: true
@@ -110,7 +288,7 @@ endpoints:
     method: PUT
     tag: Items
     description: Update an existing item
-    response: GetItemResponse
+    response: Item
     request: UpdateItemRequest
     response_shape: object
     use_envelope: true
@@ -124,7 +302,7 @@ endpoints:
     method: DELETE
     tag: Items
     description: Delete an item by its ID
-    response: GetItemResponse
+    response: Item
     response_shape: object
     use_envelope: false
     path_params:

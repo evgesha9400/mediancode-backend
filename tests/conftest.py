@@ -69,9 +69,11 @@ def load_app(src_path: Path):
             sys.modules.pop(mod_name, None)
 
 
-@pytest.fixture
-def items_api_client(tmp_path: Path) -> TestClient:
-    """Generate Items API and return TestClient."""
+@pytest.fixture(scope="session")
+def items_api_client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
+    """Generate Items API once per test session and return TestClient."""
+    tmp_path = tmp_path_factory.mktemp("items_api")
+
     api_input = load_input("items_api.yaml")
     APIGenerator().generate(api_input, path=str(tmp_path))
 

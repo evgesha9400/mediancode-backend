@@ -5,6 +5,9 @@ POETRY := poetry
 test:
 	@$(POETRY) run pytest tests/test_e2e.py
 
+test-verbose:
+	@$(POETRY) run pytest tests/test_e2e.py -v -s --tb=short --log-cli-level=INFO
+
 generate:
 	@$(POETRY) run pytest -m manual -v -s
 

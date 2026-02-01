@@ -39,6 +39,19 @@ from api_craft.utils import (
 )
 
 
+def extract_validator_constraints(validators: List[TemplateValidator]) -> Dict[str, Any]:
+    """Extract constraint values from validators into a lookup dict.
+
+    :param validators: List of validators to process.
+    :returns: Dictionary mapping constraint names to their values.
+    """
+    constraints = {}
+    for v in validators:
+        if v.params and "value" in v.params:
+            constraints[v.name] = v.params["value"]
+    return constraints
+
+
 def generate_model_placeholder(
     model_name: str,
     fields: List[TemplateField],
@@ -64,11 +77,15 @@ def generate_model_placeholder(
     visited.add(model_name)
     payload: Dict[str, Any] = {}
     for offset, field in enumerate(fields, start=1):
+        if not field.required:
+            # Skip optional fields in placeholders to avoid validation issues
+            continue
         payload[field.name] = generate_placeholder_value(
             field.type,
             index + offset - 1,
             field_map,
             visited,
+            extract_validator_constraints(field.validators),
         )
     visited.remove(model_name)
     return payload
@@ -79,15 +96,19 @@ def generate_placeholder_value(
     index: int,
     field_map: Dict[str, List[TemplateField]],
     visited: set[str],
+    constraints: Dict[str, Any] | None = None,
 ) -> Any:
-    """Generate a placeholder value based on the field type.
+    """Generate a placeholder value based on the field type and constraints.
 
     :param field_type: Resolved Python type annotation.
     :param index: Seed index used for deterministic outputs.
     :param field_map: Registry of known models for nested references.
     :param visited: Tracking set to avoid circular references.
-    :returns: Placeholder value compatible with the declared type.
+    :param constraints: Validator constraints (min_length, max_length, ge, le, etc.).
+    :returns: Placeholder value compatible with the declared type and constraints.
     """
+    if constraints is None:
+        constraints = {}
 
     if field_type.startswith("List[") and field_type.endswith("]"):
         inner_type = field_type[5:-1]
@@ -99,19 +120,112 @@ def generate_placeholder_value(
     if field_type in field_map and field_type not in visited:
         return generate_model_placeholder(field_type, field_map[field_type], index, field_map, visited)
 
-    type_mapping = {
-        "str": lambda i: generate_string(i, "example"),
-        "int": lambda i: generate_int(i, 1),
-        "bool": generate_bool,
-        "float": lambda i: generate_float(i, 1.5),
-        "datetime.datetime": generate_datetime,
-    }
-
-    generator = type_mapping.get(field_type)
-    if generator:
-        return generator(index)
+    # Generate constraint-aware values
+    if field_type == "str":
+        return generate_constrained_string(index, constraints)
+    elif field_type == "int":
+        return generate_constrained_int(index, constraints)
+    elif field_type == "float":
+        return generate_constrained_float(index, constraints)
+    elif field_type == "bool":
+        return generate_bool(index)
+    elif field_type == "datetime.datetime":
+        return generate_datetime(index)
 
     return generate_string(index, f"example_{field_type.lower()}")
+
+
+def generate_constrained_string(index: int, constraints: Dict[str, Any]) -> str:
+    """Generate a string that satisfies length and pattern constraints."""
+    pattern = constraints.get("pattern")
+    min_len = constraints.get("min_length", 1)
+    max_len = constraints.get("max_length", 100)
+
+    if pattern:
+        # For common patterns, generate matching values
+        if pattern in ("^[A-Z0-9-]+$", "^[A-Z0-9]+$"):
+            base = f"SKU-{index:03d}"
+            return base[:max_len]
+        elif "email" in pattern.lower() or "@" in pattern:
+            return f"user{index}@example.com"[:max_len]
+        # Default: alphanumeric uppercase
+        return f"VALUE{index:03d}"[:max_len]
+
+    # No pattern, just respect length constraints
+    base = f"example {index}"
+    if len(base) < min_len:
+        base = base + "x" * (min_len - len(base))
+    return base[:max_len]
+
+
+def generate_constrained_int(index: int, constraints: Dict[str, Any]) -> int:
+    """Generate an integer that satisfies numeric constraints."""
+    ge = constraints.get("ge")
+    gt = constraints.get("gt")
+    le = constraints.get("le")
+    lt = constraints.get("lt")
+    multiple_of = constraints.get("multiple_of")
+
+    # Determine valid range
+    min_val = 0
+    if ge is not None:
+        min_val = ge
+    elif gt is not None:
+        min_val = gt + 1
+
+    max_val = 1000000
+    if le is not None:
+        max_val = le
+    elif lt is not None:
+        max_val = lt - 1
+
+    # Start with a value in range
+    value = min_val + index
+    if value > max_val:
+        value = min_val
+
+    # Adjust for multiple_of constraint
+    if multiple_of:
+        # Round up to nearest multiple
+        remainder = value % multiple_of
+        if remainder != 0:
+            value = value + (multiple_of - remainder)
+        # If we exceeded max, go back to min multiple
+        if value > max_val:
+            value = min_val
+            remainder = value % multiple_of
+            if remainder != 0:
+                value = value + (multiple_of - remainder)
+
+    return value
+
+
+def generate_constrained_float(index: int, constraints: Dict[str, Any]) -> float:
+    """Generate a float that satisfies numeric constraints."""
+    ge = constraints.get("ge")
+    gt = constraints.get("gt")
+    le = constraints.get("le")
+    lt = constraints.get("lt")
+
+    # Determine valid range
+    min_val = 0.0
+    if ge is not None:
+        min_val = float(ge)
+    elif gt is not None:
+        min_val = float(gt) + 0.01
+
+    max_val = 1000000.0
+    if le is not None:
+        max_val = float(le)
+    elif lt is not None:
+        max_val = float(lt) - 0.01
+
+    # Generate value in range
+    value = min_val + (index * 0.5)
+    if value > max_val:
+        value = (min_val + max_val) / 2
+
+    return round(value, 2)
 
 
 def transform_validator(input_validator: InputValidator) -> TemplateValidator:
