@@ -44,6 +44,22 @@ railway-logs:
 railway-open:
 	@railway open
 
+# Database migrations
+db-upgrade:
+	@$(POETRY) run alembic upgrade head
+
+db-downgrade:
+	@$(POETRY) run alembic downgrade -1
+
+db-migrate:
+	@$(POETRY) run alembic revision --autogenerate -m "$(msg)"
+
+db-history:
+	@$(POETRY) run alembic history
+
+db-current:
+	@$(POETRY) run alembic current
+
 # Docker commands
 docker-build:
 	@docker build -t median-code-backend .
