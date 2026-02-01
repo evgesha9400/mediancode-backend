@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from api.models.database import (
+    ApiEndpoint,
     FieldModel,
     FieldValidator,
     Namespace,
@@ -177,12 +178,34 @@ class FieldService(BaseService[FieldModel]):
     async def get_used_in_apis(self, field_id: str) -> list[str]:
         """Get endpoint IDs where this field is used.
 
+        A field is considered "used" if it belongs to an object that is referenced
+        by an endpoint as query params, request body, or response body.
+
         :param field_id: The field's ID.
         :returns: List of endpoint IDs.
         """
-        # This would require joining through objects to endpoints
-        # For now, return empty list - full implementation would query the relationship chain
-        return []
+        # Find all objects that contain this field
+        objects_subquery = (
+            select(ObjectFieldAssociation.object_id)
+            .where(ObjectFieldAssociation.field_id == field_id)
+            .subquery()
+        )
+
+        # Find all endpoints that reference these objects
+        query = (
+            select(ApiEndpoint.id)
+            .where(
+                or_(
+                    ApiEndpoint.query_params_object_id.in_(select(objects_subquery)),
+                    ApiEndpoint.request_body_object_id.in_(select(objects_subquery)),
+                    ApiEndpoint.response_body_object_id.in_(select(objects_subquery)),
+                )
+            )
+            .distinct()
+        )
+
+        result = await self.db.execute(query)
+        return [row[0] for row in result.fetchall()]
 
 
 def get_field_service(db: AsyncSession) -> FieldService:

@@ -30,15 +30,17 @@ def get_service(db: DbSession) -> FieldService:
     return get_field_service(db)
 
 
-def _to_response(field) -> FieldResponse:
+async def _to_response(field, service: FieldService) -> FieldResponse:
     """Convert a field model to response schema.
 
     :param field: Field database model.
+    :param service: FieldService instance for fetching usage data.
     :returns: FieldResponse schema.
     """
     validators = [
         FieldValidatorSchema(name=v.name, params=v.params) for v in field.validators
     ]
+    used_in_apis = await service.get_used_in_apis(field.id)
     return FieldResponse(
         id=field.id,
         namespace_id=field.namespace_id,
@@ -47,7 +49,7 @@ def _to_response(field) -> FieldResponse:
         description=field.description,
         default_value=field.default_value,
         validators=validators,
-        used_in_apis=[],  # TODO: Implement usage tracking
+        used_in_apis=used_in_apis,
     )
 
 
@@ -71,7 +73,7 @@ async def list_fields(
     """
     service = get_service(db)
     fields = await service.list_for_user(user_id, namespace_id)
-    return [_to_response(f) for f in fields]
+    return [await _to_response(f, service) for f in fields]
 
 
 @router.post(
@@ -97,7 +99,7 @@ async def create_field(
     field = await service.create_for_user(user_id, data)
     # Reload with validators
     field = await service.get_by_id_for_user(field.id, user_id)
-    return _to_response(field)
+    return await _to_response(field, service)
 
 
 @router.get(
@@ -126,7 +128,7 @@ async def get_field(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Field with ID '{field_id}' not found",
         )
-    return _to_response(field)
+    return await _to_response(field, service)
 
 
 @router.put(
@@ -168,7 +170,7 @@ async def update_field(
     updated = await service.update_field(field, data)
     # Reload with validators
     updated = await service.get_by_id_for_user(updated.id, user_id)
-    return _to_response(updated)
+    return await _to_response(updated, service)
 
 
 @router.delete(
