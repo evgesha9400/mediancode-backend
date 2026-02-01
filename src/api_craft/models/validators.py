@@ -6,7 +6,7 @@ import re
 from typing import TYPE_CHECKING, Iterable
 
 if TYPE_CHECKING:  # pragma: no cover - imports used for type checking only
-    from api_craft.models.input import InputModel, InputView
+    from api_craft.models.input import InputEndpoint, InputModel
 
 TYPE_IDENTIFIER_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
@@ -82,41 +82,41 @@ def validate_model_field_types(
             )
 
 
-def validate_view_references(
-    views: Iterable["InputView"],
+def validate_endpoint_references(
+    endpoints: Iterable["InputEndpoint"],
     declared_object_names: set[str],
 ) -> None:
-    """Validate request and response references declared on views.
+    """Validate request and response references declared on endpoints.
 
-    :param views: Collection of view definitions.
+    :param endpoints: Collection of endpoint definitions.
     :param declared_object_names: Object identifiers declared in the API specification.
-    :raises ValueError: If a view references an unknown object.
+    :raises ValueError: If an endpoint references an unknown object.
     """
 
-    for view in views:
-        if view.response and view.response not in declared_object_names:
-            raise ValueError(f"View '{view.name}' references unknown response '{view.response}'")
+    for endpoint in endpoints:
+        if endpoint.response and endpoint.response not in declared_object_names:
+            raise ValueError(f"Endpoint '{endpoint.name}' references unknown response '{endpoint.response}'")
 
-        if view.request and view.request not in declared_object_names:
-            raise ValueError(f"View '{view.name}' references unknown request '{view.request}'")
+        if endpoint.request and endpoint.request not in declared_object_names:
+            raise ValueError(f"Endpoint '{endpoint.name}' references unknown request '{endpoint.request}'")
 
 
 PATH_PARAM_PATTERN = re.compile(r"\{([^}]+)\}")
 
 
-def validate_path_parameters(view: "InputView") -> None:
+def validate_path_parameters(endpoint: "InputEndpoint") -> None:
     """Validate that path parameters are consistently declared between path and path_params.
 
-    :param view: The input view to validate.
+    :param endpoint: The input endpoint to validate.
     :raises ValueError: If path parameters don't match bidirectionally.
     """
     # Extract parameters from path using curly braces
-    path_params_from_url = set(PATH_PARAM_PATTERN.findall(view.path))
+    path_params_from_url = set(PATH_PARAM_PATTERN.findall(endpoint.path))
 
     # Extract parameter names from declared path_params
     declared_path_param_names = set()
-    if view.path_params:
-        declared_path_param_names = {param.name for param in view.path_params}
+    if endpoint.path_params:
+        declared_path_param_names = {param.name for param in endpoint.path_params}
 
     # Check for missing parameters in both directions
     missing_in_declaration = path_params_from_url - declared_path_param_names
@@ -125,13 +125,13 @@ def validate_path_parameters(view: "InputView") -> None:
     if missing_in_declaration:
         params_list = ", ".join(sorted(missing_in_declaration))
         raise ValueError(
-            f"View '{view.name}' path '{view.path}' declares parameters {{{params_list}}} but they are not defined in path_params"
+            f"Endpoint '{endpoint.name}' path '{endpoint.path}' declares parameters {{{params_list}}} but they are not defined in path_params"
         )
 
     if missing_in_path:
         params_list = ", ".join(sorted(missing_in_path))
         raise ValueError(
-            f"View '{view.name}' declares path_params {{{params_list}}} but they are not present in path '{view.path}'"
+            f"Endpoint '{endpoint.name}' declares path_params {{{params_list}}} but they are not present in path '{endpoint.path}'"
         )
 
 

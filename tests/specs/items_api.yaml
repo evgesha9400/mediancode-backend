@@ -63,7 +63,7 @@ objects:
           - name: max_length
             params: { value: 255 }
 
-views:
+endpoints:
   - name: GetItem
     path: /items/{item_id}
     method: GET
@@ -134,4 +134,3 @@ views:
 
 config:
   healthcheck: /healthcheck
-  response_placeholders: true

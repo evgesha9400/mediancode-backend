@@ -13,12 +13,12 @@ from fastapi.testclient import TestClient
 from api_craft.main import APIGenerator
 from api_craft.models.input import InputAPI
 
-DATA_PATH = Path(__file__).parent / "data"
+SPECS_PATH = Path(__file__).parent / "specs"
 
 
 def load_input(filename: str) -> InputAPI:
     """Load and validate an API input from YAML file."""
-    yaml_path = DATA_PATH / filename
+    yaml_path = SPECS_PATH / filename
     with open(yaml_path, "r") as f:
         api_data = yaml.safe_load(f)
     return InputAPI.model_validate(api_data)

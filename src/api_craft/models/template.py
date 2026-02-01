@@ -83,6 +83,7 @@ class TemplateAPIConfig(BaseModel):
     healthcheck: Optional[str]
     response_placeholders: bool
     format_code: bool = True
+    generate_swagger: bool = True
 
 
 class TemplateAPI(BaseModel):

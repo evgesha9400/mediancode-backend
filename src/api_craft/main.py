@@ -6,6 +6,8 @@ fully scaffolded FastAPI project using Mako templates.
 
 import logging
 import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -57,6 +59,35 @@ def format_python_files(directory: Path) -> None:
             logger.debug(f"Formatted {py_file}")
         except black.InvalidInput as e:
             logger.warning(f"Could not format {py_file}: {e}")
+
+
+def generate_swagger(project_dir: Path) -> None:
+    """Generate swagger.yaml by running the swagger.py script.
+
+    :param project_dir: Path to the generated project directory.
+    """
+    swagger_script = project_dir / "swagger.py"
+    src_dir = project_dir / "src"
+
+    if not swagger_script.exists():
+        logger.warning(f"swagger.py not found at {swagger_script}")
+        return
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(src_dir)
+
+    result = subprocess.run(
+        [sys.executable, str(swagger_script)],
+        cwd=str(project_dir),
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        logger.warning(f"Swagger generation failed: {result.stderr}")
+    else:
+        logger.debug(f"Swagger generated: {result.stdout}")
 
 
 class APIGenerator:
@@ -252,11 +283,17 @@ class APIGenerator:
                 output_path = path or os.path.dirname(__file__)
                 self.write_files(rendered_components, api, output_path)
 
+                project_dir = Path(output_path) / camel_to_kebab(api.name)
+
                 # 6. Format code if enabled
                 if template_api.config.format_code:
                     logger.info("Formatting generated code...")
-                    project_dir = Path(output_path) / camel_to_kebab(api.name)
                     format_python_files(project_dir)
+
+                # 7. Generate swagger if enabled
+                if template_api.config.generate_swagger:
+                    logger.info("Generating swagger.yaml...")
+                    generate_swagger(project_dir)
 
                 logger.info("API generation completed successfully.")
             else:

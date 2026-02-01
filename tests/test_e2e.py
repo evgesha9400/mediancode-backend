@@ -10,7 +10,22 @@ A successful request proves:
 - Import correctness (module loading would fail)
 """
 
+from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
+
+from api_craft.main import APIGenerator
+from conftest import SPECS_PATH, load_input
+
+
+@pytest.mark.manual
+def test_generate_to_output():
+    """Generate all APIs from tests/data/*.yaml to tests/output/."""
+    output_path = Path(__file__).parent / "output"
+    for yaml_file in SPECS_PATH.glob("*.yaml"):
+        api_input = load_input(yaml_file.name)
+        APIGenerator().generate(api_input, path=str(output_path))
 
 
 class TestItemsApi:

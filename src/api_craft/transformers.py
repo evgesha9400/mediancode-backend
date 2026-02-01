@@ -4,13 +4,13 @@ from typing import Any, Dict, List
 
 from api_craft.models.input import (
     InputAPI,
+    InputEndpoint,
     InputField,
     InputModel,
     InputPathParam,
     InputQueryParam,
     InputTag,
     InputValidator,
-    InputView,
 )
 from api_craft.models.template import (
     TemplateAPI,
@@ -195,27 +195,27 @@ def transform_path_params(
     )
 
 
-def transform_view(
-    input_view: InputView,
+def transform_endpoint(
+    input_endpoint: InputEndpoint,
     field_map: Dict[str, List[TemplateField]],
     generate_placeholders: bool = False,
 ) -> TemplateView:
-    """Transform an :class:`InputView` into a :class:`TemplateView`."""
+    """Transform an :class:`InputEndpoint` into a :class:`TemplateView`."""
 
-    response_name = input_view.response
+    response_name = input_endpoint.response
     if not response_name:
-        raise ValueError(f"View at path '{input_view.path}' must declare a response object")
+        raise ValueError(f"Endpoint at path '{input_endpoint.path}' must declare a response object")
 
     if response_name not in field_map:
         raise ValueError(f"Response object '{response_name}' is not declared")
 
-    request_name = input_view.request
+    request_name = input_endpoint.request
     if request_name and request_name not in field_map:
         raise ValueError(f"Request object '{request_name}' is not declared")
 
-    camel_name = remove_duplicates(input_view.name)
+    camel_name = remove_duplicates(input_endpoint.name)
     if not camel_name:
-        raise ValueError(f"View name '{input_view.name}' resolved to an empty identifier")
+        raise ValueError(f"Endpoint name '{input_endpoint.name}' resolved to an empty identifier")
     snake_name = camel_to_snake(camel_name)
 
     response_placeholders = None
@@ -230,17 +230,17 @@ def transform_view(
     return TemplateView(
         snake_name=snake_name,
         camel_name=camel_name,
-        path=input_view.path,
-        method=input_view.method.lower(),
+        path=input_endpoint.path,
+        method=input_endpoint.method.lower(),
         response_model=response_name,
         request_model=request_name,
         response_placeholders=response_placeholders,
-        query_params=transform_query_params(input_view.query_params),
-        path_params=transform_path_params(input_view.path_params),
-        tag=input_view.tag,
-        description=input_view.description,
-        use_envelope=input_view.use_envelope,
-        response_shape=input_view.response_shape,
+        query_params=transform_query_params(input_endpoint.query_params),
+        path_params=transform_path_params(input_endpoint.path_params),
+        tag=input_endpoint.tag,
+        description=input_endpoint.description,
+        use_envelope=input_endpoint.use_envelope,
+        response_shape=input_endpoint.response_shape,
     )
 
 
@@ -251,12 +251,12 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
     field_map = {template_model.name: template_model.fields for template_model in template_models}
 
     transformed_views = [
-        transform_view(
-            view,
+        transform_endpoint(
+            endpoint,
             field_map,
             generate_placeholders=input_api.config.response_placeholders,
         )
-        for view in input_api.views
+        for endpoint in input_api.endpoints
     ]
 
     template_tags = [transform_tag(tag) for tag in input_api.tags]
@@ -276,5 +276,6 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
             healthcheck=input_api.config.healthcheck,
             response_placeholders=input_api.config.response_placeholders,
             format_code=input_api.config.format_code,
+            generate_swagger=input_api.config.generate_swagger,
         ),
     )
