@@ -35,6 +35,7 @@ from api_craft.renderers import (
     render_path_params,
     render_pyproject,
     render_query_params,
+    render_readme,
     render_views,
 )
 from api_craft.transformers import transform_api
@@ -130,6 +131,7 @@ class APIGenerator:
                 "pyproject": "pyproject.mako",
                 "makefile": "makefile.mako",
                 "dockerfile": "dockerfile.mako",
+                "readme": "readme.mako",
             }
 
             self.templates = {
@@ -193,6 +195,7 @@ class APIGenerator:
                 "pyproject.toml": render_pyproject(template_api, self.templates["pyproject"]),
                 "Makefile": render_makefile(template_api, self.templates["makefile"]),
                 "Dockerfile": render_dockerfile(template_api, self.templates["dockerfile"]),
+                "README.md": render_readme(template_api, self.templates["readme"]),
             }
 
             if components["path_params"]:
@@ -234,7 +237,7 @@ class APIGenerator:
 
             # Write source files
             for filename, content in rendered_components.items():
-                if filename in ["pyproject.toml", "Makefile", "Dockerfile"]:
+                if filename in ["pyproject.toml", "Makefile", "Dockerfile", "README.md"]:
                     file_path = os.path.join(project_directory, filename)
                 else:
                     file_path = os.path.join(src_directory, filename)

@@ -10,11 +10,17 @@ LABEL org.opencontainers.image.title="${api.snake_name}"
 # Set the working directory in the container
 WORKDIR /app
 
-# Install any dependencies
-COPY src/requirements.txt .
+# Install Poetry
+RUN pip install --no-cache-dir poetry
 
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy dependency files
+COPY pyproject.toml poetry.lock ./
 
+# Install dependencies (no virtualenv in container)
+RUN poetry config virtualenvs.create false && \
+    poetry install --only main --no-interaction --no-ansi
+
+# Copy application code
 COPY src/ .
 
 # Specify the command to run on container start

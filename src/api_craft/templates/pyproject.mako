@@ -2,7 +2,7 @@
 - Parameters:
 - api : TemplateApi
 </%doc>\
-[tool.poetry]
+[project]
 name = "${api.kebab_name}"
 version = "${api.version}"
 description = "${api.description}"
@@ -12,17 +12,19 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "uvicorn (>=0.37.0,<0.38.0)",
-    "fastapi (>=0.118.0,<0.119.0)"
+    "uvicorn (>=0.34.0,<1.0.0)",
+    "fastapi (>=0.115.0,<1.0.0)"
 ]
 
+[dependency-groups]
+dev = [
+    "httpx (>=0.28.0,<1.0.0)",
+    "pyyaml (>=6.0.0,<7.0.0)"
+]
+
+[tool.poetry]
+package-mode = false
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[dependency-groups]
-dev = [
-    "httpx (>=0.28.1,<0.29.0)",
-    "pyyaml (>=6.0.3,<7.0.0)"
-]

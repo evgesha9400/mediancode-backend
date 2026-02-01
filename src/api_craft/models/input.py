@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Self
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -111,16 +111,14 @@ class InputEndpoint(BaseModel):
     response_shape: Literal["object", "list"] = "object"
 
     @model_validator(mode="after")
-    @classmethod
-    def _validate_path_parameters(cls, values: "InputEndpoint") -> "InputEndpoint":
+    def _validate_path_parameters(self) -> Self:
         """Validate that path parameters match declared path_params bidirectionally.
 
-        :param values: The InputEndpoint instance being validated.
         :returns: The validated endpoint instance.
         :raises ValueError: If path parameters don't match bidirectionally.
         """
-        validate_path_parameters(values)
-        return values
+        validate_path_parameters(self)
+        return self
 
 
 class InputTag(BaseModel):
@@ -172,16 +170,14 @@ class InputAPI(BaseModel):
     config: InputApiConfig = InputApiConfig()
 
     @model_validator(mode="after")
-    def _validate_references(cls, model: "InputAPI") -> "InputAPI":
+    def _validate_references(self) -> Self:
         """Validate cross-object references after the model is instantiated.
 
-        :param model: Instance created by Pydantic prior to validation.
         :returns: The validated model instance.
         :raises ValueError: If any reference points to an unknown object or object names are not unique.
         """
-
-        validate_unique_object_names(model.objects)
-        declared_object_names = {obj.name for obj in model.objects}
-        validate_model_field_types(model.objects, declared_object_names)
-        validate_endpoint_references(model.endpoints, declared_object_names)
-        return model
+        validate_unique_object_names(self.objects)
+        declared_object_names = {obj.name for obj in self.objects}
+        validate_model_field_types(self.objects, declared_object_names)
+        validate_endpoint_references(self.endpoints, declared_object_names)
+        return self
