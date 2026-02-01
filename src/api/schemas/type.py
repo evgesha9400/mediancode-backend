@@ -12,6 +12,7 @@ class TypeResponse(BaseModel):
     :ivar python_type: Python type representation.
     :ivar description: Type description.
     :ivar validator_categories: Compatible validator categories for this type.
+    :ivar used_in_fields: Count of fields using this type.
     """
 
     name: str = Field(..., examples=["str"])
@@ -21,6 +22,7 @@ class TypeResponse(BaseModel):
     validator_categories: list[str] = Field(
         ..., alias="validatorCategories", examples=[["string"]]
     )
+    used_in_fields: int = Field(default=0, alias="usedInFields", examples=[5])
 
     class Config:
         """Pydantic model configuration."""

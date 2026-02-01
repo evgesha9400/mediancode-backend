@@ -4,6 +4,22 @@
 from pydantic import BaseModel, Field
 
 
+class FieldReferenceSchema(BaseModel):
+    """Reference to a field using a validator.
+
+    :ivar name: Field name.
+    :ivar field_id: Field unique identifier.
+    """
+
+    name: str = Field(..., examples=["email"])
+    field_id: str = Field(..., alias="fieldId", examples=["field-1"])
+
+    class Config:
+        """Pydantic model configuration."""
+
+        populate_by_name = True
+
+
 class ValidatorResponse(BaseModel):
     """Response schema for validator data.
 
@@ -15,6 +31,8 @@ class ValidatorResponse(BaseModel):
     :ivar parameter_type: Type of parameter this validator accepts.
     :ivar example_usage: Example Pydantic code usage.
     :ivar pydantic_docs_url: URL to Pydantic documentation.
+    :ivar used_in_fields: Count of fields using this validator.
+    :ivar fields_using_validator: List of fields using this validator.
     """
 
     name: str = Field(..., examples=["email_format"])
@@ -26,6 +44,12 @@ class ValidatorResponse(BaseModel):
     example_usage: str = Field(..., alias="exampleUsage", examples=["EmailStr"])
     pydantic_docs_url: str = Field(
         ..., alias="pydanticDocsUrl", examples=["https://docs.pydantic.dev/"]
+    )
+    used_in_fields: int = Field(default=0, alias="usedInFields", examples=[3])
+    fields_using_validator: list[FieldReferenceSchema] = Field(
+        default_factory=list,
+        alias="fieldsUsingValidator",
+        examples=[[{"name": "email", "fieldId": "field-1"}]],
     )
 
     class Config:
