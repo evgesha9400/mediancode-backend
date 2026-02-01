@@ -53,3 +53,18 @@ Thumbs.db
 
 # Test output directory
 tests/output/
+
+# CDK
+cdk.out/
+.cdk.staging/
+*.js
+!jest.config.js
+
+# Python virtual environments
+.venv/
+venv/
+__pycache__/
+
+# Environment files
+.env
+.env.*
