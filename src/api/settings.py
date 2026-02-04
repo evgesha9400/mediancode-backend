@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     :ivar clerk_issuer_url: Clerk issuer URL for JWT validation.
     :ivar clerk_audience: Expected audience claim in Clerk JWTs.
     :ivar global_namespace_id: ID of the global namespace containing built-in types/validators.
+    :ivar frontend_url: Frontend URL for CORS configuration.
     """
 
     database_url: str = (
@@ -21,6 +22,7 @@ class Settings(BaseSettings):
     clerk_issuer_url: str = "https://clerk.your-domain.com"
     clerk_audience: str | None = None
     global_namespace_id: str = "namespace-global"
+    frontend_url: str = "http://localhost:5173"
 
     class Config:
         """Pydantic settings configuration."""

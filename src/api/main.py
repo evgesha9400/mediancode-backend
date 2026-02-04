@@ -18,6 +18,7 @@ from api.routers import (
     types_router,
     validators_router,
 )
+from api.settings import get_settings
 
 
 @asynccontextmanager
@@ -45,10 +46,19 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-# Configure CORS
+# Configure CORS with allowed frontend origins
+settings = get_settings()
+cors_origins = [
+    "http://localhost:5173",  # Vite dev server
+    "https://app.mediancode.com",  # Production frontend
+]
+# Add configurable frontend URL if different from defaults
+if settings.frontend_url not in cors_origins:
+    cors_origins.append(settings.frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
