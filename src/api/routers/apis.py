@@ -2,16 +2,19 @@
 """Router for API endpoints."""
 
 import io
-import tempfile
-import zipfile
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
 from api.database import get_db
+from api.rate_limit import (
+    RATE_LIMIT_DEFAULT,
+    RATE_LIMIT_GENERATION,
+    limiter,
+)
 from api.schemas.api import ApiCreate, ApiResponse, ApiUpdate
 from api.services.api import ApiService, get_api_service
 
@@ -35,7 +38,9 @@ def get_service(db: DbSession) -> ApiService:
     summary="List all APIs",
     description="Retrieve all API definitions accessible to the authenticated user.",
 )
+@limiter.limit(RATE_LIMIT_DEFAULT)
 async def list_apis(
+    request: Request,
     user_id: CurrentUser,
     db: DbSession,
     namespace_id: str | None = None,
@@ -59,7 +64,9 @@ async def list_apis(
     summary="Create a new API",
     description="Create a new API definition.",
 )
+@limiter.limit(RATE_LIMIT_DEFAULT)
 async def create_api(
+    request: Request,
     data: ApiCreate,
     user_id: CurrentUser,
     db: DbSession,
@@ -188,13 +195,13 @@ async def delete_api(
     responses={
         200: {
             "description": "Successfully generated FastAPI application",
-            "content": {
-                "application/zip": {"schema": {"type": "string", "format": "binary"}}
-            },
+            "content": {"application/zip": {"schema": {"type": "string", "format": "binary"}}},
         }
     },
 )
+@limiter.limit(RATE_LIMIT_GENERATION)
 async def generate_api_code(
+    request: Request,
     api_id: str,
     user_id: CurrentUser,
     db: DbSession,
@@ -225,7 +232,5 @@ async def generate_api_code(
     return StreamingResponse(
         io.BytesIO(zip_buffer.getvalue()),
         media_type="application/zip",
-        headers={
-            "Content-Disposition": f'attachment; filename="{api.title.lower().replace(" ", "-")}-api.zip"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="{api.title.lower().replace(" ", "-")}-api.zip"'},
     )

@@ -65,6 +65,8 @@ cdk.out/
 venv/
 __pycache__/
 
-# Environment files
+# Environment files (keep .example files)
 .env
+.env.local
 .env.*
+!.env.*.example

@@ -2,8 +2,19 @@
 """Application settings loaded from environment variables."""
 
 from functools import lru_cache
+from pathlib import Path
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _get_env_file() -> str:
+    """Determine which env file to load.
+
+    Priority: .env.local (local dev) > .env (fallback)
+    """
+    if Path(".env.local").exists():
+        return ".env.local"
+    return ".env"
 
 
 class Settings(BaseSettings):
@@ -16,6 +27,11 @@ class Settings(BaseSettings):
     :ivar frontend_url: Frontend URL for CORS configuration.
     """
 
+    model_config = SettingsConfigDict(
+        env_file=_get_env_file(),
+        env_file_encoding="utf-8",
+    )
+
     database_url: str = (
         "postgresql+asyncpg://postgres:postgres@localhost:5432/median_code"
     )
@@ -23,12 +39,6 @@ class Settings(BaseSettings):
     clerk_audience: str | None = None
     global_namespace_id: str = "namespace-global"
     frontend_url: str = "http://localhost:5173"
-
-    class Config:
-        """Pydantic settings configuration."""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 @lru_cache

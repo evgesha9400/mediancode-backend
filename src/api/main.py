@@ -7,7 +7,11 @@ from typing import AsyncGenerator
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
+from api.middleware import SecurityHeadersMiddleware
+from api.rate_limit import limiter
 from api.routers import (
     apis_router,
     endpoints_router,
@@ -46,6 +50,13 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
+# Configure rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add security headers middleware (must be added before CORS)
+app.add_middleware(SecurityHeadersMiddleware)
+
 # Configure CORS with allowed frontend origins
 settings = get_settings()
 cors_origins = [
@@ -60,8 +71,14 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+    ],
 )
 
 
@@ -93,9 +110,11 @@ app.include_router(endpoints_router, prefix=api_v1_prefix)
 
 
 @app.get("/health", tags=["Health"])
-async def health_check() -> dict[str, str]:
+@limiter.limit("1000/minute")
+async def health_check(request: Request) -> dict[str, str]:
     """Health check endpoint.
 
+    :param request: The incoming request (required for rate limiting).
     :returns: Health status.
     """
     return {"status": "healthy"}

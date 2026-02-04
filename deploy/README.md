@@ -17,6 +17,9 @@ This directory contains deployment configurations for different providers.
 # Install CLI
 npm install -g @railway/cli
 
+# Or
+brew install railway
+
 # Login and initialize
 railway login
 railway init
