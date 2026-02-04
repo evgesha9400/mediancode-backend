@@ -136,14 +136,14 @@ class RailwayDeployer:
     # Variables to sync from .env file to Railway
     # DATABASE_URL is excluded - Railway manages it automatically
     SYNC_VARIABLES = [
-        "CLERK_ISSUER_URL",
-        "CLERK_AUDIENCE",
+        "CLERK_FRONTEND_API_URL",
+        "CLERK_JWT_AUDIENCE",
         "GLOBAL_NAMESPACE_ID",
         "FRONTEND_URL",
     ]
 
     REQUIRED_VARIABLES = [
-        "CLERK_ISSUER_URL",
+        "CLERK_FRONTEND_API_URL",
         "FRONTEND_URL",
     ]
 

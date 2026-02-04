@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     """Application configuration loaded from environment variables.
 
     :ivar database_url: PostgreSQL connection string for async SQLAlchemy.
-    :ivar clerk_issuer_url: Clerk issuer URL for JWT validation.
-    :ivar clerk_audience: Expected audience claim in Clerk JWTs.
+    :ivar clerk_frontend_api_url: Clerk Frontend API URL for JWT validation (from Clerk dashboard).
+    :ivar clerk_jwt_audience: Expected audience claim in Clerk JWTs (optional).
     :ivar global_namespace_id: ID of the global namespace containing built-in types/validators.
     :ivar frontend_url: Frontend URL for CORS configuration.
     """
@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     database_url: str = (
         "postgresql+asyncpg://postgres:postgres@localhost:5432/median_code"
     )
-    clerk_issuer_url: str = "https://clerk.your-domain.com"
-    clerk_audience: str | None = None
+    clerk_frontend_api_url: str = "https://clerk.example.com"
+    clerk_jwt_audience: str | None = None
     global_namespace_id: str = "namespace-global"
     frontend_url: str = "http://localhost:5173"
 

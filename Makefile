@@ -26,7 +26,7 @@ setup: ## First-time setup: install deps, start DB, run migrations
 
 .PHONY: dev
 dev: ## Start backend server with hot reload (localhost:8000)
-	@$(POETRY) run uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+	@PYTHONPATH=src $(POETRY) run uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 
 .PHONY: db
 db: ## Start PostgreSQL database (Docker)
@@ -112,20 +112,20 @@ migrate-current: ## Show current migration version (local)
 .PHONY: migrate-dev
 migrate-dev: ## Run migrations on Railway DEVELOPMENT
 	@echo "Running migrations on Railway development..."
-	@railway run alembic upgrade head
+	@railway run -e development alembic upgrade head
 
 .PHONY: migrate-prod
 migrate-prod: ## Run migrations on Railway PRODUCTION
 	@echo "Running migrations on Railway production..."
-	@railway run alembic upgrade head
+	@railway run -e production alembic upgrade head
 
 .PHONY: migrate-dev-status
 migrate-dev-status: ## Show migration status on Railway DEVELOPMENT
-	@railway run alembic current
+	@railway run -e development alembic current
 
 .PHONY: migrate-prod-status
 migrate-prod-status: ## Show migration status on Railway PRODUCTION
-	@railway run alembic current
+	@railway run -e production alembic current
 
 # =============================================================================
 #  UTILITIES

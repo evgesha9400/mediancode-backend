@@ -32,10 +32,10 @@ class ClerkAuthenticator:
     def jwks_client(self) -> PyJWKClient:
         """Get or create the JWKS client.
 
-        :returns: PyJWT JWKS client for the Clerk issuer.
+        :returns: PyJWT JWKS client for the Clerk Frontend API.
         """
         if self._jwks_client is None:
-            jwks_url = f"{self.settings.clerk_issuer_url}/.well-known/jwks.json"
+            jwks_url = f"{self.settings.clerk_frontend_api_url}/.well-known/jwks.json"
             self._jwks_client = PyJWKClient(jwks_url, cache_keys=True)
         return self._jwks_client
 
@@ -56,13 +56,19 @@ class ClerkAuthenticator:
                 "require": ["sub", "exp", "iat"],
             }
 
+            # Only validate audience if configured
+            decode_kwargs: dict = {
+                "algorithms": ["RS256"],
+                "issuer": self.settings.clerk_frontend_api_url,
+                "options": decode_options,
+            }
+            if self.settings.clerk_jwt_audience:
+                decode_kwargs["audience"] = self.settings.clerk_jwt_audience
+
             payload = jwt.decode(
                 token,
                 signing_key.key,
-                algorithms=["RS256"],
-                issuer=self.settings.clerk_issuer_url,
-                audience=self.settings.clerk_audience,
-                options=decode_options,
+                **decode_kwargs,
             )
 
             return payload
