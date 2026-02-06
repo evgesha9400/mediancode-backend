@@ -92,7 +92,7 @@ class EndpointService(BaseService[ApiEndpoint]):
             method=data.method,
             path=data.path,
             description=data.description,
-            tag_id=data.tag_id,
+            tag_name=data.tag_name,
             query_params_object_id=data.query_params_object_id,
             request_body_object_id=data.request_body_object_id,
             response_body_object_id=data.response_body_object_id,
@@ -127,8 +127,8 @@ class EndpointService(BaseService[ApiEndpoint]):
             endpoint.path = data.path
         if data.description is not None:
             endpoint.description = data.description
-        if data.tag_id is not None:
-            endpoint.tag_id = data.tag_id
+        if data.tag_name is not None:
+            endpoint.tag_name = data.tag_name
         if data.query_params_object_id is not None:
             endpoint.query_params_object_id = data.query_params_object_id
         if data.request_body_object_id is not None:

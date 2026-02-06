@@ -21,7 +21,7 @@ from api.schemas.object import (
     ObjectResponse,
     ObjectUpdate,
 )
-from api.schemas.tag import TagCreate, TagResponse, TagUpdate
+from api.schemas.tag import TagSchema
 from api.schemas.type import TypeResponse
 from api.schemas.validator import ValidatorResponse
 
@@ -44,9 +44,7 @@ __all__ = [
     "ObjectFieldReferenceSchema",
     "ObjectResponse",
     "ObjectUpdate",
-    "TagCreate",
-    "TagResponse",
-    "TagUpdate",
+    "TagSchema",
     "TypeResponse",
     "ValidatorResponse",
 ]

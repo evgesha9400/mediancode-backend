@@ -15,7 +15,6 @@ from api.models.database import (
     FieldModel,
     ObjectDefinition,
 )
-from api.settings import get_settings
 from api_craft.main import APIGenerator
 from api_craft.models.input import (
     InputAPI,
@@ -51,7 +50,6 @@ async def generate_api_zip(api: ApiModel, db: AsyncSession) -> io.BytesIO:
 
         # Create ZIP file
         zip_buffer = io.BytesIO()
-        project_name = input_api.name.replace(" ", "").lower()
         # api_craft uses kebab-case for directory name
         from api_craft.utils import camel_to_kebab
 
@@ -75,8 +73,6 @@ async def _fetch_objects(api: ApiModel, db: AsyncSession) -> dict[str, ObjectDef
     :param db: Database session.
     :returns: Map of object ID to ObjectDefinition.
     """
-    settings = get_settings()
-
     # Collect all object IDs from endpoints
     object_ids: set[str] = set()
     for endpoint in api.endpoints:
@@ -164,9 +160,11 @@ def _convert_to_input_api(
         obj_name = _to_pascal_case(obj.name)
         input_objects.append(InputModel(name=obj_name, fields=fields, description=obj.description))
 
-    # Build tag lookup and convert tags
-    tags_by_id = {tag.id: tag for tag in api.tags}
-    input_tags = [InputTag(name=tag.name, description=tag.description) for tag in api.tags]
+    # Convert tags from JSONB array to InputTag list
+    input_tags = [
+        InputTag(name=tag["name"], description=tag["description"])
+        for tag in api.tags
+    ]
 
     # Convert endpoints to InputEndpoint
     input_endpoints: list[InputEndpoint] = []
@@ -174,10 +172,8 @@ def _convert_to_input_api(
         # Build endpoint name from method and path
         endpoint_name = _build_endpoint_name(endpoint.method, endpoint.path)
 
-        # Get tag name if present
-        tag_name = None
-        if endpoint.tag_id and endpoint.tag_id in tags_by_id:
-            tag_name = tags_by_id[endpoint.tag_id].name
+        # Get tag name directly from endpoint (no longer need lookup)
+        tag_name = endpoint.tag_name
 
         # Convert path params
         path_params = None

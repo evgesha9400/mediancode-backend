@@ -6,7 +6,6 @@ from api.services.endpoint import EndpointService
 from api.services.field import FieldService
 from api.services.namespace import NamespaceService
 from api.services.object import ObjectService
-from api.services.tag import TagService
 
 __all__ = [
     "ApiService",
@@ -14,5 +13,4 @@ __all__ = [
     "FieldService",
     "NamespaceService",
     "ObjectService",
-    "TagService",
 ]

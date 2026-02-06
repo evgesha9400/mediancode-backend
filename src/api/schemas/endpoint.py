@@ -31,7 +31,7 @@ class ApiEndpointCreate(BaseModel):
     :ivar method: HTTP method.
     :ivar path: URL path with optional parameters.
     :ivar description: Endpoint description.
-    :ivar tag_id: Optional tag reference.
+    :ivar tag_name: Optional tag name (must exist in the parent API's tags).
     :ivar path_params: Path parameters.
     :ivar query_params_object_id: Optional query params object reference.
     :ivar request_body_object_id: Optional request body object reference.
@@ -47,7 +47,7 @@ class ApiEndpointCreate(BaseModel):
     )
     path: str = Field(..., examples=["/users/{user_id}"])
     description: str = Field(..., examples=["Get user by ID"])
-    tag_id: str | None = Field(default=None, alias="tagId", examples=["tag-1"])
+    tag_name: str | None = Field(default=None, alias="tagName", examples=["Users"])
     path_params: list[EndpointParameterSchema] = Field(..., alias="pathParams")
     query_params_object_id: str | None = Field(
         default=None, alias="queryParamsObjectId", examples=["object-query-1"]
@@ -71,7 +71,7 @@ class ApiEndpointUpdate(BaseModel):
     :ivar method: Updated HTTP method.
     :ivar path: Updated URL path.
     :ivar description: Updated description.
-    :ivar tag_id: Updated tag reference.
+    :ivar tag_name: Updated tag name.
     :ivar path_params: Updated path parameters.
     :ivar query_params_object_id: Updated query params object reference.
     :ivar request_body_object_id: Updated request body object reference.
@@ -88,7 +88,7 @@ class ApiEndpointUpdate(BaseModel):
     description: str | None = Field(
         default=None, examples=["Updated endpoint description"]
     )
-    tag_id: str | None = Field(default=None, alias="tagId")
+    tag_name: str | None = Field(default=None, alias="tagName")
     path_params: list[EndpointParameterSchema] | None = Field(
         default=None, alias="pathParams"
     )
@@ -116,7 +116,7 @@ class ApiEndpointResponse(BaseModel):
     :ivar method: HTTP method.
     :ivar path: URL path.
     :ivar description: Endpoint description.
-    :ivar tag_id: Tag reference.
+    :ivar tag_name: Tag name (references a tag in the parent API).
     :ivar path_params: Path parameters.
     :ivar query_params_object_id: Query params object reference.
     :ivar request_body_object_id: Request body object reference.
@@ -131,7 +131,7 @@ class ApiEndpointResponse(BaseModel):
     method: str = Field(..., examples=["GET"])
     path: str = Field(..., examples=["/users/{user_id}"])
     description: str = Field(..., examples=["Retrieve user by ID"])
-    tag_id: str | None = Field(default=None, alias="tagId", examples=["tag-1"])
+    tag_name: str | None = Field(default=None, alias="tagName", examples=["Users"])
     path_params: list[EndpointParameterSchema] = Field(
         default_factory=list, alias="pathParams"
     )

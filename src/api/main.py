@@ -18,7 +18,6 @@ from api.routers import (
     fields_router,
     namespaces_router,
     objects_router,
-    tags_router,
     types_router,
     validators_router,
 )
@@ -105,7 +104,6 @@ app.include_router(types_router, prefix=api_v1_prefix)
 app.include_router(validators_router, prefix=api_v1_prefix)
 app.include_router(fields_router, prefix=api_v1_prefix)
 app.include_router(objects_router, prefix=api_v1_prefix)
-app.include_router(tags_router, prefix=api_v1_prefix)
 app.include_router(endpoints_router, prefix=api_v1_prefix)
 
 

@@ -5,22 +5,24 @@ from api.models.database import (
     ApiEndpoint,
     ApiModel,
     EndpointParameter,
-    EndpointTag,
     FieldModel,
     FieldValidator,
     Namespace,
     ObjectDefinition,
     ObjectFieldAssociation,
+    TypeModel,
+    ValidatorModel,
 )
 
 __all__ = [
     "ApiEndpoint",
     "ApiModel",
     "EndpointParameter",
-    "EndpointTag",
     "FieldModel",
     "FieldValidator",
     "Namespace",
     "ObjectDefinition",
     "ObjectFieldAssociation",
+    "TypeModel",
+    "ValidatorModel",
 ]

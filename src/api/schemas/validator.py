@@ -23,8 +23,9 @@ class FieldReferenceSchema(BaseModel):
 class ValidatorResponse(BaseModel):
     """Response schema for validator data.
 
-    :ivar name: Validator name.
+    :ivar id: Unique identifier for the validator.
     :ivar namespace_id: Namespace this validator belongs to.
+    :ivar name: Validator name.
     :ivar type: Validator type category (string, numeric, collection).
     :ivar description: Validator description.
     :ivar category: Whether this is inline or custom.
@@ -35,13 +36,14 @@ class ValidatorResponse(BaseModel):
     :ivar fields_using_validator: List of fields using this validator.
     """
 
-    name: str = Field(..., examples=["email_format"])
+    id: str = Field(..., examples=["validator-max-length"])
     namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-global"])
+    name: str = Field(..., examples=["max_length"])
     type: str = Field(..., examples=["string"])
-    description: str = Field(..., examples=["Validates email format"])
+    description: str = Field(..., examples=["Validates string length does not exceed maximum"])
     category: str = Field(..., examples=["inline"])
-    parameter_type: str = Field(..., alias="parameterType", examples=["None"])
-    example_usage: str = Field(..., alias="exampleUsage", examples=["EmailStr"])
+    parameter_type: str = Field(..., alias="parameterType", examples=["int"])
+    example_usage: str = Field(..., alias="exampleUsage", examples=["Field(max_length=255)"])
     pydantic_docs_url: str = Field(
         ..., alias="pydanticDocsUrl", examples=["https://docs.pydantic.dev/"]
     )
@@ -55,4 +57,5 @@ class ValidatorResponse(BaseModel):
     class Config:
         """Pydantic model configuration."""
 
+        from_attributes = True
         populate_by_name = True

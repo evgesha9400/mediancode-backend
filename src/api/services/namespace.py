@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.models.database import (
     ApiEndpoint,
     ApiModel,
-    EndpointTag,
     FieldModel,
     Namespace,
     ObjectDefinition,
@@ -132,8 +131,6 @@ class NamespaceService(BaseService[Namespace]):
                 parts.append(f"{counts['endpoints']} endpoints")
             if counts["apis"] > 0:
                 parts.append(f"{counts['apis']} APIs")
-            if counts["tags"] > 0:
-                parts.append(f"{counts['tags']} tags")
 
             detail = f"Cannot delete namespace: contains {', '.join(parts)}"
             raise HTTPException(
@@ -157,7 +154,6 @@ class NamespaceService(BaseService[Namespace]):
             (ObjectDefinition, "objects"),
             (ApiEndpoint, "endpoints"),
             (ApiModel, "apis"),
-            (EndpointTag, "tags"),
         ]:
             query = (
                 select(func.count())

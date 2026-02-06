@@ -8,11 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
-from api.data import get_global_validators
 from api.database import get_db
-from api.models.database import FieldModel, FieldValidator
+from api.models.database import FieldModel, FieldValidator, ValidatorModel
 from api.schemas.validator import FieldReferenceSchema, ValidatorResponse
-from api.settings import get_settings
 
 router = APIRouter(prefix="/validators", tags=["Validators"])
 
@@ -62,28 +60,30 @@ async def list_validators(
     :param namespace_id: Optional namespace filter.
     :returns: List of validator responses.
     """
-    settings = get_settings()
-    validators = get_global_validators()
+    # Query validators from database
+    query = select(ValidatorModel)
+    if namespace_id:
+        query = query.where(ValidatorModel.namespace_id == namespace_id)
 
-    # Filter by namespace if provided
-    if namespace_id and namespace_id != settings.global_namespace_id:
-        # Only global validators exist for now
-        return []
+    result = await db.execute(query)
+    validators = result.scalars().all()
 
+    # Get fields using each validator
     fields_by_validator = await get_fields_by_validator(db)
 
     return [
         ValidatorResponse(
-            name=v["name"],
-            namespace_id=v["namespaceId"],
-            type=v["type"],
-            description=v["description"],
-            category=v["category"],
-            parameter_type=v["parameterType"],
-            example_usage=v["exampleUsage"],
-            pydantic_docs_url=v["pydanticDocsUrl"],
-            used_in_fields=len(fields_by_validator.get(v["name"], [])),
-            fields_using_validator=fields_by_validator.get(v["name"], []),
+            id=v.id,
+            namespace_id=v.namespace_id,
+            name=v.name,
+            type=v.type,
+            description=v.description,
+            category=v.category,
+            parameter_type=v.parameter_type,
+            example_usage=v.example_usage,
+            pydantic_docs_url=v.pydantic_docs_url,
+            used_in_fields=len(fields_by_validator.get(v.name, [])),
+            fields_using_validator=fields_by_validator.get(v.name, []),
         )
         for v in validators
     ]

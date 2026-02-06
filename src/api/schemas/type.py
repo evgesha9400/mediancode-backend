@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 class TypeResponse(BaseModel):
     """Response schema for type data.
 
+    :ivar id: Unique identifier for the type.
+    :ivar namespace_id: Namespace this type belongs to.
     :ivar name: Type name.
     :ivar category: Type category (primitive or abstract).
     :ivar python_type: Python type representation.
@@ -15,6 +17,8 @@ class TypeResponse(BaseModel):
     :ivar used_in_fields: Count of fields using this type.
     """
 
+    id: str = Field(..., examples=["type-str"])
+    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-global"])
     name: str = Field(..., examples=["str"])
     category: str = Field(..., examples=["primitive"])
     python_type: str = Field(..., alias="pythonType", examples=["str"])
@@ -27,4 +31,5 @@ class TypeResponse(BaseModel):
     class Config:
         """Pydantic model configuration."""
 
+        from_attributes = True
         populate_by_name = True

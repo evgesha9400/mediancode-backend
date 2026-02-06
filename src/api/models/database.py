@@ -61,12 +61,79 @@ class Namespace(Base):
     objects: Mapped[list["ObjectDefinition"]] = relationship(
         back_populates="namespace", cascade="all, delete-orphan"
     )
-    tags: Mapped[list["EndpointTag"]] = relationship(
-        back_populates="namespace", cascade="all, delete-orphan"
-    )
     endpoints: Mapped[list["ApiEndpoint"]] = relationship(
         back_populates="namespace", cascade="all, delete-orphan"
     )
+    types: Mapped[list["TypeModel"]] = relationship(
+        back_populates="namespace", cascade="all, delete-orphan"
+    )
+    validators: Mapped[list["ValidatorModel"]] = relationship(
+        back_populates="namespace", cascade="all, delete-orphan"
+    )
+
+
+class TypeModel(Base):
+    """Type definition for field types.
+
+    :ivar id: Unique identifier for the type.
+    :ivar namespace_id: Reference to the containing namespace.
+    :ivar name: Type name (str, int, float, bool, datetime, uuid).
+    :ivar category: Type category (primitive, abstract).
+    :ivar python_type: Python type representation.
+    :ivar description: Type description.
+    :ivar validator_categories: List of compatible validator categories.
+    """
+
+    __tablename__ = "types"
+
+    id: Mapped[str] = mapped_column(
+        String(255), primary_key=True, default=generate_uuid
+    )
+    namespace_id: Mapped[str] = mapped_column(
+        String(255), ForeignKey("namespaces.id"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    python_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    validator_categories: Mapped[list] = mapped_column(JSONB, nullable=False)
+
+    # Relationships
+    namespace: Mapped["Namespace"] = relationship(back_populates="types")
+
+
+class ValidatorModel(Base):
+    """Validator definition for field validation.
+
+    :ivar id: Unique identifier for the validator.
+    :ivar namespace_id: Reference to the containing namespace.
+    :ivar name: Validator name (max_length, min_length, etc.).
+    :ivar type: Validator type category (string, numeric, collection).
+    :ivar description: Validator description.
+    :ivar category: Whether this is inline or custom.
+    :ivar parameter_type: Type of parameter this validator accepts.
+    :ivar example_usage: Example Pydantic code usage.
+    :ivar pydantic_docs_url: URL to Pydantic documentation.
+    """
+
+    __tablename__ = "validators"
+
+    id: Mapped[str] = mapped_column(
+        String(255), primary_key=True, default=generate_uuid
+    )
+    namespace_id: Mapped[str] = mapped_column(
+        String(255), ForeignKey("namespaces.id"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    parameter_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    example_usage: Mapped[str] = mapped_column(String(255), nullable=False)
+    pydantic_docs_url: Mapped[str] = mapped_column(String(500), nullable=False)
+
+    # Relationships
+    namespace: Mapped["Namespace"] = relationship(back_populates="validators")
 
 
 class ApiModel(Base):
@@ -80,6 +147,7 @@ class ApiModel(Base):
     :ivar description: API description.
     :ivar base_url: Base path for all endpoints.
     :ivar server_url: Full server URL.
+    :ivar tags: List of tag definitions as JSONB [{name, description}, ...].
     :ivar created_at: Creation timestamp.
     :ivar updated_at: Last update timestamp.
     """
@@ -98,6 +166,7 @@ class ApiModel(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     base_url: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     server_url: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    tags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, nullable=False
     )
@@ -107,9 +176,6 @@ class ApiModel(Base):
 
     # Relationships
     namespace: Mapped["Namespace"] = relationship(back_populates="apis")
-    tags: Mapped[list["EndpointTag"]] = relationship(
-        back_populates="api", cascade="all, delete-orphan"
-    )
     endpoints: Mapped[list["ApiEndpoint"]] = relationship(
         back_populates="api", cascade="all, delete-orphan"
     )
@@ -156,7 +222,7 @@ class FieldValidator(Base):
 
     :ivar id: Unique identifier for the validator instance.
     :ivar field_id: Reference to the parent field.
-    :ivar name: Validator name (references ValidatorBase.name).
+    :ivar name: Validator name (references ValidatorModel.name).
     :ivar params: Validator parameters as JSON.
     """
 
@@ -241,41 +307,6 @@ class ObjectFieldAssociation(Base):
     field: Mapped["FieldModel"] = relationship(back_populates="object_associations")
 
 
-class EndpointTag(Base):
-    """Tag for grouping endpoints in OpenAPI spec.
-
-    :ivar id: Unique identifier for the tag.
-    :ivar namespace_id: Reference to the containing namespace.
-    :ivar api_id: Reference to the parent API.
-    :ivar user_id: Owner user ID from Clerk.
-    :ivar name: Tag name for OpenAPI spec.
-    :ivar description: Tag description.
-    """
-
-    __tablename__ = "endpoint_tags"
-
-    id: Mapped[str] = mapped_column(
-        String(255), primary_key=True, default=generate_uuid
-    )
-    namespace_id: Mapped[str] = mapped_column(
-        String(255), ForeignKey("namespaces.id"), nullable=False, index=True
-    )
-    api_id: Mapped[str] = mapped_column(
-        String(255),
-        ForeignKey("apis.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-
-    # Relationships
-    namespace: Mapped["Namespace"] = relationship(back_populates="tags")
-    api: Mapped["ApiModel"] = relationship(back_populates="tags")
-    endpoints: Mapped[list["ApiEndpoint"]] = relationship(back_populates="tag")
-
-
 class ApiEndpoint(Base):
     """API endpoint definition.
 
@@ -286,7 +317,7 @@ class ApiEndpoint(Base):
     :ivar method: HTTP method (GET, POST, PUT, PATCH, DELETE).
     :ivar path: URL path with optional parameters in {braces}.
     :ivar description: Endpoint description for OpenAPI spec.
-    :ivar tag_id: Optional reference to EndpointTag.
+    :ivar tag_name: Optional tag name (references a tag in the parent API's tags array).
     :ivar query_params_object_id: Optional reference to Object for query parameters.
     :ivar request_body_object_id: Optional reference to Object for request body.
     :ivar response_body_object_id: Optional reference to Object for response body.
@@ -315,9 +346,7 @@ class ApiEndpoint(Base):
     )
     path: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    tag_id: Mapped[str | None] = mapped_column(
-        String(255), ForeignKey("endpoint_tags.id"), nullable=True, index=True
-    )
+    tag_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     query_params_object_id: Mapped[str | None] = mapped_column(
         String(255), ForeignKey("objects.id"), nullable=True
     )
@@ -337,7 +366,6 @@ class ApiEndpoint(Base):
     # Relationships
     namespace: Mapped["Namespace"] = relationship(back_populates="endpoints")
     api: Mapped["ApiModel"] = relationship(back_populates="endpoints")
-    tag: Mapped["EndpointTag | None"] = relationship(back_populates="endpoints")
     path_params: Mapped[list["EndpointParameter"]] = relationship(
         back_populates="endpoint", cascade="all, delete-orphan"
     )
