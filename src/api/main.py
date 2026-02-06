@@ -60,7 +60,8 @@ app.add_middleware(SecurityHeadersMiddleware)
 settings = get_settings()
 cors_origins = [
     "http://localhost:5173",  # Vite dev server
-    "https://app.mediancode.com",  # Production frontend
+    "https://mediancode.com",  # Production frontend
+    "https://dev.mediancode.com",  # Development frontend
 ]
 # Add configurable frontend URL if different from defaults
 if settings.frontend_url not in cors_origins:
