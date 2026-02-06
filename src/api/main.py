@@ -36,6 +36,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Shutdown
 
 
+# Disable docs in production
+settings = get_settings()
+docs_url = None if settings.is_production else "/docs"
+redoc_url = None if settings.is_production else "/redoc"
+openapi_url = None if settings.is_production else "/openapi.json"
+
 app = FastAPI(
     title="Median Code API",
     description=(
@@ -44,9 +50,9 @@ app = FastAPI(
     ),
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    docs_url=docs_url,
+    redoc_url=redoc_url,
+    openapi_url=openapi_url,
 )
 
 # Configure rate limiting
@@ -57,7 +63,6 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SecurityHeadersMiddleware)
 
 # Configure CORS with allowed frontend origins
-settings = get_settings()
 cors_origins = [
     "http://localhost:5173",  # Vite dev server
     "https://mediancode.com",  # Production frontend
