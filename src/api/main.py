@@ -64,7 +64,6 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # Configure CORS with allowed frontend origins
 cors_origins = [
-    "http://localhost:5173",  # Vite dev server
     "https://mediancode.com",  # Production frontend
     "https://dev.mediancode.com",  # Development frontend
 ]
@@ -75,6 +74,7 @@ if settings.frontend_url not in cors_origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=[
