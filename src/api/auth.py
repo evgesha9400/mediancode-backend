@@ -88,6 +88,11 @@ class ClerkAuthenticator:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Unable to verify token - authentication service unavailable",
             )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Token verification failed: {str(e)}",
+            )
 
     def get_user_id(self, token: str) -> str:
         """Extract user ID from a validated JWT token.
