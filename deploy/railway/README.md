@@ -13,13 +13,13 @@ Deploy the Median Code Backend to Railway with dev/prod environment separation.
 │  │   Production Environment        │  │   Development Environment       │   │
 │  │   (branch: main)                │  │   (branch: develop)             │   │
 │  │                                 │  │                                 │   │
-│  │  ┌───────────┐  ┌───────────┐  │  │  ┌───────────┐  ┌───────────┐    │   │
-│  │  │  Backend  │  │ PostgreSQL│  │  │  │  Backend  │  │ PostgreSQL│    │   │
-│  │  │  Service  │  │  Database │  │  │  │  Service  │  │  Database │    │   │
-│  │  └───────────┘  └───────────┘  │  │  └───────────┘  └───────────┘    │   │
-│  │        │                       │  │        │                         │   │
-│  │        ▼                       │  │        ▼                         │   │
-│  │  api.mediancode.com            │  │  api.dev.mediancode.com          │   │
+│  │  ┌───────────┐  ┌───────────┐   │  │  ┌───────────┐  ┌───────────┐   │   │
+│  │  │  Backend  │  │ PostgreSQL│   │  │  │  Backend  │  │ PostgreSQL│   │   │
+│  │  │  Service  │  │  Database │   │  │  │  Service  │  │  Database │   │   │
+│  │  └───────────┘  └───────────┘   │  │  └───────────┘  └───────────┘   │   │
+│  │        │                        │  │        │                        │   │
+│  │        ▼                        │  │        ▼                        │   │
+│  │  api.mediancode.com             │  │  api.dev.mediancode.com         │   │
 │  └─────────────────────────────────┘  └─────────────────────────────────┘   │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
