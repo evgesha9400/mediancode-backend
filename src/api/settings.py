@@ -4,6 +4,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -35,6 +36,25 @@ class Settings(BaseSettings):
     database_url: str = (
         "postgresql+asyncpg://postgres:postgres@localhost:5432/median_code"
     )
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def ensure_asyncpg_scheme(cls, v: str) -> str:
+        """Ensure database URL uses the asyncpg driver scheme.
+
+        Railway and other PaaS providers inject DATABASE_URL with
+        ``postgres://`` or ``postgresql://`` scheme. SQLAlchemy's async
+        engine requires ``postgresql+asyncpg://``.
+
+        :param v: Raw database URL from environment.
+        :returns: URL with ``postgresql+asyncpg://`` scheme.
+        """
+        if v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql+asyncpg://", 1)
+        if v.startswith("postgresql://") and "+asyncpg" not in v:
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
+
     clerk_frontend_api_url: str = "https://clerk.example.com"
     clerk_jwt_audience: str | None = None
     global_namespace_id: str = "namespace-global"

@@ -26,5 +26,8 @@ ENV PYTHONPATH=/app/src
 # Default port (Railway overrides via $PORT)
 ENV PORT=8080
 
-# Run the application (shell form to expand $PORT)
-CMD uvicorn api.main:app --host 0.0.0.0 --port $PORT
+# Copy Alembic config
+COPY alembic.ini ./
+
+# Run migrations then start the application
+CMD alembic -c alembic.ini upgrade head && uvicorn api.main:app --host 0.0.0.0 --port $PORT
