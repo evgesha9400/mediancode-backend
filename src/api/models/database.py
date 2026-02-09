@@ -3,10 +3,10 @@
 
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from api.database import Base
@@ -15,12 +15,12 @@ if TYPE_CHECKING:
     pass
 
 
-def generate_uuid() -> str:
-    """Generate a UUID string for use as primary key.
+def generate_uuid() -> UUID:
+    """Generate a UUID for use as primary key.
 
-    :returns: A UUID4 string.
+    :returns: A UUID4 object.
     """
-    return str(uuid4())
+    return uuid4()
 
 
 def utc_now() -> datetime:
@@ -43,8 +43,8 @@ class Namespace(Base):
 
     __tablename__ = "namespaces"
 
-    id: Mapped[str] = mapped_column(
-        String(255), primary_key=True, default=generate_uuid
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
     user_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -86,11 +86,11 @@ class TypeModel(Base):
 
     __tablename__ = "types"
 
-    id: Mapped[str] = mapped_column(
-        String(255), primary_key=True, default=generate_uuid
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    namespace_id: Mapped[str] = mapped_column(
-        String(255), ForeignKey("namespaces.id"), nullable=False, index=True
+    namespace_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     category: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -118,11 +118,11 @@ class ValidatorModel(Base):
 
     __tablename__ = "validators"
 
-    id: Mapped[str] = mapped_column(
-        String(255), primary_key=True, default=generate_uuid
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    namespace_id: Mapped[str] = mapped_column(
-        String(255), ForeignKey("namespaces.id"), nullable=False, index=True
+    namespace_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -154,11 +154,11 @@ class ApiModel(Base):
 
     __tablename__ = "apis"
 
-    id: Mapped[str] = mapped_column(
-        String(255), primary_key=True, default=generate_uuid
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    namespace_id: Mapped[str] = mapped_column(
-        String(255), ForeignKey("namespaces.id"), nullable=False, index=True
+    namespace_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
     user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -195,11 +195,11 @@ class FieldModel(Base):
 
     __tablename__ = "fields"
 
-    id: Mapped[str] = mapped_column(
-        String(255), primary_key=True, default=generate_uuid
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    namespace_id: Mapped[str] = mapped_column(
-        String(255), ForeignKey("namespaces.id"), nullable=False, index=True
+    namespace_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
     user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -228,11 +228,11 @@ class FieldValidator(Base):
 
     __tablename__ = "field_validators"
 
-    id: Mapped[str] = mapped_column(
-        String(255), primary_key=True, default=generate_uuid
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    field_id: Mapped[str] = mapped_column(
-        String(255),
+    field_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
         ForeignKey("fields.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -256,11 +256,11 @@ class ObjectDefinition(Base):
 
     __tablename__ = "objects"
 
-    id: Mapped[str] = mapped_column(
-        String(255), primary_key=True, default=generate_uuid
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    namespace_id: Mapped[str] = mapped_column(
-        String(255), ForeignKey("namespaces.id"), nullable=False, index=True
+    namespace_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
     user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -285,17 +285,17 @@ class ObjectFieldAssociation(Base):
 
     __tablename__ = "object_field_associations"
 
-    id: Mapped[str] = mapped_column(
-        String(255), primary_key=True, default=generate_uuid
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    object_id: Mapped[str] = mapped_column(
-        String(255),
+    object_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
         ForeignKey("objects.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    field_id: Mapped[str] = mapped_column(
-        String(255), ForeignKey("fields.id"), nullable=False, index=True
+    field_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("fields.id"), nullable=False, index=True
     )
     required: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     position: Mapped[int] = mapped_column(default=0, nullable=False)
@@ -327,14 +327,14 @@ class ApiEndpoint(Base):
 
     __tablename__ = "api_endpoints"
 
-    id: Mapped[str] = mapped_column(
-        String(255), primary_key=True, default=generate_uuid
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    namespace_id: Mapped[str] = mapped_column(
-        String(255), ForeignKey("namespaces.id"), nullable=False, index=True
+    namespace_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
-    api_id: Mapped[str] = mapped_column(
-        String(255),
+    api_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
         ForeignKey("apis.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -347,14 +347,14 @@ class ApiEndpoint(Base):
     path: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     tag_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    query_params_object_id: Mapped[str | None] = mapped_column(
-        String(255), ForeignKey("objects.id"), nullable=True
+    query_params_object_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("objects.id"), nullable=True
     )
-    request_body_object_id: Mapped[str | None] = mapped_column(
-        String(255), ForeignKey("objects.id"), nullable=True
+    request_body_object_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("objects.id"), nullable=True
     )
-    response_body_object_id: Mapped[str | None] = mapped_column(
-        String(255), ForeignKey("objects.id"), nullable=True
+    response_body_object_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("objects.id"), nullable=True
     )
     use_envelope: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     response_shape: Mapped[str] = mapped_column(
@@ -394,11 +394,11 @@ class EndpointParameter(Base):
 
     __tablename__ = "endpoint_parameters"
 
-    id: Mapped[str] = mapped_column(
-        String(255), primary_key=True, default=generate_uuid
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    endpoint_id: Mapped[str] = mapped_column(
-        String(255),
+    endpoint_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
         ForeignKey("api_endpoints.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

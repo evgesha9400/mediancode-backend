@@ -3,6 +3,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from uuid import UUID
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -57,9 +58,21 @@ class Settings(BaseSettings):
 
     clerk_frontend_api_url: str = "https://clerk.example.com"
     clerk_jwt_audience: str | None = None
-    global_namespace_id: str = "namespace-global"
+    global_namespace_id: UUID = UUID("00000000-0000-0000-0000-000000000001")
     frontend_url: str = "http://localhost:5173"
     environment: str = "development"  # "development" or "production"
+
+    @field_validator("global_namespace_id", mode="before")
+    @classmethod
+    def parse_uuid(cls, v: str | UUID) -> UUID:
+        """Parse UUID from string if needed.
+
+        :param v: Raw UUID from environment (string or UUID object).
+        :returns: UUID object.
+        """
+        if isinstance(v, str):
+            return UUID(v)
+        return v
 
     @property
     def is_production(self) -> bool:

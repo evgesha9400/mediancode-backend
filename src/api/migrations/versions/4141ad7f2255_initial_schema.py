@@ -7,6 +7,7 @@ Create Date: 2026-02-05 00:21:53.575168
 """
 
 from collections.abc import Sequence
+from uuid import UUID
 
 import sqlalchemy as sa
 from alembic import op
@@ -18,11 +19,20 @@ down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+# Fixed UUIDs for seed data
+GLOBAL_NAMESPACE_ID = UUID("00000000-0000-0000-0000-000000000001")
+TYPE_STR_ID = UUID("00000000-0000-0000-0001-000000000001")
+TYPE_INT_ID = UUID("00000000-0000-0000-0001-000000000002")
+TYPE_FLOAT_ID = UUID("00000000-0000-0000-0001-000000000003")
+TYPE_BOOL_ID = UUID("00000000-0000-0000-0001-000000000004")
+TYPE_DATETIME_ID = UUID("00000000-0000-0000-0001-000000000005")
+TYPE_UUID_ID = UUID("00000000-0000-0000-0001-000000000006")
+
 # Seed data for types
 TYPES_DATA = [
     {
-        "id": "type-str",
-        "namespace_id": "namespace-global",
+        "id": TYPE_STR_ID,
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "str",
         "category": "primitive",
         "python_type": "str",
@@ -30,8 +40,8 @@ TYPES_DATA = [
         "validator_categories": ["string"],
     },
     {
-        "id": "type-int",
-        "namespace_id": "namespace-global",
+        "id": TYPE_INT_ID,
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "int",
         "category": "primitive",
         "python_type": "int",
@@ -39,8 +49,8 @@ TYPES_DATA = [
         "validator_categories": ["numeric"],
     },
     {
-        "id": "type-float",
-        "namespace_id": "namespace-global",
+        "id": TYPE_FLOAT_ID,
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "float",
         "category": "primitive",
         "python_type": "float",
@@ -48,8 +58,8 @@ TYPES_DATA = [
         "validator_categories": ["numeric"],
     },
     {
-        "id": "type-bool",
-        "namespace_id": "namespace-global",
+        "id": TYPE_BOOL_ID,
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "bool",
         "category": "primitive",
         "python_type": "bool",
@@ -57,8 +67,8 @@ TYPES_DATA = [
         "validator_categories": [],
     },
     {
-        "id": "type-datetime",
-        "namespace_id": "namespace-global",
+        "id": TYPE_DATETIME_ID,
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "datetime",
         "category": "primitive",
         "python_type": "datetime.datetime",
@@ -66,8 +76,8 @@ TYPES_DATA = [
         "validator_categories": [],
     },
     {
-        "id": "type-uuid",
-        "namespace_id": "namespace-global",
+        "id": TYPE_UUID_ID,
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "uuid",
         "category": "abstract",
         "python_type": "uuid.UUID",
@@ -80,8 +90,8 @@ TYPES_DATA = [
 VALIDATORS_DATA = [
     # String validators
     {
-        "id": "validator-max-length",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000001"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "max_length",
         "type": "string",
         "description": "Validates that string length does not exceed maximum",
@@ -91,8 +101,8 @@ VALIDATORS_DATA = [
         "pydantic_docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#string-constraints",
     },
     {
-        "id": "validator-min-length",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000002"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "min_length",
         "type": "string",
         "description": "Validates that string length is at least minimum",
@@ -102,8 +112,8 @@ VALIDATORS_DATA = [
         "pydantic_docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#string-constraints",
     },
     {
-        "id": "validator-pattern",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000003"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "pattern",
         "type": "string",
         "description": "Validates string matches a regular expression pattern",
@@ -113,8 +123,8 @@ VALIDATORS_DATA = [
         "pydantic_docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#string-constraints",
     },
     {
-        "id": "validator-email-format",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000004"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "email_format",
         "type": "string",
         "description": "Validates email format using EmailStr type",
@@ -124,8 +134,8 @@ VALIDATORS_DATA = [
         "pydantic_docs_url": "https://docs.pydantic.dev/latest/api/networks/#pydantic.networks.EmailStr",
     },
     {
-        "id": "validator-url-format",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000005"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "url_format",
         "type": "string",
         "description": "Validates URL format using HttpUrl type",
@@ -136,8 +146,8 @@ VALIDATORS_DATA = [
     },
     # Numeric validators
     {
-        "id": "validator-gt",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000006"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "gt",
         "type": "numeric",
         "description": "Validates that number is greater than specified value",
@@ -147,8 +157,8 @@ VALIDATORS_DATA = [
         "pydantic_docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints",
     },
     {
-        "id": "validator-ge",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000007"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "ge",
         "type": "numeric",
         "description": "Validates that number is greater than or equal to specified value",
@@ -158,8 +168,8 @@ VALIDATORS_DATA = [
         "pydantic_docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints",
     },
     {
-        "id": "validator-lt",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000008"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "lt",
         "type": "numeric",
         "description": "Validates that number is less than specified value",
@@ -169,8 +179,8 @@ VALIDATORS_DATA = [
         "pydantic_docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints",
     },
     {
-        "id": "validator-le",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000009"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "le",
         "type": "numeric",
         "description": "Validates that number is less than or equal to specified value",
@@ -180,8 +190,8 @@ VALIDATORS_DATA = [
         "pydantic_docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints",
     },
     {
-        "id": "validator-multiple-of",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000010"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "multiple_of",
         "type": "numeric",
         "description": "Validates that number is a multiple of specified value",
@@ -192,8 +202,8 @@ VALIDATORS_DATA = [
     },
     # Collection validators
     {
-        "id": "validator-min-items",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000011"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "min_items",
         "type": "collection",
         "description": "Validates that collection has at least minimum number of items",
@@ -203,8 +213,8 @@ VALIDATORS_DATA = [
         "pydantic_docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#string-constraints",
     },
     {
-        "id": "validator-max-items",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000012"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "max_items",
         "type": "collection",
         "description": "Validates that collection has at most maximum number of items",
@@ -214,8 +224,8 @@ VALIDATORS_DATA = [
         "pydantic_docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#string-constraints",
     },
     {
-        "id": "validator-unique-items",
-        "namespace_id": "namespace-global",
+        "id": UUID("00000000-0000-0000-0002-000000000013"),
+        "namespace_id": GLOBAL_NAMESPACE_ID,
         "name": "unique_items",
         "type": "collection",
         "description": "Validates that all items in collection are unique",
@@ -228,9 +238,12 @@ VALIDATORS_DATA = [
 
 
 def upgrade() -> None:
+    # Enable pgcrypto extension for gen_random_uuid()
+    op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
+
     # Create namespaces table
     op.create_table('namespaces',
-        sa.Column('id', sa.String(length=255), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
         sa.Column('user_id', sa.String(length=255), nullable=True),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
@@ -241,8 +254,8 @@ def upgrade() -> None:
 
     # Create types table
     op.create_table('types',
-        sa.Column('id', sa.String(length=255), nullable=False),
-        sa.Column('namespace_id', sa.String(length=255), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column('namespace_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('name', sa.String(length=50), nullable=False),
         sa.Column('category', sa.String(length=50), nullable=False),
         sa.Column('python_type', sa.String(length=100), nullable=False),
@@ -255,8 +268,8 @@ def upgrade() -> None:
 
     # Create validators table
     op.create_table('validators',
-        sa.Column('id', sa.String(length=255), nullable=False),
-        sa.Column('namespace_id', sa.String(length=255), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column('namespace_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('type', sa.String(length=50), nullable=False),
         sa.Column('description', sa.Text(), nullable=False),
@@ -271,8 +284,8 @@ def upgrade() -> None:
 
     # Create apis table (with tags JSONB column)
     op.create_table('apis',
-        sa.Column('id', sa.String(length=255), nullable=False),
-        sa.Column('namespace_id', sa.String(length=255), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column('namespace_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('user_id', sa.String(length=255), nullable=False),
         sa.Column('title', sa.String(length=255), nullable=False),
         sa.Column('version', sa.String(length=50), nullable=False),
@@ -290,8 +303,8 @@ def upgrade() -> None:
 
     # Create fields table
     op.create_table('fields',
-        sa.Column('id', sa.String(length=255), nullable=False),
-        sa.Column('namespace_id', sa.String(length=255), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column('namespace_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('user_id', sa.String(length=255), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('type', sa.String(length=50), nullable=False),
@@ -305,8 +318,8 @@ def upgrade() -> None:
 
     # Create objects table
     op.create_table('objects',
-        sa.Column('id', sa.String(length=255), nullable=False),
-        sa.Column('namespace_id', sa.String(length=255), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column('namespace_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('user_id', sa.String(length=255), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
@@ -318,8 +331,8 @@ def upgrade() -> None:
 
     # Create field_validators table
     op.create_table('field_validators',
-        sa.Column('id', sa.String(length=255), nullable=False),
-        sa.Column('field_id', sa.String(length=255), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column('field_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('params', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.ForeignKeyConstraint(['field_id'], ['fields.id'], ondelete='CASCADE'),
@@ -329,9 +342,9 @@ def upgrade() -> None:
 
     # Create object_field_associations table
     op.create_table('object_field_associations',
-        sa.Column('id', sa.String(length=255), nullable=False),
-        sa.Column('object_id', sa.String(length=255), nullable=False),
-        sa.Column('field_id', sa.String(length=255), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column('object_id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('field_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('required', sa.Boolean(), nullable=False),
         sa.Column('position', sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(['field_id'], ['fields.id']),
@@ -343,17 +356,17 @@ def upgrade() -> None:
 
     # Create api_endpoints table (with tag_name instead of tag_id)
     op.create_table('api_endpoints',
-        sa.Column('id', sa.String(length=255), nullable=False),
-        sa.Column('namespace_id', sa.String(length=255), nullable=False),
-        sa.Column('api_id', sa.String(length=255), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column('namespace_id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('api_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('user_id', sa.String(length=255), nullable=False),
         sa.Column('method', sa.Enum('GET', 'POST', 'PUT', 'PATCH', 'DELETE', name='http_method'), nullable=False),
         sa.Column('path', sa.String(length=500), nullable=False),
         sa.Column('description', sa.Text(), nullable=False),
         sa.Column('tag_name', sa.String(length=255), nullable=True),
-        sa.Column('query_params_object_id', sa.String(length=255), nullable=True),
-        sa.Column('request_body_object_id', sa.String(length=255), nullable=True),
-        sa.Column('response_body_object_id', sa.String(length=255), nullable=True),
+        sa.Column('query_params_object_id', postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column('request_body_object_id', postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column('response_body_object_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('use_envelope', sa.Boolean(), nullable=False),
         sa.Column('response_shape', sa.Enum('object', 'list', name='response_shape'), nullable=False),
         sa.ForeignKeyConstraint(['api_id'], ['apis.id'], ondelete='CASCADE'),
@@ -369,8 +382,8 @@ def upgrade() -> None:
 
     # Create endpoint_parameters table
     op.create_table('endpoint_parameters',
-        sa.Column('id', sa.String(length=255), nullable=False),
-        sa.Column('endpoint_id', sa.String(length=255), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column('endpoint_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('type', sa.String(length=50), nullable=False),
         sa.Column('description', sa.Text(), nullable=False),
@@ -383,17 +396,17 @@ def upgrade() -> None:
 
     # Seed global namespace (required for FK constraints on types/validators)
     op.execute(
-        """
+        f"""
         INSERT INTO namespaces (id, user_id, name, description, locked)
-        VALUES ('namespace-global', NULL, 'Global', 'Built-in types and validators', true)
+        VALUES ('{GLOBAL_NAMESPACE_ID}'::uuid, NULL, 'Global', 'Built-in types and validators', true)
         """
     )
 
     # Seed types data
     types_table = sa.table(
         'types',
-        sa.column('id', sa.String),
-        sa.column('namespace_id', sa.String),
+        sa.column('id', postgresql.UUID),
+        sa.column('namespace_id', postgresql.UUID),
         sa.column('name', sa.String),
         sa.column('category', sa.String),
         sa.column('python_type', sa.String),
@@ -405,8 +418,8 @@ def upgrade() -> None:
     # Seed validators data
     validators_table = sa.table(
         'validators',
-        sa.column('id', sa.String),
-        sa.column('namespace_id', sa.String),
+        sa.column('id', postgresql.UUID),
+        sa.column('namespace_id', postgresql.UUID),
         sa.column('name', sa.String),
         sa.column('type', sa.String),
         sa.column('description', sa.Text),
@@ -449,3 +462,6 @@ def downgrade() -> None:
     # Drop enums
     op.execute("DROP TYPE IF EXISTS http_method")
     op.execute("DROP TYPE IF EXISTS response_shape")
+
+    # Drop extension
+    op.execute("DROP EXTENSION IF EXISTS pgcrypto")
