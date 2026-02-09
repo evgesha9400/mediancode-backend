@@ -95,12 +95,13 @@ Click on the newly created backend service, then go to **Settings** tab:
 1. Scroll to **"Source"** section
 2. Set **"Branch"** to `develop`
 
-3. Scroll to **"Build"** section
-4. Click **"Builder"** dropdown and select **"Dockerfile"**
-5. Ensure **"Dockerfile Path"** is `Dockerfile`
+3. Scroll to **"Config-as-code"** section (in the right sidebar)
+4. Set **"Config File Path"** to `/deploy/railway/railway.toml`
+   > This tells Railway to read its config from the deploy directory instead of the repo root.
+   > Paths inside `railway.toml` (like `dockerfilePath`) are resolved relative to the repo root.
 
-6. Scroll to **"Deploy"** section
-7. Click **"+ Healthcheck Path"** and enter: `/health`
+5. Scroll to **"Build"** section
+6. Verify **"Builder"** is set to **"Dockerfile"** (should be auto-configured from `railway.toml`)
 
 7. Click **"Redeploy"** (top right) to rebuild with correct settings
 
@@ -130,6 +131,7 @@ Switch to **"production"** environment (use dropdown), then repeat Step 3 with t
 | Setting | Production Value | Type |
 |---------|------------------|------|
 | Branch | `main` | Setting |
+| Config File Path | `deploy/railway/railway.toml` | Setting |
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | Reference |
 | `ENVIRONMENT` | `${{RAILWAY_ENVIRONMENT_NAME}}` | Reference |
 | `CLERK_FRONTEND_API_URL` | `https://your-prod-clerk.clerk.accounts.dev` | Manual |
