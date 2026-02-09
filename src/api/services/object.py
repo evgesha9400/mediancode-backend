@@ -1,6 +1,8 @@
 # src/api/services/object.py
 """Service layer for Object operations."""
 
+from uuid import UUID
+
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -182,7 +184,7 @@ class ObjectService(BaseService[ObjectDefinition]):
 
         await self.db.flush()
 
-    async def get_used_in_apis(self, object_id: str) -> list[str]:
+    async def get_used_in_apis(self, object_id: UUID) -> list[UUID]:
         """Get endpoint IDs where this object is used.
 
         :param object_id: The object's ID.

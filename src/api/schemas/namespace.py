@@ -1,6 +1,8 @@
 # src/api/schemas/namespace.py
 """Pydantic schemas for Namespace entity."""
 
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
@@ -35,16 +37,21 @@ class NamespaceResponse(BaseModel):
     :ivar name: Namespace name.
     :ivar description: Namespace description.
     :ivar locked: Whether this namespace is locked (immutable).
+    :ivar is_default: Whether this is the user's default namespace.
     """
 
-    id: str = Field(..., examples=["namespace-global"])
+    id: UUID = Field(..., examples=["00000000-0000-0000-0000-000000000001"])
     name: str = Field(..., examples=["global"])
     description: str | None = Field(
         default=None, examples=["Immutable global templates and examples"]
     )
     locked: bool = Field(..., examples=[True])
+    is_default: bool = Field(
+        ..., alias="isDefault", examples=[False]
+    )
 
     class Config:
         """Pydantic model configuration."""
 
         from_attributes = True
+        populate_by_name = True

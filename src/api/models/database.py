@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -39,9 +39,18 @@ class Namespace(Base):
     :ivar name: Namespace display name.
     :ivar description: Optional description.
     :ivar locked: Whether this namespace is immutable (e.g., global).
+    :ivar is_default: Whether this is the user's default namespace.
     """
 
     __tablename__ = "namespaces"
+    __table_args__ = (
+        Index(
+            "ix_namespaces_one_default_per_user",
+            "user_id",
+            unique=True,
+            postgresql_where=text("is_default = true"),
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
@@ -50,6 +59,7 @@ class Namespace(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships
     apis: Mapped[list["ApiModel"]] = relationship(
@@ -81,7 +91,7 @@ class TypeModel(Base):
     :ivar category: Type category (primitive, abstract).
     :ivar python_type: Python type representation.
     :ivar description: Type description.
-    :ivar validator_categories: List of compatible validator categories.
+    :ivar compatible_types: List of compatible validator categories.
     """
 
     __tablename__ = "types"
@@ -96,10 +106,11 @@ class TypeModel(Base):
     category: Mapped[str] = mapped_column(String(50), nullable=False)
     python_type: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    validator_categories: Mapped[list] = mapped_column(JSONB, nullable=False)
+    compatible_types: Mapped[list] = mapped_column(JSONB, nullable=False)
 
     # Relationships
     namespace: Mapped["Namespace"] = relationship(back_populates="types")
+    fields: Mapped[list["FieldModel"]] = relationship(back_populates="field_type")
 
 
 class ValidatorModel(Base):
@@ -113,7 +124,7 @@ class ValidatorModel(Base):
     :ivar category: Whether this is inline or custom.
     :ivar parameter_type: Type of parameter this validator accepts.
     :ivar example_usage: Example Pydantic code usage.
-    :ivar pydantic_docs_url: URL to Pydantic documentation.
+    :ivar docs_url: URL to documentation.
     """
 
     __tablename__ = "validators"
@@ -130,7 +141,7 @@ class ValidatorModel(Base):
     category: Mapped[str] = mapped_column(String(50), nullable=False)
     parameter_type: Mapped[str] = mapped_column(String(50), nullable=False)
     example_usage: Mapped[str] = mapped_column(String(255), nullable=False)
-    pydantic_docs_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    docs_url: Mapped[str] = mapped_column(String(500), nullable=False)
 
     # Relationships
     namespace: Mapped["Namespace"] = relationship(back_populates="validators")
@@ -188,7 +199,7 @@ class FieldModel(Base):
     :ivar namespace_id: Reference to the containing namespace.
     :ivar user_id: Owner user ID from Clerk.
     :ivar name: Field name (will become Pydantic field name).
-    :ivar type: Primitive type name (str, int, float, bool, datetime, uuid).
+    :ivar type_id: Reference to the field's type definition.
     :ivar description: Field description.
     :ivar default_value: Default value expression (Python code).
     """
@@ -203,12 +214,15 @@ class FieldModel(Base):
     )
     user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    type_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("types.id"), nullable=False, index=True
+    )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     default_value: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     namespace: Mapped["Namespace"] = relationship(back_populates="fields")
+    field_type: Mapped["TypeModel"] = relationship(back_populates="fields")
     validators: Mapped[list["FieldValidator"]] = relationship(
         back_populates="field", cascade="all, delete-orphan"
     )

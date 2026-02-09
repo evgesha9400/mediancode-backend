@@ -1,6 +1,8 @@
 # src/api/schemas/validator.py
 """Pydantic schemas for Validator entity."""
 
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
@@ -12,7 +14,7 @@ class FieldReferenceSchema(BaseModel):
     """
 
     name: str = Field(..., examples=["email"])
-    field_id: str = Field(..., alias="fieldId", examples=["field-1"])
+    field_id: UUID = Field(..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"])
 
     class Config:
         """Pydantic model configuration."""
@@ -31,21 +33,21 @@ class ValidatorResponse(BaseModel):
     :ivar category: Whether this is inline or custom.
     :ivar parameter_type: Type of parameter this validator accepts.
     :ivar example_usage: Example Pydantic code usage.
-    :ivar pydantic_docs_url: URL to Pydantic documentation.
+    :ivar docs_url: URL to documentation.
     :ivar used_in_fields: Count of fields using this validator.
     :ivar fields_using_validator: List of fields using this validator.
     """
 
-    id: str = Field(..., examples=["validator-max-length"])
-    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-global"])
+    id: UUID = Field(..., examples=["00000000-0000-0000-0002-000000000001"])
+    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"])
     name: str = Field(..., examples=["max_length"])
     type: str = Field(..., examples=["string"])
     description: str = Field(..., examples=["Validates string length does not exceed maximum"])
     category: str = Field(..., examples=["inline"])
     parameter_type: str = Field(..., alias="parameterType", examples=["int"])
     example_usage: str = Field(..., alias="exampleUsage", examples=["Field(max_length=255)"])
-    pydantic_docs_url: str = Field(
-        ..., alias="pydanticDocsUrl", examples=["https://docs.pydantic.dev/"]
+    docs_url: str = Field(
+        ..., alias="docsUrl", examples=["https://docs.pydantic.dev/"]
     )
     used_in_fields: int = Field(default=0, alias="usedInFields", examples=[3])
     fields_using_validator: list[FieldReferenceSchema] = Field(

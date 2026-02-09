@@ -1,6 +1,8 @@
 # src/api/schemas/type.py
 """Pydantic schemas for Type entity."""
 
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
@@ -13,18 +15,18 @@ class TypeResponse(BaseModel):
     :ivar category: Type category (primitive or abstract).
     :ivar python_type: Python type representation.
     :ivar description: Type description.
-    :ivar validator_categories: Compatible validator categories for this type.
+    :ivar compatible_types: Compatible validator categories for this type.
     :ivar used_in_fields: Count of fields using this type.
     """
 
-    id: str = Field(..., examples=["type-str"])
-    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-global"])
+    id: UUID = Field(..., examples=["00000000-0000-0000-0001-000000000001"])
+    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"])
     name: str = Field(..., examples=["str"])
     category: str = Field(..., examples=["primitive"])
     python_type: str = Field(..., alias="pythonType", examples=["str"])
     description: str = Field(..., examples=["String type for text data"])
-    validator_categories: list[str] = Field(
-        ..., alias="validatorCategories", examples=[["string"]]
+    compatible_types: list[str] = Field(
+        ..., alias="compatibleTypes", examples=[["string"]]
     )
     used_in_fields: int = Field(default=0, alias="usedInFields", examples=[5])
 

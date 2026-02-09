@@ -22,14 +22,14 @@ async def get_field_counts_by_type(db: AsyncSession) -> dict[str, int]:
     """Get count of fields for each type.
 
     :param db: Database session.
-    :returns: Dict mapping type name to field count.
+    :returns: Dict mapping type ID (as string) to field count.
     """
     query = (
-        select(FieldModel.type, func.count(FieldModel.id))
-        .group_by(FieldModel.type)
+        select(FieldModel.type_id, func.count(FieldModel.id))
+        .group_by(FieldModel.type_id)
     )
     result = await db.execute(query)
-    return {row[0]: row[1] for row in result.fetchall()}
+    return {str(row[0]): row[1] for row in result.fetchall()}
 
 
 @router.get(
@@ -76,8 +76,8 @@ async def list_types(
             category=t.category,
             python_type=t.python_type,
             description=t.description,
-            validator_categories=t.validator_categories,
-            used_in_fields=field_counts.get(t.name, 0),
+            compatible_types=t.compatible_types,
+            used_in_fields=field_counts.get(str(t.id), 0),
         )
         for t in types
     ]

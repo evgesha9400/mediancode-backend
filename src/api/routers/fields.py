@@ -45,7 +45,7 @@ async def _to_response(field, service: FieldService) -> FieldResponse:
         id=field.id,
         namespace_id=field.namespace_id,
         name=field.name,
-        type=field.type,
+        type_id=field.type_id,
         description=field.description,
         default_value=field.default_value,
         validators=validators,

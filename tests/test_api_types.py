@@ -44,9 +44,7 @@ async def db_session(test_session_factory):
 @pytest_asyncio.fixture
 async def test_namespace(db_session: AsyncSession):
     """Create a test namespace."""
-    import uuid
     namespace = Namespace(
-        id=f"test-namespace-types-{uuid.uuid4().hex[:8]}",
         name="Test Namespace",
         description="Test namespace for type tests",
     )
@@ -67,13 +65,12 @@ async def test_namespace(db_session: AsyncSession):
 async def test_type(db_session: AsyncSession, test_namespace: Namespace):
     """Create a test type in the user namespace."""
     type_model = TypeModel(
-        id="type-test-custom",
         namespace_id=test_namespace.id,
         name="CustomType",
         category="abstract",
         python_type="CustomType",
         description="Custom test type",
-        validator_categories=["string"],
+        compatible_types=["string"],
     )
     db_session.add(type_model)
     await db_session.commit()
@@ -103,7 +100,7 @@ async def test_list_types_no_namespace_filter(
     assert len(all_types) > 0
 
     # Verify global types exist
-    global_types = [t for t in all_types if t.namespace_id == "namespace-global"]
+    global_types = [t for t in all_types if t.namespace_id == get_settings().global_namespace_id]
     assert len(global_types) > 0
 
     # Verify test type exists
@@ -136,7 +133,7 @@ async def test_list_types_with_user_namespace(
     assert len(types) > 0
 
     # Verify global types are included
-    global_types = [t for t in types if t.namespace_id == "namespace-global"]
+    global_types = [t for t in types if t.namespace_id == get_settings().global_namespace_id]
     assert len(global_types) > 0
 
     # Verify test type is included

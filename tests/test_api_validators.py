@@ -46,9 +46,7 @@ async def db_session(test_session_factory):
 @pytest_asyncio.fixture
 async def test_namespace(db_session: AsyncSession):
     """Create a test namespace."""
-    import uuid
     namespace = Namespace(
-        id=f"test-namespace-validators-{uuid.uuid4().hex[:8]}",
         name="Test Namespace",
         description="Test namespace for validator tests",
     )
@@ -69,7 +67,6 @@ async def test_namespace(db_session: AsyncSession):
 async def test_validator(db_session: AsyncSession, test_namespace: Namespace):
     """Create a test validator in the user namespace."""
     validator = ValidatorModel(
-        id="validator-test-custom",
         namespace_id=test_namespace.id,
         name="custom_test",
         type="string",
@@ -77,7 +74,7 @@ async def test_validator(db_session: AsyncSession, test_namespace: Namespace):
         category="custom",
         parameter_type="str",
         example_usage="Field(custom_test='value')",
-        pydantic_docs_url="",
+        docs_url="",
     )
     db_session.add(validator)
     await db_session.commit()
@@ -115,7 +112,8 @@ async def test_list_validators_no_namespace_filter(
     assert len(all_validators) > 0
 
     # Verify global validators exist
-    global_validators = [v for v in all_validators if v.namespace_id == "namespace-global"]
+    settings = get_settings()
+    global_validators = [v for v in all_validators if v.namespace_id == settings.global_namespace_id]
     assert len(global_validators) > 0
 
     # Verify test validator exists
@@ -148,7 +146,7 @@ async def test_list_validators_with_user_namespace(
     assert len(validators) > 0
 
     # Verify global validators are included
-    global_validators = [v for v in validators if v.namespace_id == "namespace-global"]
+    global_validators = [v for v in validators if v.namespace_id == settings.global_namespace_id]
     assert len(global_validators) > 0
 
     # Verify test validator is included

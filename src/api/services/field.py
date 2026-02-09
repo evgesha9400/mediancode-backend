@@ -1,6 +1,8 @@
 # src/api/services/field.py
 """Service layer for Field operations."""
 
+from uuid import UUID
+
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +43,10 @@ class FieldService(BaseService[FieldModel]):
         query = (
             select(FieldModel)
             .join(Namespace)
-            .options(selectinload(FieldModel.validators))
+            .options(
+                selectinload(FieldModel.validators),
+                selectinload(FieldModel.field_type),
+            )
             .where(
                 or_(
                     Namespace.user_id == user_id,
@@ -67,7 +72,10 @@ class FieldService(BaseService[FieldModel]):
         query = (
             select(FieldModel)
             .join(Namespace)
-            .options(selectinload(FieldModel.validators))
+            .options(
+                selectinload(FieldModel.validators),
+                selectinload(FieldModel.field_type),
+            )
             .where(
                 FieldModel.id == field_id,
                 or_(
@@ -90,7 +98,7 @@ class FieldService(BaseService[FieldModel]):
             namespace_id=data.namespace_id,
             user_id=user_id,
             name=data.name,
-            type=data.type,
+            type_id=data.type_id,
             description=data.description,
             default_value=data.default_value,
         )
@@ -175,7 +183,7 @@ class FieldService(BaseService[FieldModel]):
 
         await self.db.flush()
 
-    async def get_used_in_apis(self, field_id: str) -> list[str]:
+    async def get_used_in_apis(self, field_id: UUID) -> list[UUID]:
         """Get endpoint IDs where this field is used.
 
         A field is considered "used" if it belongs to an object that is referenced

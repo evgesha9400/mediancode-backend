@@ -2,6 +2,7 @@
 """Pydantic schemas for Api entity."""
 
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -20,7 +21,7 @@ class ApiCreate(BaseModel):
     :ivar tags: List of tag definitions for this API.
     """
 
-    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-user"])
+    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"])
     title: str = Field(..., examples=["User Management API"])
     version: str = Field(..., examples=["1.0.0"])
     description: str | None = Field(
@@ -75,8 +76,8 @@ class ApiResponse(BaseModel):
     :ivar updated_at: Last update timestamp.
     """
 
-    id: str = Field(..., examples=["api-1"])
-    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-global"])
+    id: UUID = Field(..., examples=["00000000-0000-0000-0005-000000000001"])
+    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"])
     title: str = Field(..., examples=["User Management API"])
     version: str = Field(..., examples=["1.0.0"])
     description: str = Field(..., examples=["Endpoints for user management"])

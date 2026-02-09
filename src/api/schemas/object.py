@@ -1,6 +1,8 @@
 # src/api/schemas/object.py
 """Pydantic schemas for Object entity."""
 
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
@@ -11,7 +13,7 @@ class ObjectFieldReferenceSchema(BaseModel):
     :ivar required: Whether this field is required in the object.
     """
 
-    field_id: str = Field(..., alias="fieldId", examples=["field-1"])
+    field_id: UUID = Field(..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"])
     required: bool = Field(..., examples=[True])
 
     class Config:
@@ -29,7 +31,7 @@ class ObjectCreate(BaseModel):
     :ivar fields: List of field references.
     """
 
-    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-user"])
+    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"])
     name: str = Field(..., examples=["User"])
     description: str | None = Field(default=None, examples=["User object definition"])
     fields: list[ObjectFieldReferenceSchema] = Field(...)
@@ -59,15 +61,15 @@ class ObjectResponse(BaseModel):
     :ivar used_in_apis: Array of endpoint IDs that use this object.
     """
 
-    id: str = Field(..., examples=["object-1"])
-    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-global"])
+    id: UUID = Field(..., examples=["00000000-0000-0000-0007-000000000001"])
+    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"])
     name: str = Field(..., examples=["User"])
     description: str | None = Field(default=None, examples=["User account object"])
     fields: list[ObjectFieldReferenceSchema] = Field(default_factory=list)
-    used_in_apis: list[str] = Field(
+    used_in_apis: list[UUID] = Field(
         default_factory=list,
         alias="usedInApis",
-        examples=[["endpoint-1", "endpoint-2"]],
+        examples=[["00000000-0000-0000-0004-000000000001"]],
     )
 
     class Config:

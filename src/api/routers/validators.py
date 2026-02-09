@@ -89,7 +89,7 @@ async def list_validators(
             category=v.category,
             parameter_type=v.parameter_type,
             example_usage=v.example_usage,
-            pydantic_docs_url=v.pydantic_docs_url,
+            docs_url=v.docs_url,
             used_in_fields=len(fields_by_validator.get(v.name, [])),
             fields_using_validator=fields_by_validator.get(v.name, []),
         )

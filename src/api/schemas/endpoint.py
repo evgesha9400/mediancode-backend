@@ -2,6 +2,7 @@
 """Pydantic schemas for ApiEndpoint entity."""
 
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -16,7 +17,7 @@ class EndpointParameterSchema(BaseModel):
     :ivar required: Whether parameter is required.
     """
 
-    id: str = Field(..., examples=["param-1"])
+    id: UUID = Field(..., examples=["00000000-0000-0000-0006-000000000001"])
     name: str = Field(..., examples=["user_id"])
     type: str = Field(..., examples=["uuid"])
     description: str = Field(..., examples=["Unique user identifier"])
@@ -40,8 +41,8 @@ class ApiEndpointCreate(BaseModel):
     :ivar response_shape: Response shape (object or list).
     """
 
-    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-user"])
-    api_id: str = Field(..., alias="apiId", examples=["api-1"])
+    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"])
+    api_id: UUID = Field(..., alias="apiId", examples=["00000000-0000-0000-0005-000000000001"])
     method: Literal["GET", "POST", "PUT", "PATCH", "DELETE"] = Field(
         ..., examples=["GET"]
     )
@@ -49,14 +50,14 @@ class ApiEndpointCreate(BaseModel):
     description: str = Field(..., examples=["Get user by ID"])
     tag_name: str | None = Field(default=None, alias="tagName", examples=["Users"])
     path_params: list[EndpointParameterSchema] = Field(..., alias="pathParams")
-    query_params_object_id: str | None = Field(
-        default=None, alias="queryParamsObjectId", examples=["object-query-1"]
+    query_params_object_id: UUID | None = Field(
+        default=None, alias="queryParamsObjectId", examples=["00000000-0000-0000-0007-000000000001"]
     )
-    request_body_object_id: str | None = Field(
-        default=None, alias="requestBodyObjectId", examples=["object-2"]
+    request_body_object_id: UUID | None = Field(
+        default=None, alias="requestBodyObjectId", examples=["00000000-0000-0000-0007-000000000002"]
     )
-    response_body_object_id: str | None = Field(
-        default=None, alias="responseBodyObjectId", examples=["object-1"]
+    response_body_object_id: UUID | None = Field(
+        default=None, alias="responseBodyObjectId", examples=["00000000-0000-0000-0007-000000000001"]
     )
     use_envelope: bool = Field(..., alias="useEnvelope", examples=[True])
     response_shape: Literal["object", "list"] = Field(
@@ -80,7 +81,7 @@ class ApiEndpointUpdate(BaseModel):
     :ivar response_shape: Updated response shape.
     """
 
-    api_id: str | None = Field(default=None, alias="apiId", examples=["api-1"])
+    api_id: UUID | None = Field(default=None, alias="apiId", examples=["00000000-0000-0000-0005-000000000001"])
     method: Literal["GET", "POST", "PUT", "PATCH", "DELETE"] | None = Field(
         default=None, examples=["POST"]
     )
@@ -92,13 +93,13 @@ class ApiEndpointUpdate(BaseModel):
     path_params: list[EndpointParameterSchema] | None = Field(
         default=None, alias="pathParams"
     )
-    query_params_object_id: str | None = Field(
+    query_params_object_id: UUID | None = Field(
         default=None, alias="queryParamsObjectId"
     )
-    request_body_object_id: str | None = Field(
+    request_body_object_id: UUID | None = Field(
         default=None, alias="requestBodyObjectId"
     )
-    response_body_object_id: str | None = Field(
+    response_body_object_id: UUID | None = Field(
         default=None, alias="responseBodyObjectId"
     )
     use_envelope: bool | None = Field(default=None, alias="useEnvelope")
@@ -125,9 +126,9 @@ class ApiEndpointResponse(BaseModel):
     :ivar response_shape: Response shape.
     """
 
-    id: str = Field(..., examples=["endpoint-1"])
-    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-global"])
-    api_id: str = Field(..., alias="apiId", examples=["api-1"])
+    id: UUID = Field(..., examples=["00000000-0000-0000-0004-000000000001"])
+    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"])
+    api_id: UUID = Field(..., alias="apiId", examples=["00000000-0000-0000-0005-000000000001"])
     method: str = Field(..., examples=["GET"])
     path: str = Field(..., examples=["/users/{user_id}"])
     description: str = Field(..., examples=["Retrieve user by ID"])
@@ -135,14 +136,14 @@ class ApiEndpointResponse(BaseModel):
     path_params: list[EndpointParameterSchema] = Field(
         default_factory=list, alias="pathParams"
     )
-    query_params_object_id: str | None = Field(
-        default=None, alias="queryParamsObjectId", examples=["object-query-1"]
+    query_params_object_id: UUID | None = Field(
+        default=None, alias="queryParamsObjectId", examples=["00000000-0000-0000-0007-000000000001"]
     )
-    request_body_object_id: str | None = Field(
-        default=None, alias="requestBodyObjectId", examples=["object-2"]
+    request_body_object_id: UUID | None = Field(
+        default=None, alias="requestBodyObjectId", examples=["00000000-0000-0000-0007-000000000002"]
     )
-    response_body_object_id: str | None = Field(
-        default=None, alias="responseBodyObjectId", examples=["object-1"]
+    response_body_object_id: UUID | None = Field(
+        default=None, alias="responseBodyObjectId", examples=["00000000-0000-0000-0007-000000000001"]
     )
     use_envelope: bool = Field(..., alias="useEnvelope", examples=[True])
     response_shape: str = Field(..., alias="responseShape", examples=["object"])

@@ -117,8 +117,15 @@ async def _fetch_fields(
     if not field_ids:
         return {}
 
-    # Fetch fields with validators
-    query = select(FieldModel).options(selectinload(FieldModel.validators)).where(FieldModel.id.in_(field_ids))
+    # Fetch fields with validators and type
+    query = (
+        select(FieldModel)
+        .options(
+            selectinload(FieldModel.validators),
+            selectinload(FieldModel.field_type),
+        )
+        .where(FieldModel.id.in_(field_ids))
+    )
     result = await db.execute(query)
     fields = result.scalars().all()
 
@@ -148,7 +155,7 @@ def _convert_to_input_api(
                 validators = [InputValidator(name=v.name, params=v.params) for v in field.validators]
                 input_field = InputField(
                     name=field.name,
-                    type=_map_field_type(field.type),
+                    type=_map_field_type(field.field_type.name),
                     required=assoc.required,
                     description=field.description,
                     default_value=field.default_value,
@@ -199,7 +206,7 @@ def _convert_to_input_api(
                         query_params.append(
                             InputQueryParam(
                                 name=field.name,
-                                type=_map_field_type(field.type),
+                                type=_map_field_type(field.field_type.name),
                                 required=assoc.required,
                                 description=field.description,
                             )

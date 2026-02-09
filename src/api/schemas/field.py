@@ -2,6 +2,7 @@
 """Pydantic schemas for Field entity."""
 
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -22,15 +23,15 @@ class FieldCreate(BaseModel):
 
     :ivar namespace_id: Namespace this field belongs to.
     :ivar name: Field name.
-    :ivar type: Primitive type name.
+    :ivar type_id: Reference to the type definition UUID.
     :ivar description: Field description.
     :ivar default_value: Default value expression.
     :ivar validators: List of validators to apply.
     """
 
-    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-user"])
+    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"])
     name: str = Field(..., examples=["email"])
-    type: str = Field(..., examples=["str"])
+    type_id: UUID = Field(..., alias="typeId", examples=["00000000-0000-0000-0001-000000000001"])
     description: str | None = Field(default=None, examples=["User email address"])
     default_value: str | None = Field(default=None, alias="defaultValue", examples=[""])
     validators: list[FieldValidatorSchema] | None = Field(default=None)
@@ -59,22 +60,24 @@ class FieldResponse(BaseModel):
     :ivar id: Unique identifier for the field.
     :ivar namespace_id: Namespace this field belongs to.
     :ivar name: Field name.
-    :ivar type: Primitive type name.
+    :ivar type_id: Reference to the type definition UUID.
     :ivar description: Field description.
     :ivar default_value: Default value expression.
     :ivar validators: List of validators applied.
     :ivar used_in_apis: Array of endpoint IDs where this field is used.
     """
 
-    id: str = Field(..., examples=["field-1"])
-    namespace_id: str = Field(..., alias="namespaceId", examples=["namespace-global"])
+    id: UUID = Field(..., examples=["00000000-0000-0000-0003-000000000001"])
+    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"])
     name: str = Field(..., examples=["email"])
-    type: str = Field(..., examples=["str"])
+    type_id: UUID = Field(
+        ..., alias="typeId", examples=["00000000-0000-0000-0001-000000000001"]
+    )
     description: str | None = Field(default=None, examples=["User email address"])
     default_value: str | None = Field(default=None, alias="defaultValue", examples=[""])
     validators: list[FieldValidatorSchema] = Field(default_factory=list)
-    used_in_apis: list[str] = Field(
-        default_factory=list, alias="usedInApis", examples=[["endpoint-1"]]
+    used_in_apis: list[UUID] = Field(
+        default_factory=list, alias="usedInApis", examples=[["00000000-0000-0000-0004-000000000001"]]
     )
 
     class Config:

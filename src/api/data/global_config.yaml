@@ -6,40 +6,40 @@ types:
     category: primitive
     pythonType: str
     description: String type for text data
-    validatorCategories:
+    compatibleTypes:
       - string
 
   - name: int
     category: primitive
     pythonType: int
     description: Integer type for whole numbers
-    validatorCategories:
+    compatibleTypes:
       - numeric
 
   - name: float
     category: primitive
     pythonType: float
     description: Floating point type for decimal numbers
-    validatorCategories:
+    compatibleTypes:
       - numeric
 
   - name: bool
     category: primitive
     pythonType: bool
     description: Boolean type for true/false values
-    validatorCategories: []
+    compatibleTypes: []
 
   - name: datetime
     category: primitive
     pythonType: datetime.datetime
     description: Date and time type
-    validatorCategories: []
+    compatibleTypes: []
 
   - name: uuid
     category: abstract
     pythonType: uuid.UUID
     description: Universally unique identifier
-    validatorCategories:
+    compatibleTypes:
       - string
 
 validators:
@@ -51,7 +51,7 @@ validators:
     category: inline
     parameterType: int
     exampleUsage: "Field(max_length=255)"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/concepts/fields/#string-constraints
+    docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#string-constraints
 
   - name: min_length
     namespaceId: namespace-global
@@ -60,7 +60,7 @@ validators:
     category: inline
     parameterType: int
     exampleUsage: "Field(min_length=1)"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/concepts/fields/#string-constraints
+    docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#string-constraints
 
   - name: pattern
     namespaceId: namespace-global
@@ -69,7 +69,7 @@ validators:
     category: inline
     parameterType: str
     exampleUsage: "Field(pattern=r'^[a-z]+$')"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/concepts/fields/#string-constraints
+    docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#string-constraints
 
   - name: email_format
     namespaceId: namespace-global
@@ -78,7 +78,7 @@ validators:
     category: inline
     parameterType: None
     exampleUsage: "EmailStr"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/api/networks/#pydantic.networks.EmailStr
+    docsUrl: https://docs.pydantic.dev/latest/api/networks/#pydantic.networks.EmailStr
 
   - name: url_format
     namespaceId: namespace-global
@@ -87,7 +87,7 @@ validators:
     category: inline
     parameterType: None
     exampleUsage: "HttpUrl"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/api/networks/#pydantic.networks.HttpUrl
+    docsUrl: https://docs.pydantic.dev/latest/api/networks/#pydantic.networks.HttpUrl
 
   # Numeric validators
   - name: gt
@@ -97,7 +97,7 @@ validators:
     category: inline
     parameterType: number
     exampleUsage: "Field(gt=0)"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
+    docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
 
   - name: ge
     namespaceId: namespace-global
@@ -106,7 +106,7 @@ validators:
     category: inline
     parameterType: number
     exampleUsage: "Field(ge=0)"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
+    docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
 
   - name: lt
     namespaceId: namespace-global
@@ -115,7 +115,7 @@ validators:
     category: inline
     parameterType: number
     exampleUsage: "Field(lt=100)"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
+    docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
 
   - name: le
     namespaceId: namespace-global
@@ -124,7 +124,7 @@ validators:
     category: inline
     parameterType: number
     exampleUsage: "Field(le=100)"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
+    docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
 
   - name: multiple_of
     namespaceId: namespace-global
@@ -133,32 +133,5 @@ validators:
     category: inline
     parameterType: number
     exampleUsage: "Field(multiple_of=5)"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
+    docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
 
-  # Collection validators
-  - name: min_items
-    namespaceId: namespace-global
-    type: collection
-    description: Validates that collection has at least minimum number of items
-    category: inline
-    parameterType: int
-    exampleUsage: "Field(min_length=1)"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/concepts/fields/#string-constraints
-
-  - name: max_items
-    namespaceId: namespace-global
-    type: collection
-    description: Validates that collection has at most maximum number of items
-    category: inline
-    parameterType: int
-    exampleUsage: "Field(max_length=100)"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/concepts/fields/#string-constraints
-
-  - name: unique_items
-    namespaceId: namespace-global
-    type: collection
-    description: Validates that all items in collection are unique
-    category: custom
-    parameterType: None
-    exampleUsage: "@field_validator(...)"
-    pydanticDocsUrl: https://docs.pydantic.dev/latest/concepts/validators/
