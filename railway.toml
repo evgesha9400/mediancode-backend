@@ -6,4 +6,4 @@ healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
-releaseCommand = "alembic -c alembic.ini upgrade head"
+preDeployCommand = "alembic -c alembic.ini upgrade head"

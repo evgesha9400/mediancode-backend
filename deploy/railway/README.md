@@ -173,7 +173,7 @@ Wait 5-30 minutes for DNS propagation. Railway auto-provisions SSL.
 
 ### Step 7: Run Initial Database Migration
 
-> **Note:** After initial setup, migrations run automatically on every deploy via the `releaseCommand` in `railway.toml` (`alembic upgrade head`). The manual step below is only needed for the first deployment or troubleshooting.
+> **Note:** After initial setup, migrations run automatically on every deploy via the `preDeployCommand` in `railway.toml` (`alembic upgrade head`). The manual step below is only needed for the first deployment or troubleshooting.
 
 ```bash
 # Link CLI to your Railway project

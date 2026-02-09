@@ -26,7 +26,7 @@ Quick-reference for the backend's three runtime contexts. See `deploy/railway/RE
 - **`DATABASE_URL` format**: Railway provides `postgres://` or `postgresql://`. The `settings.py` validator auto-converts to `postgresql+asyncpg://` for SQLAlchemy async. You do **not** need to manually adjust the scheme.
 - **`DATABASE_URL` on Railway**: Railway does **not** auto-inject this variable. You must add it as a reference variable (`${{Postgres.DATABASE_URL}}`) in the backend service's Variables tab.
 - **`ENVIRONMENT` on Railway**: Use the reference variable `${{RAILWAY_ENVIRONMENT_NAME}}` so the value automatically matches the Railway environment name (`development` or `production`).
-- **Migrations**: The `releaseCommand` in `railway.toml` runs `alembic upgrade head` automatically on every deploy — no manual migration step needed after initial setup.
+- **Migrations**: The `preDeployCommand` in `railway.toml` runs `alembic upgrade head` automatically on every deploy — no manual migration step needed after initial setup.
 
 ## Local Development
 
