@@ -3,6 +3,22 @@
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+# Paths that serve Swagger UI / ReDoc and need relaxed CSP for CDN assets.
+_DOCS_PATHS = {"/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json"}
+
+# CSP for doc pages: only allow the specific CDN resources Swagger UI and
+# ReDoc need. Still blocks everything else (no data exfil, no unwanted hosts).
+_DOCS_CSP = (
+    b"content-security-policy",
+    b"default-src 'self'; "
+    b"script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    b"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    b"img-src 'self' data:; "
+    b"font-src 'self' https://cdn.jsdelivr.net; "
+    b"worker-src 'self' blob:; "
+    b"frame-ancestors 'none'",
+)
+
 
 class SecurityHeadersMiddleware:
     """Add security headers to all responses.
@@ -15,7 +31,7 @@ class SecurityHeadersMiddleware:
     bypass outer middleware (including CORSMiddleware).
     """
 
-    SECURITY_HEADERS: list[tuple[bytes, bytes]] = [
+    _BASE_HEADERS: list[tuple[bytes, bytes]] = [
         (b"x-frame-options", b"DENY"),
         (b"x-content-type-options", b"nosniff"),
         (b"x-xss-protection", b"1; mode=block"),
@@ -26,11 +42,12 @@ class SecurityHeadersMiddleware:
             b"accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
             b"magnetometer=(), microphone=(), payment=(), usb=()",
         ),
-        (
-            b"content-security-policy",
-            b"default-src 'none'; frame-ancestors 'none'",
-        ),
     ]
+
+    _STRICT_CSP = (
+        b"content-security-policy",
+        b"default-src 'none'; frame-ancestors 'none'",
+    )
 
     def __init__(self, app: ASGIApp) -> None:
         """Initialize with the inner ASGI application.
@@ -50,10 +67,15 @@ class SecurityHeadersMiddleware:
             await self.app(scope, receive, send)
             return
 
+        path = scope.get("path", "")
+        is_docs = path in _DOCS_PATHS
+        csp = _DOCS_CSP if is_docs else self._STRICT_CSP
+
         async def send_with_security_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = list(message.get("headers", []))
-                headers.extend(self.SECURITY_HEADERS)
+                headers.extend(self._BASE_HEADERS)
+                headers.append(csp)
                 message["headers"] = headers
             await send(message)
 
