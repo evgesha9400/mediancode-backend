@@ -4,13 +4,14 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
 from api.database import get_db
 from api.models.database import FieldModel, TypeModel
 from api.schemas.type import TypeResponse
+from api.settings import get_settings
 
 router = APIRouter(prefix="/types", tags=["Types"])
 
@@ -46,13 +47,20 @@ async def list_types(
 
     :param user_id: Authenticated user ID.
     :param db: Database session.
-    :param namespace_id: Optional namespace filter.
+    :param namespace_id: Optional namespace filter. If provided, returns types
+        from the specified namespace plus all global built-in types.
     :returns: List of type responses.
     """
     # Query types from database
     query = select(TypeModel)
     if namespace_id:
-        query = query.where(TypeModel.namespace_id == namespace_id)
+        settings = get_settings()
+        query = query.where(
+            or_(
+                TypeModel.namespace_id == namespace_id,
+                TypeModel.namespace_id == settings.global_namespace_id,
+            )
+        )
 
     result = await db.execute(query)
     types = result.scalars().all()

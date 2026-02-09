@@ -4,13 +4,14 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
 from api.database import get_db
 from api.models.database import FieldModel, FieldValidator, ValidatorModel
 from api.schemas.validator import FieldReferenceSchema, ValidatorResponse
+from api.settings import get_settings
 
 router = APIRouter(prefix="/validators", tags=["Validators"])
 
@@ -57,13 +58,20 @@ async def list_validators(
 
     :param user_id: Authenticated user ID.
     :param db: Database session.
-    :param namespace_id: Optional namespace filter.
+    :param namespace_id: Optional namespace filter. If provided, returns validators
+        from the specified namespace plus all global inline validators.
     :returns: List of validator responses.
     """
     # Query validators from database
     query = select(ValidatorModel)
     if namespace_id:
-        query = query.where(ValidatorModel.namespace_id == namespace_id)
+        settings = get_settings()
+        query = query.where(
+            or_(
+                ValidatorModel.namespace_id == namespace_id,
+                ValidatorModel.namespace_id == settings.global_namespace_id,
+            )
+        )
 
     result = await db.execute(query)
     validators = result.scalars().all()
