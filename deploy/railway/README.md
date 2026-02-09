@@ -110,35 +110,31 @@ Click on backend service → **Variables** tab:
 
 Railway may suggest variables from your code. Configure these:
 
-| Variable | Value |
-|----------|-------|
-| `CLERK_FRONTEND_API_URL` | `https://your-dev-clerk.clerk.accounts.dev` |
-| `FRONTEND_URL` | `https://dev.mediancode.com` |
-| `GLOBAL_NAMESPACE_ID` | `namespace-global` |
+| Variable | Value | Type |
+|----------|-------|------|
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | Reference |
+| `ENVIRONMENT` | `${{RAILWAY_ENVIRONMENT_NAME}}` | Reference |
+| `CLERK_FRONTEND_API_URL` | `https://your-dev-clerk.clerk.accounts.dev` | Manual |
+| `FRONTEND_URL` | `https://dev.mediancode.com` | Manual |
+| `GLOBAL_NAMESPACE_ID` | `namespace-global` | Manual |
 
 **Important:**
-- Do NOT manually add `DATABASE_URL` - Railway injects this automatically from PostgreSQL
+- `DATABASE_URL` must be added as a reference variable — Railway does **not** auto-inject it
+- `ENVIRONMENT` uses a Railway built-in that resolves to the environment name
 - Do NOT add suggested `PYTHONPATH` - the Dockerfile handles this
-
-#### 3e. Link PostgreSQL to Backend
-
-If `DATABASE_URL` is not appearing in your backend service:
-
-1. Click on the PostgreSQL service
-2. Go to **Variables** tab
-3. Copy the reference variable (e.g., `${{Postgres.DATABASE_URL}}`)
-4. Go back to backend service → Variables
-5. Add `DATABASE_URL` with value `${{Postgres.DATABASE_URL}}`
 
 ### Step 4: Set Up Production Environment
 
 Switch to **"production"** environment (use dropdown), then repeat Step 3 with these differences:
 
-| Setting | Production Value |
-|---------|------------------|
-| Branch | `main` |
-| `CLERK_FRONTEND_API_URL` | `https://your-prod-clerk.clerk.accounts.dev` |
-| `FRONTEND_URL` | `https://mediancode.com` |
+| Setting | Production Value | Type |
+|---------|------------------|------|
+| Branch | `main` | Setting |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | Reference |
+| `ENVIRONMENT` | `${{RAILWAY_ENVIRONMENT_NAME}}` | Reference |
+| `CLERK_FRONTEND_API_URL` | `https://your-prod-clerk.clerk.accounts.dev` | Manual |
+| `FRONTEND_URL` | `https://app.mediancode.com` | Manual |
+| `GLOBAL_NAMESPACE_ID` | `namespace-global` | Manual |
 
 ### Step 5: Configure Custom Domains
 
@@ -176,6 +172,8 @@ Target: <your-development-service>.up.railway.app
 Wait 5-30 minutes for DNS propagation. Railway auto-provisions SSL.
 
 ### Step 7: Run Initial Database Migration
+
+> **Note:** After initial setup, migrations run automatically on every deploy via the `releaseCommand` in `railway.toml` (`alembic upgrade head`). The manual step below is only needed for the first deployment or troubleshooting.
 
 ```bash
 # Link CLI to your Railway project
@@ -343,7 +341,9 @@ railway variables | grep DATABASE
 # DATABASE_URL=postgresql://...
 ```
 
-If missing, link PostgreSQL service to backend (see Step 3e).
+If missing, add the reference variable `${{Postgres.DATABASE_URL}}` to the backend service's Variables tab (see Step 3d).
+
+**DATABASE_URL format:** Railway provides `postgres://` or `postgresql://` — the `settings.py` validator auto-converts to `postgresql+asyncpg://` for SQLAlchemy async. You do not need to manually adjust the scheme.
 
 ### DNS/SSL Issues
 
