@@ -4,11 +4,10 @@
 from functools import lru_cache
 from typing import Annotated
 
-import httpx
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jwt import PyJWKClient
+from jwt import PyJWKClient, PyJWKClientError
 
 from api.settings import Settings, get_settings
 
@@ -83,7 +82,7 @@ class ClerkAuthenticator:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Invalid token: {str(e)}",
             )
-        except httpx.HTTPError:
+        except PyJWKClientError:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Unable to verify token - authentication service unavailable",
