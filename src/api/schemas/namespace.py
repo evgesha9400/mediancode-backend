@@ -3,7 +3,7 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class NamespaceCreate(BaseModel):
@@ -46,12 +46,6 @@ class NamespaceResponse(BaseModel):
         default=None, examples=["Immutable global templates and examples"]
     )
     locked: bool = Field(..., examples=[True])
-    is_default: bool = Field(
-        ..., alias="isDefault", examples=[False]
-    )
+    is_default: bool = Field(..., alias="isDefault", examples=[False])
 
-    class Config:
-        """Pydantic model configuration."""
-
-        from_attributes = True
-        populate_by_name = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

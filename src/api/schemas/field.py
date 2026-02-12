@@ -4,7 +4,7 @@
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FieldValidatorSchema(BaseModel):
@@ -29,9 +29,13 @@ class FieldCreate(BaseModel):
     :ivar validators: List of validators to apply.
     """
 
-    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"])
+    namespace_id: UUID = Field(
+        ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"]
+    )
     name: str = Field(..., examples=["email"])
-    type_id: UUID = Field(..., alias="typeId", examples=["00000000-0000-0000-0001-000000000001"])
+    type_id: UUID = Field(
+        ..., alias="typeId", examples=["00000000-0000-0000-0001-000000000001"]
+    )
     description: str | None = Field(default=None, examples=["User email address"])
     default_value: str | None = Field(default=None, alias="defaultValue", examples=[""])
     validators: list[FieldValidatorSchema] | None = Field(default=None)
@@ -68,7 +72,9 @@ class FieldResponse(BaseModel):
     """
 
     id: UUID = Field(..., examples=["00000000-0000-0000-0003-000000000001"])
-    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"])
+    namespace_id: UUID = Field(
+        ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"]
+    )
     name: str = Field(..., examples=["email"])
     type_id: UUID = Field(
         ..., alias="typeId", examples=["00000000-0000-0000-0001-000000000001"]
@@ -77,11 +83,9 @@ class FieldResponse(BaseModel):
     default_value: str | None = Field(default=None, alias="defaultValue", examples=[""])
     validators: list[FieldValidatorSchema] = Field(default_factory=list)
     used_in_apis: list[UUID] = Field(
-        default_factory=list, alias="usedInApis", examples=[["00000000-0000-0000-0004-000000000001"]]
+        default_factory=list,
+        alias="usedInApis",
+        examples=[["00000000-0000-0000-0004-000000000001"]],
     )
 
-    class Config:
-        """Pydantic model configuration."""
-
-        from_attributes = True
-        populate_by_name = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

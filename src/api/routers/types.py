@@ -24,9 +24,8 @@ async def get_field_counts_by_type(db: AsyncSession) -> dict[str, int]:
     :param db: Database session.
     :returns: Dict mapping type ID (as string) to field count.
     """
-    query = (
-        select(FieldModel.type_id, func.count(FieldModel.id))
-        .group_by(FieldModel.type_id)
+    query = select(FieldModel.type_id, func.count(FieldModel.id)).group_by(
+        FieldModel.type_id
     )
     result = await db.execute(query)
     return {str(row[0]): row[1] for row in result.fetchall()}

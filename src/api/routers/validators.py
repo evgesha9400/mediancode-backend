@@ -26,9 +26,8 @@ async def get_fields_by_validator(
     :param db: Database session.
     :returns: Dict mapping validator name to list of field references.
     """
-    query = (
-        select(FieldValidator.name, FieldModel.id, FieldModel.name)
-        .join(FieldModel, FieldValidator.field_id == FieldModel.id)
+    query = select(FieldValidator.name, FieldModel.id, FieldModel.name).join(
+        FieldModel, FieldValidator.field_id == FieldModel.id
     )
     result = await db.execute(query)
 

@@ -109,7 +109,9 @@ class APIGenerator:
         :param template_dir: Optional templates directory. If ``None``, the
             default ``templates/`` bundled with this package is used.
         """
-        self.template_dir = template_dir or os.path.join(os.path.dirname(__file__), "templates")
+        self.template_dir = template_dir or os.path.join(
+            os.path.dirname(__file__), "templates"
+        )
         self.template_lookup: Optional[TemplateLookup] = None
         self.templates: Dict[str, Template] = {}
 
@@ -135,7 +137,8 @@ class APIGenerator:
             }
 
             self.templates = {
-                key: self.template_lookup.get_template(filename) for key, filename in template_files.items()
+                key: self.template_lookup.get_template(filename)
+                for key, filename in template_files.items()
             }
         except TopLevelLookupException as exc:
             logger.error(f"Failed to load templates: {str(exc)}")
@@ -175,7 +178,9 @@ class APIGenerator:
             logger.error(f"Failed to extract components: {str(e)}")
             raise ValueError("Component extraction failed") from e
 
-    def render_components(self, components: Dict[str, Any], template_api: TemplateAPI) -> Dict[str, str]:
+    def render_components(
+        self, components: Dict[str, Any], template_api: TemplateAPI
+    ) -> Dict[str, str]:
         """Render all components using templates.
 
         :param components: Extracted API components.
@@ -192,9 +197,13 @@ class APIGenerator:
                 ),
                 "views.py": render_views(components["views"], self.templates["views"]),
                 "main.py": render_main(template_api, self.templates["main"]),
-                "pyproject.toml": render_pyproject(template_api, self.templates["pyproject"]),
+                "pyproject.toml": render_pyproject(
+                    template_api, self.templates["pyproject"]
+                ),
                 "Makefile": render_makefile(template_api, self.templates["makefile"]),
-                "Dockerfile": render_dockerfile(template_api, self.templates["dockerfile"]),
+                "Dockerfile": render_dockerfile(
+                    template_api, self.templates["dockerfile"]
+                ),
                 "README.md": render_readme(template_api, self.templates["readme"]),
             }
 
@@ -219,7 +228,9 @@ class APIGenerator:
             logger.error(f"Failed to render components: {str(e)}")
             raise ValueError("Component rendering failed") from e
 
-    def write_files(self, rendered_components: Dict[str, str], api: InputAPI, path: str) -> None:
+    def write_files(
+        self, rendered_components: Dict[str, str], api: InputAPI, path: str
+    ) -> None:
         """Write rendered components to files.
 
         :param rendered_components: Mapping of filename to content.
@@ -237,7 +248,12 @@ class APIGenerator:
 
             # Write source files
             for filename, content in rendered_components.items():
-                if filename in ["pyproject.toml", "Makefile", "Dockerfile", "README.md"]:
+                if filename in [
+                    "pyproject.toml",
+                    "Makefile",
+                    "Dockerfile",
+                    "README.md",
+                ]:
                     file_path = os.path.join(project_directory, filename)
                 else:
                     file_path = os.path.join(src_directory, filename)

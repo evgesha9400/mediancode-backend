@@ -66,7 +66,9 @@ async def generate_api_zip(api: ApiModel, db: AsyncSession) -> io.BytesIO:
         return zip_buffer
 
 
-async def _fetch_objects(api: ApiModel, db: AsyncSession) -> dict[str, ObjectDefinition]:
+async def _fetch_objects(
+    api: ApiModel, db: AsyncSession
+) -> dict[str, ObjectDefinition]:
     """Fetch all objects referenced by the API's endpoints.
 
     :param api: The API model.
@@ -152,7 +154,10 @@ def _convert_to_input_api(
             field = fields_map.get(assoc.field_id)
             if field:
                 # Convert field validators
-                validators = [InputValidator(name=v.name, params=v.params) for v in field.validators]
+                validators = [
+                    InputValidator(name=v.name, params=v.params)
+                    for v in field.validators
+                ]
                 input_field = InputField(
                     name=field.name,
                     type=_map_field_type(field.field_type.name),
@@ -165,12 +170,13 @@ def _convert_to_input_api(
 
         # Ensure object name is PascalCase
         obj_name = _to_pascal_case(obj.name)
-        input_objects.append(InputModel(name=obj_name, fields=fields, description=obj.description))
+        input_objects.append(
+            InputModel(name=obj_name, fields=fields, description=obj.description)
+        )
 
     # Convert tags from JSONB array to InputTag list
     input_tags = [
-        InputTag(name=tag["name"], description=tag["description"])
-        for tag in api.tags
+        InputTag(name=tag["name"], description=tag["description"]) for tag in api.tags
     ]
 
     # Convert endpoints to InputEndpoint
@@ -200,7 +206,9 @@ def _convert_to_input_api(
             query_obj = objects_map.get(endpoint.query_params_object_id)
             if query_obj:
                 query_params = []
-                for assoc in sorted(query_obj.field_associations, key=lambda x: x.position):
+                for assoc in sorted(
+                    query_obj.field_associations, key=lambda x: x.position
+                ):
                     field = fields_map.get(assoc.field_id)
                     if field:
                         query_params.append(

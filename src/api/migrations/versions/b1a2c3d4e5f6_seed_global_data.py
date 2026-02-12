@@ -13,8 +13,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'b1a2c3d4e5f6'
-down_revision: str | None = '4141ad7f2255'
+revision: str = "b1a2c3d4e5f6"
+down_revision: str | None = "4141ad7f2255"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -213,35 +213,37 @@ def upgrade() -> None:
 
     # Seed types data
     types_table = sa.table(
-        'types',
-        sa.column('id', postgresql.UUID),
-        sa.column('namespace_id', postgresql.UUID),
-        sa.column('name', sa.String),
-        sa.column('category', sa.String),
-        sa.column('python_type', sa.String),
-        sa.column('description', sa.Text),
-        sa.column('compatible_types', postgresql.JSONB),
+        "types",
+        sa.column("id", postgresql.UUID),
+        sa.column("namespace_id", postgresql.UUID),
+        sa.column("name", sa.String),
+        sa.column("category", sa.String),
+        sa.column("python_type", sa.String),
+        sa.column("description", sa.Text),
+        sa.column("compatible_types", postgresql.JSONB),
     )
     op.bulk_insert(types_table, TYPES_DATA)
 
     # Seed validators data
     validators_table = sa.table(
-        'validators',
-        sa.column('id', postgresql.UUID),
-        sa.column('namespace_id', postgresql.UUID),
-        sa.column('name', sa.String),
-        sa.column('type', sa.String),
-        sa.column('description', sa.Text),
-        sa.column('category', sa.String),
-        sa.column('parameter_type', sa.String),
-        sa.column('example_usage', sa.String),
-        sa.column('docs_url', sa.String),
+        "validators",
+        sa.column("id", postgresql.UUID),
+        sa.column("namespace_id", postgresql.UUID),
+        sa.column("name", sa.String),
+        sa.column("type", sa.String),
+        sa.column("description", sa.Text),
+        sa.column("category", sa.String),
+        sa.column("parameter_type", sa.String),
+        sa.column("example_usage", sa.String),
+        sa.column("docs_url", sa.String),
     )
     op.bulk_insert(validators_table, VALIDATORS_DATA)
 
 
 def downgrade() -> None:
     # Delete seed data in reverse order (validators, types, namespace)
-    op.execute(f"DELETE FROM validators WHERE namespace_id = '{GLOBAL_NAMESPACE_ID}'::uuid")
+    op.execute(
+        f"DELETE FROM validators WHERE namespace_id = '{GLOBAL_NAMESPACE_ID}'::uuid"
+    )
     op.execute(f"DELETE FROM types WHERE namespace_id = '{GLOBAL_NAMESPACE_ID}'::uuid")
     op.execute(f"DELETE FROM namespaces WHERE id = '{GLOBAL_NAMESPACE_ID}'::uuid")

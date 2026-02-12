@@ -3,7 +3,7 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FieldReferenceSchema(BaseModel):
@@ -14,12 +14,11 @@ class FieldReferenceSchema(BaseModel):
     """
 
     name: str = Field(..., examples=["email"])
-    field_id: UUID = Field(..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"])
+    field_id: UUID = Field(
+        ..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"]
+    )
 
-    class Config:
-        """Pydantic model configuration."""
-
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ValidatorResponse(BaseModel):
@@ -39,16 +38,20 @@ class ValidatorResponse(BaseModel):
     """
 
     id: UUID = Field(..., examples=["00000000-0000-0000-0002-000000000001"])
-    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"])
+    namespace_id: UUID = Field(
+        ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"]
+    )
     name: str = Field(..., examples=["max_length"])
     type: str = Field(..., examples=["string"])
-    description: str = Field(..., examples=["Validates string length does not exceed maximum"])
+    description: str = Field(
+        ..., examples=["Validates string length does not exceed maximum"]
+    )
     category: str = Field(..., examples=["inline"])
     parameter_type: str = Field(..., alias="parameterType", examples=["int"])
-    example_usage: str = Field(..., alias="exampleUsage", examples=["Field(max_length=255)"])
-    docs_url: str = Field(
-        ..., alias="docsUrl", examples=["https://docs.pydantic.dev/"]
+    example_usage: str = Field(
+        ..., alias="exampleUsage", examples=["Field(max_length=255)"]
     )
+    docs_url: str = Field(..., alias="docsUrl", examples=["https://docs.pydantic.dev/"])
     used_in_fields: int = Field(default=0, alias="usedInFields", examples=[3])
     fields_using_validator: list[FieldReferenceSchema] = Field(
         default_factory=list,
@@ -56,8 +59,4 @@ class ValidatorResponse(BaseModel):
         examples=[[{"name": "email", "fieldId": "field-1"}]],
     )
 
-    class Config:
-        """Pydantic model configuration."""
-
-        from_attributes = True
-        populate_by_name = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

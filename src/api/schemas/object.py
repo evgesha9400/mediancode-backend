@@ -3,7 +3,7 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ObjectFieldReferenceSchema(BaseModel):
@@ -13,13 +13,12 @@ class ObjectFieldReferenceSchema(BaseModel):
     :ivar required: Whether this field is required in the object.
     """
 
-    field_id: UUID = Field(..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"])
+    field_id: UUID = Field(
+        ..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"]
+    )
     required: bool = Field(..., examples=[True])
 
-    class Config:
-        """Pydantic model configuration."""
-
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ObjectCreate(BaseModel):
@@ -31,7 +30,9 @@ class ObjectCreate(BaseModel):
     :ivar fields: List of field references.
     """
 
-    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"])
+    namespace_id: UUID = Field(
+        ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"]
+    )
     name: str = Field(..., examples=["User"])
     description: str | None = Field(default=None, examples=["User object definition"])
     fields: list[ObjectFieldReferenceSchema] = Field(...)
@@ -62,7 +63,9 @@ class ObjectResponse(BaseModel):
     """
 
     id: UUID = Field(..., examples=["00000000-0000-0000-0007-000000000001"])
-    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"])
+    namespace_id: UUID = Field(
+        ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"]
+    )
     name: str = Field(..., examples=["User"])
     description: str | None = Field(default=None, examples=["User account object"])
     fields: list[ObjectFieldReferenceSchema] = Field(default_factory=list)
@@ -72,8 +75,4 @@ class ObjectResponse(BaseModel):
         examples=[["00000000-0000-0000-0004-000000000001"]],
     )
 
-    class Config:
-        """Pydantic model configuration."""
-
-        from_attributes = True
-        populate_by_name = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

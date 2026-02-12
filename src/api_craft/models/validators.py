@@ -95,10 +95,14 @@ def validate_endpoint_references(
 
     for endpoint in endpoints:
         if endpoint.response and endpoint.response not in declared_object_names:
-            raise ValueError(f"Endpoint '{endpoint.name}' references unknown response '{endpoint.response}'")
+            raise ValueError(
+                f"Endpoint '{endpoint.name}' references unknown response '{endpoint.response}'"
+            )
 
         if endpoint.request and endpoint.request not in declared_object_names:
-            raise ValueError(f"Endpoint '{endpoint.name}' references unknown request '{endpoint.request}'")
+            raise ValueError(
+                f"Endpoint '{endpoint.name}' references unknown request '{endpoint.request}'"
+            )
 
 
 PATH_PARAM_PATTERN = re.compile(r"\{([^}]+)\}")
@@ -152,7 +156,9 @@ def validate_unique_object_names(objects: Iterable["InputModel"]) -> None:
 
     if duplicates:
         duplicates_list = ", ".join(sorted(duplicates))
-        raise ValueError(f"Duplicate object names found: {duplicates_list}. Each object name must be unique.")
+        raise ValueError(
+            f"Duplicate object names found: {duplicates_list}. Each object name must be unique."
+        )
 
 
 def validate_pascal_case_name(value: str) -> None:
@@ -168,12 +174,18 @@ def validate_pascal_case_name(value: str) -> None:
         raise ValueError("PascalCaseName cannot be empty")
 
     if not value[0].isupper():
-        raise ValueError(f"PascalCaseName must start with uppercase letter, got: {value}")
+        raise ValueError(
+            f"PascalCaseName must start with uppercase letter, got: {value}"
+        )
 
     if not value.replace("_", "").isalnum():
-        raise ValueError(f"PascalCaseName must contain only letters and numbers, got: {value}")
+        raise ValueError(
+            f"PascalCaseName must contain only letters and numbers, got: {value}"
+        )
 
     # Disallow consecutive uppercase letters to enforce strict PascalCase
     for i in range(1, len(value)):
         if value[i].isupper() and value[i - 1].isupper():
-            raise ValueError(f"PascalCaseName should not have consecutive uppercase letters, got: {value}")
+            raise ValueError(
+                f"PascalCaseName should not have consecutive uppercase letters, got: {value}"
+            )

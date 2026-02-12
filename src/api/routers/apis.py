@@ -195,7 +195,9 @@ async def delete_api(
     responses={
         200: {
             "description": "Successfully generated FastAPI application",
-            "content": {"application/zip": {"schema": {"type": "string", "format": "binary"}}},
+            "content": {
+                "application/zip": {"schema": {"type": "string", "format": "binary"}}
+            },
         }
     },
 )
@@ -232,5 +234,7 @@ async def generate_api_code(
     return StreamingResponse(
         io.BytesIO(zip_buffer.getvalue()),
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{api.title.lower().replace(" ", "-")}-api.zip"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{api.title.lower().replace(" ", "-")}-api.zip"'
+        },
     )

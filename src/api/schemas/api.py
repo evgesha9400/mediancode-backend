@@ -4,7 +4,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from api.schemas.tag import TagSchema
 
@@ -21,7 +21,9 @@ class ApiCreate(BaseModel):
     :ivar tags: List of tag definitions for this API.
     """
 
-    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"])
+    namespace_id: UUID = Field(
+        ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"]
+    )
     title: str = Field(..., examples=["User Management API"])
     version: str = Field(..., examples=["1.0.0"])
     description: str | None = Field(
@@ -77,7 +79,9 @@ class ApiResponse(BaseModel):
     """
 
     id: UUID = Field(..., examples=["00000000-0000-0000-0005-000000000001"])
-    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"])
+    namespace_id: UUID = Field(
+        ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"]
+    )
     title: str = Field(..., examples=["User Management API"])
     version: str = Field(..., examples=["1.0.0"])
     description: str = Field(..., examples=["Endpoints for user management"])
@@ -96,8 +100,4 @@ class ApiResponse(BaseModel):
         ..., alias="updatedAt", examples=["2026-01-25T10:30:00Z"]
     )
 
-    class Config:
-        """Pydantic model configuration."""
-
-        from_attributes = True
-        populate_by_name = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

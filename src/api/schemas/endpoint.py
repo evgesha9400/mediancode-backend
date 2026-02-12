@@ -4,7 +4,7 @@
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EndpointParameterSchema(BaseModel):
@@ -41,8 +41,12 @@ class ApiEndpointCreate(BaseModel):
     :ivar response_shape: Response shape (object or list).
     """
 
-    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"])
-    api_id: UUID = Field(..., alias="apiId", examples=["00000000-0000-0000-0005-000000000001"])
+    namespace_id: UUID = Field(
+        ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"]
+    )
+    api_id: UUID = Field(
+        ..., alias="apiId", examples=["00000000-0000-0000-0005-000000000001"]
+    )
     method: Literal["GET", "POST", "PUT", "PATCH", "DELETE"] = Field(
         ..., examples=["GET"]
     )
@@ -51,13 +55,19 @@ class ApiEndpointCreate(BaseModel):
     tag_name: str | None = Field(default=None, alias="tagName", examples=["Users"])
     path_params: list[EndpointParameterSchema] = Field(..., alias="pathParams")
     query_params_object_id: UUID | None = Field(
-        default=None, alias="queryParamsObjectId", examples=["00000000-0000-0000-0007-000000000001"]
+        default=None,
+        alias="queryParamsObjectId",
+        examples=["00000000-0000-0000-0007-000000000001"],
     )
     request_body_object_id: UUID | None = Field(
-        default=None, alias="requestBodyObjectId", examples=["00000000-0000-0000-0007-000000000002"]
+        default=None,
+        alias="requestBodyObjectId",
+        examples=["00000000-0000-0000-0007-000000000002"],
     )
     response_body_object_id: UUID | None = Field(
-        default=None, alias="responseBodyObjectId", examples=["00000000-0000-0000-0007-000000000001"]
+        default=None,
+        alias="responseBodyObjectId",
+        examples=["00000000-0000-0000-0007-000000000001"],
     )
     use_envelope: bool = Field(..., alias="useEnvelope", examples=[True])
     response_shape: Literal["object", "list"] = Field(
@@ -81,7 +91,9 @@ class ApiEndpointUpdate(BaseModel):
     :ivar response_shape: Updated response shape.
     """
 
-    api_id: UUID | None = Field(default=None, alias="apiId", examples=["00000000-0000-0000-0005-000000000001"])
+    api_id: UUID | None = Field(
+        default=None, alias="apiId", examples=["00000000-0000-0000-0005-000000000001"]
+    )
     method: Literal["GET", "POST", "PUT", "PATCH", "DELETE"] | None = Field(
         default=None, examples=["POST"]
     )
@@ -127,8 +139,12 @@ class ApiEndpointResponse(BaseModel):
     """
 
     id: UUID = Field(..., examples=["00000000-0000-0000-0004-000000000001"])
-    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"])
-    api_id: UUID = Field(..., alias="apiId", examples=["00000000-0000-0000-0005-000000000001"])
+    namespace_id: UUID = Field(
+        ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"]
+    )
+    api_id: UUID = Field(
+        ..., alias="apiId", examples=["00000000-0000-0000-0005-000000000001"]
+    )
     method: str = Field(..., examples=["GET"])
     path: str = Field(..., examples=["/users/{user_id}"])
     description: str = Field(..., examples=["Retrieve user by ID"])
@@ -137,19 +153,21 @@ class ApiEndpointResponse(BaseModel):
         default_factory=list, alias="pathParams"
     )
     query_params_object_id: UUID | None = Field(
-        default=None, alias="queryParamsObjectId", examples=["00000000-0000-0000-0007-000000000001"]
+        default=None,
+        alias="queryParamsObjectId",
+        examples=["00000000-0000-0000-0007-000000000001"],
     )
     request_body_object_id: UUID | None = Field(
-        default=None, alias="requestBodyObjectId", examples=["00000000-0000-0000-0007-000000000002"]
+        default=None,
+        alias="requestBodyObjectId",
+        examples=["00000000-0000-0000-0007-000000000002"],
     )
     response_body_object_id: UUID | None = Field(
-        default=None, alias="responseBodyObjectId", examples=["00000000-0000-0000-0007-000000000001"]
+        default=None,
+        alias="responseBodyObjectId",
+        examples=["00000000-0000-0000-0007-000000000001"],
     )
     use_envelope: bool = Field(..., alias="useEnvelope", examples=[True])
     response_shape: str = Field(..., alias="responseShape", examples=["object"])
 
-    class Config:
-        """Pydantic model configuration."""
-
-        from_attributes = True
-        populate_by_name = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

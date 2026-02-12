@@ -3,7 +3,7 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TypeResponse(BaseModel):
@@ -20,7 +20,9 @@ class TypeResponse(BaseModel):
     """
 
     id: UUID = Field(..., examples=["00000000-0000-0000-0001-000000000001"])
-    namespace_id: UUID = Field(..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"])
+    namespace_id: UUID = Field(
+        ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"]
+    )
     name: str = Field(..., examples=["str"])
     category: str = Field(..., examples=["primitive"])
     python_type: str = Field(..., alias="pythonType", examples=["str"])
@@ -30,8 +32,4 @@ class TypeResponse(BaseModel):
     )
     used_in_fields: int = Field(default=0, alias="usedInFields", examples=[5])
 
-    class Config:
-        """Pydantic model configuration."""
-
-        from_attributes = True
-        populate_by_name = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

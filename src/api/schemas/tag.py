@@ -1,7 +1,7 @@
 # src/api/schemas/tag.py
 """Pydantic schemas for API tags (embedded in API entity)."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TagSchema(BaseModel):
@@ -17,7 +17,4 @@ class TagSchema(BaseModel):
     name: str = Field(..., examples=["Users"])
     description: str = Field(..., examples=["User management endpoints"])
 
-    class Config:
-        """Pydantic model configuration."""
-
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)

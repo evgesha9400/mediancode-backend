@@ -30,8 +30,17 @@ Deploy the Median Code Backend to a self-hosted Coolify instance on a Digital Oc
 │  └─────────────────────────────────┘  └─────────────────────────────────┘   │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
+                                      ▲
+                                      │ webhook (deploy)
                                       │
-                                      ▼
+                    ┌─────────────────────────────────┐
+                    │       GitHub Actions (CI)       │
+                    │                                 │
+                    │  push ──► tests ──► if pass ──► │
+                    │          deploy via webhook     │
+                    └─────────────────────────────────┘
+                                      ▲
+                                      │
                     ┌─────────────────────────────────┐
                     │         GitHub Repository       │
                     │    median-code-backend          │
@@ -196,7 +205,7 @@ Select the **development** environment, then:
 | ------------------ | ------------------------ |
 | **Name**           | `median-code-dev-db`     |
 | **Description**    | `Development database for Median Code Backend` |
-| **Image**          | `postgres:17-alpine` (latest stable) |
+| **Image**          | `postgres:18-alpine` |
 | **Username**       | `postgres` (default, leave as-is) |
 | **Password**       | Keep the auto-generated strong password |
 | **Initial Database** | `median_code` |
@@ -290,9 +299,9 @@ Go to the **Resource Limits** tab. These limits ensure dev containers don't star
 
 ### 9h. Verify Advanced Settings
 
-Go to the **Advanced** tab. The defaults are fine — verify these are checked:
+Go to the **Advanced** tab:
 
-- **Auto Deploy**: Checked (enables auto-deploy on push)
+- **Auto Deploy**: **Unchecked** — deployments are triggered by GitHub Actions after CI passes (see Step 11)
 - **Force Https**: Checked
 - **Enable Gzip Compression**: Checked
 
@@ -330,7 +339,7 @@ Select the **production** environment, then:
 | ------------------ | ------------------------ |
 | **Name**           | `median-code-prod-db`    |
 | **Description**    | `Production database for Median Code Backend` |
-| **Image**          | `postgres:17-alpine` (latest stable) |
+| **Image**          | `postgres:18-alpine` |
 | **Username**       | `postgres` (default, leave as-is) |
 | **Password**       | Keep the auto-generated strong password |
 | **Initial Database** | `median_code` |
@@ -424,9 +433,9 @@ Go to the **Resource Limits** tab. Production gets ~2x the resources of developm
 
 ### 10h. Verify Advanced Settings
 
-Go to the **Advanced** tab. The defaults are fine — verify these are checked:
+Go to the **Advanced** tab:
 
-- **Auto Deploy**: Checked (enables auto-deploy on push)
+- **Auto Deploy**: **Unchecked** — deployments are triggered by GitHub Actions after CI passes (see Step 11)
 - **Force Https**: Checked
 - **Enable Gzip Compression**: Checked
 
@@ -443,14 +452,104 @@ curl https://api.mediancode.com/health
 
 ---
 
+## Step 11: Configure CI/CD (GitHub Actions → Coolify)
+
+Deployments are gated behind CI — Coolify only deploys after tests pass in GitHub Actions. Auto Deploy is disabled in Coolify; instead, GitHub Actions calls Coolify's deploy webhook on success.
+
+The CI workflow lives in `.github/workflows/ci.yml`. It runs tests on every push and PR, and triggers deployment only on direct pushes to `main` or `develop` after tests pass. Concurrent pushes to the same branch cancel in-progress runs so only the latest commit deploys.
+
+### 11a. Enable Coolify API Access
+
+1. In Coolify, go to **Settings** (sidebar) > **Configuration** > **Advanced**
+2. Enable **API Access**
+3. Leave **Allowed IPs for API Access** empty — GitHub Actions runners use thousands of dynamic IP ranges that change frequently, so IP-restricting is not practical. The bearer token (step 11b) is the security boundary.
+
+### 11b. Create Coolify API Token
+
+1. In Coolify, go to **Keys & Tokens** in the sidebar (opens the **Security** page)
+2. Click the **API Tokens** tab
+3. Enter description: `github-actions`
+4. Under **Token Permissions**, uncheck **read** and check **deploy** only
+5. Click **Create** and copy the generated token — you'll need it in step 11d
+
+### 11c. Copy Deploy Webhook URLs
+
+For each application resource, copy the webhook URL:
+
+**Development (`median-code-dev-api`):**
+
+1. Open the `median-code-dev-api` application resource
+2. Go to the **Webhooks** tab
+3. Copy the **Deploy Webhook** URL
+
+**Production (`median-code-prod-api`):**
+
+1. Open the `median-code-prod-api` application resource
+2. Go to the **Webhooks** tab
+3. Copy the **Deploy Webhook** URL
+
+### 11d. Configure GitHub Repository
+
+Go to your GitHub repository **Settings** > **Secrets and variables** > **Actions**.
+
+**Add a repository secret** (Secrets tab):
+
+| Secret           | Value                              |
+| ---------------- | ---------------------------------- |
+| `COOLIFY_TOKEN`  | API token from step 11b            |
+
+**Create two GitHub environments** (Settings > Environments):
+
+**`development` environment:**
+
+1. Click **New environment**, name it `development`
+2. Go to the environment's **Variables** tab (not Secrets)
+3. Add a variable:
+
+| Variable          | Value                                        |
+| ----------------- | -------------------------------------------- |
+| `COOLIFY_WEBHOOK` | Deploy webhook URL for `median-code-dev-api` from step 11c |
+
+**`production` environment:**
+
+1. Click **New environment**, name it `production`
+2. Go to the environment's **Variables** tab (not Secrets)
+3. Add a variable:
+
+| Variable          | Value                                         |
+| ----------------- | --------------------------------------------- |
+| `COOLIFY_WEBHOOK` | Deploy webhook URL for `median-code-prod-api` from step 11c |
+
+> The `COOLIFY_TOKEN` secret is shared at the repo level (one Coolify instance). The `COOLIFY_WEBHOOK` variable differs per environment. The workflow automatically selects the correct environment based on the branch (`main` → `production`, `develop` → `development`).
+
+### 11e. Verify the Pipeline
+
+Push a commit to `develop` and check that:
+
+1. GitHub Actions runs tests (visible in the **Actions** tab)
+2. Tests pass → the deploy job triggers
+3. Coolify builds and deploys (visible in Coolify's Deployments tab)
+
+```bash
+git checkout develop
+git commit --allow-empty -m "ci: test pipeline"
+git push origin develop
+# → GitHub Actions: tests → pass → webhook → Coolify deploys to dev.api.mediancode.com
+```
+
+---
+
 ## Deployment Flow (After Setup)
 
-Deployments are automatic via GitHub webhooks:
+Deployments are CI-gated via GitHub Actions:
 
 ```
-git push origin develop  →  Coolify deploys to development
-git push origin main     →  Coolify deploys to production
+git push origin develop  →  GitHub Actions: tests  →  pass  →  Coolify deploys to development
+git push origin main     →  GitHub Actions: tests  →  pass  →  Coolify deploys to production
+                                                    →  fail  →  no deploy
 ```
+
+If a new push arrives while a previous run is still in progress on the same branch, the previous run is cancelled and only the latest commit is tested and deployed.
 
 ### Typical Workflow
 
@@ -461,13 +560,13 @@ git checkout develop
 git add .
 git commit -m "feat: add new feature"
 git push origin develop
-# → Coolify auto-deploys to dev.api.mediancode.com
+# → GitHub Actions runs tests → on pass → Coolify deploys to dev.api.mediancode.com
 
 # Promote to production
 git checkout main
 git merge develop
 git push origin main
-# → Coolify auto-deploys to api.mediancode.com
+# → GitHub Actions runs tests → on pass → Coolify deploys to api.mediancode.com
 ```
 
 ---

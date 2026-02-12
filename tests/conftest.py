@@ -1,6 +1,11 @@
 # tests/conftest.py
 """Pytest configuration and fixtures for api_craft E2E tests."""
 
+# TODO: Add test database isolation for integration tests (test_api_types.py,
+# test_api_validators.py). Currently they write directly to the dev database
+# with manual cleanup, which can leave stale data on crashes. Consider
+# transaction-based rollback or a dedicated test database.
+
 import importlib.util
 import sys
 import uuid

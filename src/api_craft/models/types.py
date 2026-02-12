@@ -43,7 +43,9 @@ class Name(str):
         return "".join(result)
 
     @classmethod
-    def __get_pydantic_core_schema__(cls, source_type: type, handler: GetCoreSchemaHandler) -> core_schema.CoreSchema:
+    def __get_pydantic_core_schema__(
+        cls, source_type: type, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
         return core_schema.no_info_after_validator_function(
             cls,
             core_schema.str_schema(),

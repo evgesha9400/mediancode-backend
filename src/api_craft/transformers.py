@@ -128,7 +128,9 @@ def transform_endpoint(
     """
     response_name = input_endpoint.response
     if not response_name:
-        raise ValueError(f"Endpoint at path '{input_endpoint.path}' must declare a response object")
+        raise ValueError(
+            f"Endpoint at path '{input_endpoint.path}' must declare a response object"
+        )
 
     if response_name not in placeholder_generator.models:
         raise ValueError(f"Response object '{response_name}' is not declared")
@@ -139,7 +141,9 @@ def transform_endpoint(
 
     camel_name = remove_duplicates(input_endpoint.name)
     if not camel_name:
-        raise ValueError(f"Endpoint name '{input_endpoint.name}' resolved to an empty identifier")
+        raise ValueError(
+            f"Endpoint name '{input_endpoint.name}' resolved to an empty identifier"
+        )
     snake_name = camel_to_snake(camel_name)
 
     response_placeholders = None

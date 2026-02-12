@@ -137,7 +137,9 @@ class ApiService(BaseService[ApiModel]):
             api.server_url = data.server_url
         if data.tags is not None:
             # Convert tags from Pydantic models to dicts for JSONB storage
-            api.tags = [{"name": t.name, "description": t.description} for t in data.tags]
+            api.tags = [
+                {"name": t.name, "description": t.description} for t in data.tags
+            ]
 
         await self.db.flush()
         await self.db.refresh(api)
