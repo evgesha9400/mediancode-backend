@@ -201,7 +201,7 @@ Select the **development** environment, then:
 | **Password**       | Keep the auto-generated strong password |
 | **Initial Database** | `median_code` |
 
-3. **Make it publicly available**: Leave unchecked unless you need to connect from a local DB client (DBeaver, TablePlus, etc.). You can access the database via Coolify's built-in **Terminal** tab without public access.
+3. **Make it publicly available**: Under the **Proxy** section, leave unchecked unless you need to connect from a local DB client (DBeaver, TablePlus, etc.). If enabled, the **Public Port** defaults to `5432` — connect via `<droplet-ip>:5432`. You can always access the database via Coolify's built-in **Terminal** tab without public access.
 4. Click **Save**, then **Start**
 5. Once running, copy the **Postgres URL (internal)** — you'll need it for the app config
 
@@ -270,7 +270,25 @@ Go to the **Healthcheck** tab:
 
 Click **Enable Healthcheck**, then **Save**.
 
-### 9g. Verify Advanced Settings
+### 9g. Configure Resource Limits
+
+Go to the **Resource Limits** tab. These limits ensure dev containers don't starve production on a shared 2GB droplet.
+
+**For the API container (`median-code-dev-api`):**
+
+| Field                  | Value  | Notes                                              |
+| ---------------------- | ------ | -------------------------------------------------- |
+| **Number of CPUs**     | `0.25` |                                                    |
+| **CPU sets to use**    | *(empty)* | Not useful with a single vCPU                   |
+| **CPU Weight**         | `512`  | Half of default — prod gets priority under contention |
+| **Soft Memory Limit**  | `192`  | Target memory usage (can exceed if RAM is free)    |
+| **Swappiness**         | `60`   | Default, balanced                                  |
+| **Maximum Memory Limit** | `256` | Hard cap — container is OOM-killed if exceeded   |
+| **Maximum Swap Limit** | `0`    |                                                    |
+
+**For the database (`median-code-dev-db`):** apply the same values via its Resource Limits tab.
+
+### 9h. Verify Advanced Settings
 
 Go to the **Advanced** tab. The defaults are fine — verify these are checked:
 
@@ -278,7 +296,7 @@ Go to the **Advanced** tab. The defaults are fine — verify these are checked:
 - **Force Https**: Checked
 - **Enable Gzip Compression**: Checked
 
-### 9h. Deploy and Verify
+### 9i. Deploy and Verify
 
 Click **Deploy** (top right) and monitor the build logs under the **Deployments** tab.
 
@@ -317,7 +335,7 @@ Select the **production** environment, then:
 | **Password**       | Keep the auto-generated strong password |
 | **Initial Database** | `median_code` |
 
-3. **Make it publicly available**: Leave unchecked unless you need to connect from a local DB client (DBeaver, TablePlus, etc.). You can access the database via Coolify's built-in **Terminal** tab without public access.
+3. **Make it publicly available**: Under the **Proxy** section, leave unchecked unless you need to connect from a local DB client (DBeaver, TablePlus, etc.). If enabled, the **Public Port** defaults to `5432` — connect via `<droplet-ip>:5432`. You can always access the database via Coolify's built-in **Terminal** tab without public access.
 4. Click **Save**, then **Start**
 5. Once running, copy the **Postgres URL (internal)** — you'll need it for the app config
 
@@ -386,7 +404,25 @@ Go to the **Healthcheck** tab:
 
 Click **Enable Healthcheck**, then **Save**.
 
-### 10g. Verify Advanced Settings
+### 10g. Configure Resource Limits
+
+Go to the **Resource Limits** tab. Production gets ~2x the resources of development.
+
+**For the API container (`median-code-prod-api`):**
+
+| Field                  | Value  | Notes                                              |
+| ---------------------- | ------ | -------------------------------------------------- |
+| **Number of CPUs**     | `0.5`  |                                                    |
+| **CPU sets to use**    | *(empty)* | Not useful with a single vCPU                   |
+| **CPU Weight**         | `1024` | Default — gets 2x priority over dev (512) under contention |
+| **Soft Memory Limit**  | `384`  | Target memory usage (can exceed if RAM is free)    |
+| **Swappiness**         | `60`   | Default, balanced                                  |
+| **Maximum Memory Limit** | `512` | Hard cap — container is OOM-killed if exceeded   |
+| **Maximum Swap Limit** | `0`    |                                                    |
+
+**For the database (`median-code-prod-db`):** apply the same values via its Resource Limits tab.
+
+### 10h. Verify Advanced Settings
 
 Go to the **Advanced** tab. The defaults are fine — verify these are checked:
 
@@ -394,7 +430,7 @@ Go to the **Advanced** tab. The defaults are fine — verify these are checked:
 - **Force Https**: Checked
 - **Enable Gzip Compression**: Checked
 
-### 10h. Deploy and Verify
+### 10i. Deploy and Verify
 
 Click **Deploy** (top right) and monitor the build logs under the **Deployments** tab.
 
