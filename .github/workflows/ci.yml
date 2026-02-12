@@ -1,4 +1,4 @@
-name: Test & Deploy
+name: CI
 
 on:
   push:
@@ -12,32 +12,36 @@ concurrency:
 
 jobs:
   lint:
+    name: Lint
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set Up Python 3.13
+        uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
       - name: Install Poetry
         run: pip install poetry
 
-      - name: Cache Poetry dependencies
+      - name: Cache Poetry Dependencies
         uses: actions/cache@v4
         with:
           path: ~/.cache/pypoetry
           key: v1-poetry-${{ hashFiles('poetry.lock') }}
           restore-keys: v1-poetry-
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: poetry install --no-interaction --no-ansi
 
-      - name: Check formatting
+      - name: Check Formatting (Black)
         run: poetry run black --check src/
 
   test:
+    name: Test
     runs-on: ubuntu-latest
 
     services:
@@ -59,39 +63,42 @@ jobs:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/median_code
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set Up Python 3.13
+        uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
       - name: Install Poetry
         run: pip install poetry
 
-      - name: Cache Poetry dependencies
+      - name: Cache Poetry Dependencies
         uses: actions/cache@v4
         with:
           path: ~/.cache/pypoetry
           key: v1-poetry-${{ hashFiles('poetry.lock') }}
           restore-keys: v1-poetry-
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: poetry install --no-interaction --no-ansi
 
-      - name: Run migrations
+      - name: Run Database Migrations
         run: poetry run alembic upgrade head
 
-      - name: Run tests
+      - name: Run Tests
         run: poetry run pytest tests/ -v
 
   deploy:
+    name: Deploy
     needs: [lint, test]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
 
     steps:
-      - name: Deploy to Coolify
+      - name: Trigger Coolify Deployment
         run: |
           curl --silent --show-error --fail --request GET \
             '${{ vars.COOLIFY_WEBHOOK }}' \
