@@ -11,9 +11,9 @@ Deploy the Median Code Backend to a self-hosted Coolify instance on a Digital Oc
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │  Coolify (Management UI)              coolify.mediancode.com        │   │
-│  │  ├── Traefik (Reverse Proxy + Auto SSL via Let's Encrypt)           │   │
-│  │  └── Docker Engine                                                  │   │
+│  │  Coolify (Management UI)              coolify.mediancode.com         │   │
+│  │  ├── Traefik (Reverse Proxy + Auto SSL via Let's Encrypt)            │   │
+│  │  └── Docker Engine                                                   │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 │  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐   │
@@ -138,13 +138,11 @@ After installation, Coolify will display your access URL and recommend backing u
 
 ---
 
-## Step 6: Configure DNS
+## Step 6: Configure DNS for Coolify
 
-In your DNS provider (Cloudflare, Namecheap, etc.), add A records pointing to your droplet IP:
+In your DNS provider (Cloudflare, Namecheap, etc.), add an A record for the Coolify dashboard:
 
 ```
-Type: A    Name: api          Value: <droplet-ip>    TTL: Auto
-Type: A    Name: dev.api      Value: <droplet-ip>    TTL: Auto
 Type: A    Name: coolify      Value: <droplet-ip>    TTL: Auto
 ```
 
@@ -177,21 +175,27 @@ Then in Coolify **Settings > General**, set the instance FQDN to `https://coolif
 
 ---
 
-## Step 9: Set Up Production Environment
+## Step 9: Set Up Development Environment
 
-Select the **production** environment, then add resources.
+### 9a. Configure DNS for Development
 
-> **Recommended**: Set up development first to validate the configuration, then repeat for production. See Step 10 for dev-specific values.
+In your DNS provider, add an A record for the dev API:
 
-### 9a. Add PostgreSQL Database
+```
+Type: A    Name: dev.api      Value: <droplet-ip>    TTL: Auto
+```
+
+### 9b. Add PostgreSQL Database
+
+Select the **development** environment, then:
 
 1. Click **Add Resource** > **Database** > **PostgreSQL**
 2. Configure on the **General** tab:
 
 | Field              | Value                    |
 | ------------------ | ------------------------ |
-| **Name**           | `median-code-prod-db` (or `median-code-dev-db` for development) |
-| **Description**    | `Production database for Median Code Backend` |
+| **Name**           | `median-code-dev-db`     |
+| **Description**    | `Development database for Median Code Backend` |
 | **Image**          | `postgres:17-alpine` (latest stable) |
 | **Username**       | `postgres` (default, leave as-is) |
 | **Password**       | Keep the auto-generated strong password |
@@ -201,25 +205,25 @@ Select the **production** environment, then add resources.
 4. Click **Save**, then **Start**
 5. Once running, copy the **Postgres URL (internal)** — you'll need it for the app config
 
-### 9b. Add Backend Application
+### 9c. Add Backend Application
 
-1. Go back to the environment and click **Add Resource**
+1. Go back to the development environment and click **Add Resource**
 2. Under **Git Based**, select **Private Repository (with GitHub App)**
 3. Select your GitHub source and the `median-code-backend` repository
-4. Set **Branch**: `main`
+4. Set **Branch**: `develop`
 5. **Build Pack**: `Dockerfile` (should be auto-detected)
 6. Click **Save**
 
-### 9c. Configure Application Settings
+### 9d. Configure Application Settings
 
 In the application resource, go to **General** tab:
 
 | Field                  | Value                                        |
 | ---------------------- | -------------------------------------------- |
-| **Name**               | `median-code-prod-api` (or `median-code-dev-api` for development) |
-| **Description**        | `Production API for Median Code Backend`     |
+| **Name**               | `median-code-dev-api`                        |
+| **Description**        | `Development API for Median Code Backend`    |
 | **Build Pack**         | `Dockerfile`                                 |
-| **Domains**            | `https://api.mediancode.com` (or leave the auto-generated sslip.io URL for initial testing) |
+| **Domains**            | `https://dev.api.mediancode.com` (or leave the auto-generated sslip.io URL for initial testing) |
 | **Ports Exposes**      | `8080`                                       |
 | **Port Mappings**      | Clear/empty (delete any default like `3000:3000`) |
 | **Base Directory**     | `/`                                          |
@@ -229,15 +233,15 @@ Go to **Environment Variables** tab and add:
 
 | Variable               | Value                                        | Notes                           |
 | ---------------------- | -------------------------------------------- | ------------------------------- |
-| `DATABASE_URL`         | *(Postgres URL (internal) from step 9a)*     | Postgres connection string      |
-| `ENVIRONMENT`          | `production`                                 |                                 |
-| `CLERK_FRONTEND_API_URL` | `https://your-prod-clerk.clerk.accounts.dev` | From Clerk dashboard          |
-| `FRONTEND_URL`         | `https://mediancode.com`                     | For CORS                        |
+| `DATABASE_URL`         | *(Postgres URL (internal) from step 9b)*     | Postgres connection string      |
+| `ENVIRONMENT`          | `development`                                |                                 |
+| `CLERK_FRONTEND_API_URL` | `https://accurate-lion-1.clerk.accounts.dev` | From Clerk dashboard (dev)    |
+| `FRONTEND_URL`         | `https://dev.mediancode.com`                 | For CORS                        |
 | `GLOBAL_NAMESPACE_ID`  | `00000000-0000-0000-0000-000000000001`       | Global namespace UUID           |
 
 > **Note**: Do NOT add `PORT` — the Dockerfile sets `ENV PORT=8080` as default. Do NOT add `PYTHONPATH` — the Dockerfile handles this.
 
-### 9d. Database Migrations
+### 9e. Database Migrations
 
 Coolify v4 does not have a pre-deploy command feature. Instead, migrations are handled in the Dockerfile `CMD`:
 
@@ -247,7 +251,7 @@ CMD alembic -c alembic.ini upgrade head && uvicorn api.main:app --host 0.0.0.0 -
 
 This runs `alembic upgrade head` before starting the server on every deployment. No additional configuration needed in Coolify.
 
-### 9e. Configure Health Check
+### 9f. Configure Health Check
 
 Go to the **Healthcheck** tab:
 
@@ -266,7 +270,7 @@ Go to the **Healthcheck** tab:
 
 Click **Enable Healthcheck**, then **Save**.
 
-### 9f. Verify Advanced Settings
+### 9g. Verify Advanced Settings
 
 Go to the **Advanced** tab. The defaults are fine — verify these are checked:
 
@@ -274,41 +278,130 @@ Go to the **Advanced** tab. The defaults are fine — verify these are checked:
 - **Force Https**: Checked
 - **Enable Gzip Compression**: Checked
 
-### 9g. Deploy
+### 9h. Deploy and Verify
 
 Click **Deploy** (top right) and monitor the build logs under the **Deployments** tab.
 
----
-
-## Step 10: Set Up Development Environment
-
-Switch to the **development** environment and repeat Step 9 with these differences:
-
-| Setting                  | Development Value                              |
-| ------------------------ | ---------------------------------------------- |
-| Database Name            | `median-code-dev-db`                           |
-| App Name                 | `median-code-dev-api`                          |
-| Branch                   | `develop`                                      |
-| Domain                   | `https://dev.api.mediancode.com` (or use the auto-generated sslip.io URL for testing) |
-| `DATABASE_URL`           | *(Postgres URL (internal) of the dev database)* |
-| `ENVIRONMENT`            | `development`                                  |
-| `CLERK_FRONTEND_API_URL` | *(your dev Clerk Frontend API URL)*            |
-| `FRONTEND_URL`           | `https://dev.mediancode.com`                   |
-| `GLOBAL_NAMESPACE_ID`    | `00000000-0000-0000-0000-000000000001`         |
-
-Everything else (Dockerfile location, ports, health check, advanced settings) is identical to production.
-
----
-
-## Step 11: Verify Deployments
+Once deployed, verify:
 
 ```bash
-# Test production
-curl https://api.mediancode.com/health
-# Expected: {"status":"healthy"}
-
-# Test development
 curl https://dev.api.mediancode.com/health
+# Expected: {"status":"healthy"}
+```
+
+---
+
+## Step 10: Set Up Production Environment
+
+### 10a. Configure DNS for Production
+
+In your DNS provider, add an A record for the production API:
+
+```
+Type: A    Name: api          Value: <droplet-ip>    TTL: Auto
+```
+
+### 10b. Add PostgreSQL Database
+
+Select the **production** environment, then:
+
+1. Click **Add Resource** > **Database** > **PostgreSQL**
+2. Configure on the **General** tab:
+
+| Field              | Value                    |
+| ------------------ | ------------------------ |
+| **Name**           | `median-code-prod-db`    |
+| **Description**    | `Production database for Median Code Backend` |
+| **Image**          | `postgres:17-alpine` (latest stable) |
+| **Username**       | `postgres` (default, leave as-is) |
+| **Password**       | Keep the auto-generated strong password |
+| **Initial Database** | `median_code` |
+
+3. **Make it publicly available**: Leave unchecked unless you need to connect from a local DB client (DBeaver, TablePlus, etc.). You can access the database via Coolify's built-in **Terminal** tab without public access.
+4. Click **Save**, then **Start**
+5. Once running, copy the **Postgres URL (internal)** — you'll need it for the app config
+
+### 10c. Add Backend Application
+
+1. Go back to the production environment and click **Add Resource**
+2. Under **Git Based**, select **Private Repository (with GitHub App)**
+3. Select your GitHub source and the `median-code-backend` repository
+4. Set **Branch**: `main`
+5. **Build Pack**: `Dockerfile` (should be auto-detected)
+6. Click **Save**
+
+### 10d. Configure Application Settings
+
+In the application resource, go to **General** tab:
+
+| Field                  | Value                                        |
+| ---------------------- | -------------------------------------------- |
+| **Name**               | `median-code-prod-api`                       |
+| **Description**        | `Production API for Median Code Backend`     |
+| **Build Pack**         | `Dockerfile`                                 |
+| **Domains**            | `https://api.mediancode.com` (or leave the auto-generated sslip.io URL for initial testing) |
+| **Ports Exposes**      | `8080`                                       |
+| **Port Mappings**      | Clear/empty (delete any default like `3000:3000`) |
+| **Base Directory**     | `/`                                          |
+| **Dockerfile Location**| `/Dockerfile`                                |
+
+Go to **Environment Variables** tab and add:
+
+| Variable               | Value                                        | Notes                           |
+| ---------------------- | -------------------------------------------- | ------------------------------- |
+| `DATABASE_URL`         | *(Postgres URL (internal) from step 10b)*    | Postgres connection string      |
+| `ENVIRONMENT`          | `production`                                 |                                 |
+| `CLERK_FRONTEND_API_URL` | `https://clerk.mediancode.com`             | From Clerk dashboard (prod)     |
+| `FRONTEND_URL`         | `https://mediancode.com`                     | For CORS                        |
+| `GLOBAL_NAMESPACE_ID`  | `00000000-0000-0000-0000-000000000001`       | Global namespace UUID           |
+
+> **Note**: Do NOT add `PORT` — the Dockerfile sets `ENV PORT=8080` as default. Do NOT add `PYTHONPATH` — the Dockerfile handles this.
+
+### 10e. Database Migrations
+
+Coolify v4 does not have a pre-deploy command feature. Instead, migrations are handled in the Dockerfile `CMD`:
+
+```dockerfile
+CMD alembic -c alembic.ini upgrade head && uvicorn api.main:app --host 0.0.0.0 --port $PORT
+```
+
+This runs `alembic upgrade head` before starting the server on every deployment. No additional configuration needed in Coolify.
+
+### 10f. Configure Health Check
+
+Go to the **Healthcheck** tab:
+
+| Field              | Value       |
+| ------------------ | ----------- |
+| **Method**         | `GET`       |
+| **Scheme**         | `http`      |
+| **Host**           | `localhost` |
+| **Port**           | `8080`      |
+| **Path**           | `/health`   |
+| **Return Code**    | `200`       |
+| **Interval (s)**   | `30`        |
+| **Timeout (s)**    | `5`         |
+| **Retries**        | `10`        |
+| **Start Period (s)** | `5`       |
+
+Click **Enable Healthcheck**, then **Save**.
+
+### 10g. Verify Advanced Settings
+
+Go to the **Advanced** tab. The defaults are fine — verify these are checked:
+
+- **Auto Deploy**: Checked (enables auto-deploy on push)
+- **Force Https**: Checked
+- **Enable Gzip Compression**: Checked
+
+### 10h. Deploy and Verify
+
+Click **Deploy** (top right) and monitor the build logs under the **Deployments** tab.
+
+Once deployed, verify:
+
+```bash
+curl https://api.mediancode.com/health
 # Expected: {"status":"healthy"}
 ```
 
