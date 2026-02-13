@@ -1,6 +1,6 @@
 # Schema Migration Phases
 
-> **Strategy**: We are replacing the initial migration (`4141ad7f2255`) and seed data migration (`b1a2c3d4e5f6`) in-place. The product is not shipped — no incremental migrations needed. We have a RESET_DB environment variable set to true, so on each push the database is reset and re-seeded.
+> **Strategy**: We are replacing the initial migration (`4141ad7f2255`) and seed data migration (`b1a2c3d4e5f6`) in-place. The product is not shipped — no incremental migrations needed. We have a DB_RESET environment variable set to true, so on each push the database is reset and re-seeded.
 
 > **Workflow per phase**: (1) Apply backend prompt → (2) Verify backend works → (3) Apply frontend prompt → (4) Move to next phase.
 
