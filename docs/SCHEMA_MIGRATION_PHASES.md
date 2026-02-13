@@ -1,930 +1,686 @@
-# Schema Migration Phases
-
-> **Strategy**: We are replacing the initial migration (`4141ad7f2255`) and seed data migration (`b1a2c3d4e5f6`) in-place. The product is not shipped — no incremental migrations needed. We have a DB_RESET environment variable set to true, so on each push the database is reset and re-seeded.
-
-> **Workflow per phase**: (1) Apply backend prompt → (2) Verify backend works → (3) Apply frontend prompt → (4) Move to next phase.
-
----
-
-## Phase 1: TEXT normalization (`namespaces` + `fields` + `objects`)
-
-All three tables need the same trivial change: VARCHAR/String → TEXT. No logic changes, no schema/service/router impact. Safe to batch.
-
-### Changes
-
-**`namespaces`**
-| Column | Before | After |
-|--------|--------|-------|
-| `user_id` | `String(255)` | `Text` |
-| `name` | `String(255)` | `Text` |
-
-**`fields`**
-| Column | Before | After |
-|--------|--------|-------|
-| `user_id` | `String(255)` | `Text` |
-| `name` | `String(255)` | `Text` |
-
-**`objects`**
-| Column | Before | After |
-|--------|--------|-------|
-| `user_id` | `String(255)` | `Text` |
-| `name` | `String(255)` | `Text` |
-
-Note: The dbdiagram shows `objects.user_id` as UUID, but we use TEXT to be consistent with all other tables (Clerk user IDs are strings). Intentional deviation from the diagram.
-
-### Impact
-- Minimal. Purely column type normalization. No schema/service/router logic changes.
-
-### Backend Prompt
 ```
 CONTEXT:
-We are normalizing all VARCHAR/String columns to TEXT across the database. This is phase 1 of a multi-phase schema migration. We are editing the existing migration files in-place (product not shipped yet). This phase covers three tables with identical changes.
+The backend has completed a major schema migration. This prompt documents every API endpoint, its current request/response shapes, and exactly how each entity should be displayed on the frontend.
 
-FILES TO MODIFY:
-1. src/api/models/database.py — Namespace, FieldModel, ObjectDefinition models
-2. src/api/migrations/versions/4141ad7f2255_initial_schema.py — namespaces, fields, objects tables
+The frontend codebase is at: /Users/evgesha/Documents/Projects/median-code-frontend
+All API endpoints are under the base path: /v1/
+Authentication: All endpoints require a Clerk JWT in the Authorization header.
 
-CHANGES:
+YOUR WORKFLOW:
+1. Read this ENTIRE prompt first — do not start coding until you understand all entities
+2. Search the frontend codebase for every existing interface, API call, component, store, and route related to each entity listed below
+3. For EACH PHASE below, create a plan listing:
+   - Which files need modification, deletion, or creation
+   - Which pages need modification, deletion, or creation
+   - Exact interface/type changes
+4. Present the plan for review before executing
+5. Execute phase by phase — verify each phase works before moving to the next
 
-In database.py:
-- Namespace model: Change `user_id` from `String(255)` to `Text`, change `name` from `String(255)` to `Text`
-- FieldModel: Change `user_id` from `String(255)` to `Text`, change `name` from `String(255)` to `Text`
-- ObjectDefinition: Change `user_id` from `String(255)` to `Text`, change `name` from `String(255)` to `Text`
+IMPORTANT: Before making ANY changes, search the entire codebase for all references to each entity. Use grep/search for field names, interface names, API paths, route paths, component names. Miss nothing.
 
-In the initial migration (4141ad7f2255):
-- For namespaces, fields, and objects tables: change all `sa.Column("user_id", sa.String(length=255), ...)` → `sa.Column("user_id", sa.Text(), ...)`
-- Same for `name` columns: `sa.String(length=255)` → `sa.Text()`
+========================================================================
+PHASE 1: TYPES + CONSTRAINTS (Reference Data)
+========================================================================
 
-DO NOT change any other tables in this phase.
-DO NOT change schemas, services, or routers (no logic changes needed).
-DO NOT create new migration files — edit the existing ones in-place.
-Run `make test` after changes to verify nothing breaks.
+Types and Constraints are READ-ONLY global reference data seeded by the backend.
+They are not created/edited by users — only listed and used as references by other entities.
+These two entities should share a page (e.g., a "Reference Data" or "Building Blocks" page with two tabs or two sections).
 
-FINAL STEP: No frontend changes needed for this phase (column types are internal to PostgreSQL, API response types are unchanged). Confirm this in your summary.
+------------------------------------------------------------------------
+ENTITY: Types
+------------------------------------------------------------------------
+
+API: GET /v1/types?namespaceId={optional}
+
+Response shape (array of):
+{
+  "id": "uuid",
+  "namespaceId": "uuid",
+  "name": "str",
+  "pythonType": "str",
+  "description": "String type for text data",
+  "importPath": "from datetime import datetime" | null,
+  "parentTypeId": "uuid" | null,
+  "usedInFields": 5
+}
+
+TABLE COLUMNS (list view):
+| Column        | Field          | Display                                          |
+|---------------|----------------|--------------------------------------------------|
+| Name          | name           | Text, primary column                             |
+| Python Type   | pythonType     | Code/monospace text                              |
+| Import        | importPath     | Code/monospace if non-null, dash or empty if null |
+| Description   | description    | Text, truncated if long                          |
+| Used in Fields| usedInFields   | Numeric badge/count                              |
+
+NOTES:
+- parentTypeId is not displayed in the table — it's for future use (constrained type hierarchies). Ignore it for now.
+- This table is read-only: no create/edit/delete actions.
+- Rows are not clickable (no detail view needed).
+
+MIGRATION — fields REMOVED from old interface:
+- category (string) — DELETE all references
+- compatibleTypes (string[]) — DELETE all references (this concept moved to Constraints)
+
+MIGRATION — fields ADDED to interface:
+- importPath: string | null
+- parentTypeId: string | null
+
+------------------------------------------------------------------------
+ENTITY: Constraints (was "Validators")
+------------------------------------------------------------------------
+
+THE FRONTEND CURRENTLY HAS A "VALIDATORS" PAGE. This page must be renamed to "CONSTRAINTS".
+The backend entity "validators" has been fully renamed to "constraints" — table, model,
+schema, router, API path, everything. The frontend must match: rename the page, its route,
+all interfaces, stores, API calls, and UI labels from "validator(s)" to "constraint(s)".
+
+API: GET /v1/constraints?namespaceId={optional}
+(old path that no longer exists: GET /v1/validators)
+
+Response shape (array of):
+{
+  "id": "uuid",
+  "namespaceId": "uuid",
+  "name": "max_length",
+  "description": "Validates that string length does not exceed maximum",
+  "parameterType": "int",
+  "docsUrl": "https://docs.pydantic.dev/..." | null,
+  "compatibleTypes": ["str", "uuid"],
+  "usedInFields": 3
+}
+
+TABLE COLUMNS (list view):
+| Column          | Field            | Display                                          |
+|-----------------|------------------|--------------------------------------------------|
+| Name            | name             | Text/code, primary column                        |
+| Description     | description      | Text, truncated if long                          |
+| Parameter Type  | parameterType    | Code/badge (int, number, str, None)              |
+| Applies To      | compatibleTypes  | Chips/tags (e.g., "str", "uuid" as small badges) |
+| Docs            | docsUrl          | Icon link if non-null, hidden if null            |
+| Used in Fields  | usedInFields     | Numeric badge/count                              |
+
+NOTES:
+- Read-only: no create/edit/delete actions.
+- Rows are not clickable (no detail view needed).
+- The 10 seed constraints are:
+  String: max_length, min_length, pattern, email_format, url_format
+  Numeric: gt, ge, lt, le, multiple_of
+
+MIGRATION — entity rename:
+- Rename ALL of: validator → constraint, Validator → Constraint, validators → constraints, Validators → Constraints
+- API path: /validators → /constraints
+- Interface: ValidatorResponse → ConstraintResponse
+- Route paths: any route containing "validator" → "constraint"
+- Store/state: any validator store → constraint store
+- Labels/headings in UI: "Validators" → "Constraints"
+
+MIGRATION — fields REMOVED from old validator interface:
+- type (string — was "string" or "numeric") — DELETE (replaced by compatibleTypes)
+- category (string — was always "inline") — DELETE
+- exampleUsage (string) — DELETE
+
+MIGRATION — fields ADDED:
+- compatibleTypes: string[]
+
+MIGRATION — fields CHANGED:
+- docsUrl: was required string → now string | null
+
+========================================================================
+PHASE 2: FIELDS
+========================================================================
+
+Fields are user-created entities that define individual data points (like "email", "age", "username").
+Each field has a type (from Phase 1) and optional constraints (from Phase 1).
+Fields are the building blocks used to compose Objects (Phase 3).
+
+------------------------------------------------------------------------
+ENTITY: Fields
+------------------------------------------------------------------------
+
+APIs:
+- GET    /v1/fields?namespaceId={optional}     — list
+- GET    /v1/fields/{id}                       — get by ID
+- POST   /v1/fields                            — create
+- PUT    /v1/fields/{id}                       — update
+- DELETE /v1/fields/{id}                       — delete
+
+Create request shape:
+{
+  "namespaceId": "uuid",
+  "name": "email",
+  "typeId": "uuid",
+  "description": "User email address" | null,
+  "defaultValue": "None" | null,
+  "constraints": [
+    {"constraintId": "uuid", "value": "255"},
+    {"constraintId": "uuid", "value": null}
+  ]
+}
+
+Update request shape:
+{
+  "name": "updated_email" | null,
+  "description": "Updated description" | null,
+  "defaultValue": "new_default" | null,
+  "constraints": [{"constraintId": "uuid", "value": "255"}] | null
+}
+Note: constraints=null means "don't touch", constraints=[] means "clear all".
+
+Response shape:
+{
+  "id": "uuid",
+  "namespaceId": "uuid",
+  "name": "email",
+  "typeId": "uuid",
+  "description": "User email address" | null,
+  "defaultValue": "None" | null,
+  "usedInApis": ["endpoint-uuid-1", "endpoint-uuid-2"],
+  "constraints": [
+    {"constraintId": "uuid", "name": "max_length", "value": "255"},
+    {"constraintId": "uuid", "name": "email_format", "value": null}
+  ]
+}
+
+TABLE COLUMNS (list view):
+| Column       | Field              | Display                                                         |
+|--------------|--------------------|-----------------------------------------------------------------|
+| Name         | name               | Text, primary column, clickable to edit                         |
+| Type         | typeId             | Resolve to type name from the types list (e.g., "str", "int")  |
+| Description  | description        | Text, truncated if long. Dash if null                           |
+| Default      | defaultValue       | Code/monospace if non-null. Dash if null                        |
+| Constraints  | constraints        | Count badge, or comma-separated names (e.g., "max_length, pattern") |
+| Used In      | usedInApis         | Count badge (number of endpoints using this field)              |
+
+FORM (create/edit):
+- name: text input (required)
+- typeId: dropdown/select populated from GET /v1/types (show type name, send UUID)
+- description: textarea (optional)
+- defaultValue: text input (optional)
+- constraints section:
+  - When user selects a type, filter available constraints by checking if the type's
+    name (e.g., "str") is in each constraint's compatibleTypes array
+  - Show applicable constraints as a list/checklist
+  - For each constraint that takes a parameter (parameterType != "None"), show a value input
+  - For parameterless constraints (parameterType == "None"), just a toggle/checkbox
+  - On submit, send array of {constraintId, value} pairs for selected constraints
+
+DELETE:
+- Cannot delete if usedInApis is non-empty (backend returns 400)
+- Show confirmation dialog
+
+MIGRATION — fields REMOVED from old interface (if any):
+- validators (the old field→validator attachment) — REPLACE with constraints
+
+MIGRATION — fields ADDED:
+- constraints: Array<{constraintId: string, name: string, value: string | null}> on response
+- constraints: Array<{constraintId: string, value: string | null}> on create/update request
+- usedInApis: string[] on response
+
+========================================================================
+PHASE 3: OBJECTS
+========================================================================
+
+Objects are user-created Pydantic model definitions composed of field references.
+They define the shape of request/response bodies (e.g., "UserCreate", "ProductResponse").
+
+------------------------------------------------------------------------
+ENTITY: Objects
+------------------------------------------------------------------------
+
+APIs:
+- GET    /v1/objects?namespaceId={optional}    — list
+- GET    /v1/objects/{id}                      — get by ID
+- POST   /v1/objects                           — create
+- PUT    /v1/objects/{id}                      — update
+- DELETE /v1/objects/{id}                      — delete
+
+Create request shape:
+{
+  "namespaceId": "uuid",
+  "name": "UserCreate",
+  "description": "User creation payload" | null,
+  "fields": [
+    {"fieldId": "uuid", "required": true},
+    {"fieldId": "uuid", "required": false}
+  ]
+}
+
+Update request shape:
+{
+  "name": "UpdatedName" | null,
+  "description": "Updated description" | null,
+  "fields": [{"fieldId": "uuid", "required": true}] | null
+}
+
+Response shape:
+{
+  "id": "uuid",
+  "namespaceId": "uuid",
+  "name": "UserCreate",
+  "description": "User creation payload" | null,
+  "fields": [
+    {"fieldId": "uuid", "required": true},
+    {"fieldId": "uuid", "required": false}
+  ],
+  "usedInApis": ["endpoint-uuid-1"]
+}
+
+TABLE COLUMNS (list view):
+| Column       | Field       | Display                                                            |
+|--------------|-------------|--------------------------------------------------------------------|
+| Name         | name        | Text, primary column, clickable to edit                            |
+| Description  | description | Text, truncated. Dash if null                                      |
+| Fields       | fields      | Count badge (e.g., "3 fields")                                     |
+| Used In      | usedInApis  | Count badge (number of endpoints using this object)                |
+
+FORM (create/edit):
+- name: text input (required) — should be PascalCase (the backend expects it)
+- description: textarea (optional)
+- fields section:
+  - A sortable list of field references
+  - Each row: field selector dropdown (from GET /v1/fields, show field name, send UUID) + required checkbox/toggle
+  - Add/remove buttons for rows
+  - Drag-to-reorder (position is determined by array order)
+
+DELETE:
+- Cannot delete if usedInApis is non-empty (backend returns 400)
+- Show confirmation dialog
+
+MIGRATION:
+- No schema changes to objects. But verify the interface matches the response shape above.
+
+========================================================================
+PHASE 4: APIs + ENDPOINTS
+========================================================================
+
+APIs are the top-level entity. Each API has child endpoints.
+These should be displayed on a single page: the API list view shows all APIs,
+and clicking an API navigates to its detail view which shows its endpoints.
+
+------------------------------------------------------------------------
+ENTITY: APIs
+------------------------------------------------------------------------
+
+APIs:
+- GET    /v1/apis?namespaceId={optional}       — list
+- GET    /v1/apis/{id}                         — get by ID
+- POST   /v1/apis                              — create
+- PUT    /v1/apis/{id}                         — update
+- DELETE /v1/apis/{id}                         — delete (cascades to endpoints)
+- POST   /v1/apis/{id}/generate                — generate code (returns ZIP)
+
+Create request shape:
+{
+  "namespaceId": "uuid",
+  "title": "User Management API",
+  "version": "1.0.0",
+  "description": "API for managing users" | null,
+  "baseUrl": "/api/v1" | null,
+  "serverUrl": "https://api.example.com" | null
+}
+
+Update request shape:
+{
+  "title": "Updated Title" | null,
+  "version": "2.0.0" | null,
+  "description": "Updated" | null,
+  "baseUrl": "/api/v2" | null,
+  "serverUrl": "https://new.example.com" | null
+}
+
+Response shape:
+{
+  "id": "uuid",
+  "namespaceId": "uuid",
+  "title": "User Management API",
+  "version": "1.0.0",
+  "description": "API for managing user accounts",
+  "baseUrl": "/api/v1",
+  "serverUrl": "https://api.example.com",
+  "createdAt": "2026-01-25T10:30:00Z",
+  "updatedAt": "2026-01-25T10:30:00Z"
+}
+
+TABLE COLUMNS (list view):
+| Column      | Field       | Display                                                         |
+|-------------|-------------|-----------------------------------------------------------------|
+| Title       | title       | Text, primary column, clickable to navigate to API detail       |
+| Version     | version     | Badge/code text                                                 |
+| Base URL    | baseUrl     | Code/monospace                                                  |
+| Description | description | Text, truncated                                                 |
+| Tags        | (derived)   | Derive from endpoints: fetch endpoints for this API, collect unique tagName values, display as chips. Alternatively, show this only on the detail page. |
+| Endpoints   | (derived)   | Count badge — requires fetching endpoints for this API, or show on detail page only |
+| Updated     | updatedAt   | Relative time (e.g., "2 hours ago")                             |
+
+FORM (create/edit):
+- title: text input (required)
+- version: text input (required, e.g., "1.0.0")
+- description: textarea (optional)
+- baseUrl: text input (optional)
+- serverUrl: text input (optional)
+
+DETAIL PAGE:
+The API detail page should show:
+- API metadata (title, version, description, baseUrl, serverUrl, timestamps)
+- Tags derived from endpoints (collect unique tagName values, show as chips)
+- Endpoints table (see below)
+- "Generate Code" button that calls POST /v1/apis/{id}/generate and downloads the ZIP
+
+DELETE:
+- Cascades to all endpoints — warn user
+- Show confirmation dialog
+
+MIGRATION — fields REMOVED:
+- tags: was Array<{name: string, description: string}> on create/update/response — DELETE
+- TagSchema / Tag interface — DELETE the file/interface entirely
+- Remove tags from create/edit forms
+- Tags are now derived client-side from endpoint tagName values (display only, not editable on the API)
+
+------------------------------------------------------------------------
+ENTITY: Endpoints (child of API)
+------------------------------------------------------------------------
+
+Endpoints are always scoped to a parent API. They should be displayed as a table
+within the API detail page, not as a standalone page.
+
+APIs:
+- GET    /v1/endpoints?namespaceId={optional}  — list all
+- GET    /v1/endpoints/{id}                    — get by ID
+- POST   /v1/endpoints                         — create
+- PUT    /v1/endpoints/{id}                    — update
+- DELETE /v1/endpoints/{id}                    — delete
+
+Create request shape:
+{
+  "apiId": "uuid",
+  "method": "GET",
+  "path": "/users/{user_id}",
+  "description": "Get user by ID",
+  "tagName": "Users" | null,
+  "pathParams": [{"name": "user_id", "fieldId": "uuid"}],
+  "queryParamsObjectId": "uuid" | null,
+  "requestBodyObjectId": "uuid" | null,
+  "responseBodyObjectId": "uuid" | null,
+  "useEnvelope": true,
+  "responseShape": "object"
+}
+
+Update request shape:
+{
+  "apiId": "uuid" | null,
+  "method": "POST" | null,
+  "path": "/users" | null,
+  "description": "Updated" | null,
+  "tagName": "Users" | null,
+  "pathParams": [{"name": "user_id", "fieldId": "uuid"}] | null,
+  "queryParamsObjectId": "uuid" | null,
+  "requestBodyObjectId": "uuid" | null,
+  "responseBodyObjectId": "uuid" | null,
+  "useEnvelope": true | null,
+  "responseShape": "list" | null
+}
+
+Response shape:
+{
+  "id": "uuid",
+  "apiId": "uuid",
+  "method": "GET",
+  "path": "/users/{user_id}",
+  "description": "Retrieve user by ID",
+  "tagName": "Users" | null,
+  "pathParams": [{"name": "user_id", "fieldId": "uuid"}],
+  "queryParamsObjectId": "uuid" | null,
+  "requestBodyObjectId": "uuid" | null,
+  "responseBodyObjectId": "uuid" | null,
+  "useEnvelope": true,
+  "responseShape": "object"
+}
+
+TABLE COLUMNS (within API detail page):
+| Column         | Field                  | Display                                                     |
+|----------------|------------------------|-------------------------------------------------------------|
+| Method         | method                 | Colored badge (GET=green, POST=blue, PUT=orange, DELETE=red)|
+| Path           | path                   | Code/monospace, primary column, clickable to edit           |
+| Description    | description            | Text, truncated                                             |
+| Tag            | tagName                | Chip/badge if non-null, dash if null                        |
+| Path Params    | pathParams             | Count or comma-separated names (e.g., "user_id, item_id")  |
+| Query Params   | queryParamsObjectId    | Object name (resolve from objects list) or dash             |
+| Request Body   | requestBodyObjectId    | Object name (resolve from objects list) or dash             |
+| Response Body  | responseBodyObjectId   | Object name (resolve from objects list) or dash             |
+| Envelope       | useEnvelope            | Check icon or badge                                         |
+| Shape          | responseShape          | Badge: "object" or "list"                                   |
+
+FORM (create/edit):
+- apiId: pre-filled from parent API (hidden or read-only)
+- method: dropdown (GET, POST, PUT, PATCH, DELETE)
+- path: text input (required)
+- description: text input (required)
+- tagName: text input (optional) — free text, used for grouping in OpenAPI spec
+- pathParams section:
+  - For each {parameter} in the path, show a row with:
+    - name: text (auto-extracted from path, e.g., "user_id" from "/users/{user_id}")
+    - fieldId: dropdown/select populated from GET /v1/fields (show field name, send UUID)
+  - Ideally auto-detect params from path input and create rows automatically
+- queryParamsObjectId: dropdown from GET /v1/objects (optional)
+- requestBodyObjectId: dropdown from GET /v1/objects (optional)
+- responseBodyObjectId: dropdown from GET /v1/objects (optional)
+- useEnvelope: checkbox/toggle (default true)
+- responseShape: dropdown ("object" or "list")
+
+MIGRATION — fields REMOVED:
+- namespaceId: was on create request and response — DELETE (derived through apiId)
+
+MIGRATION — pathParams schema CHANGED:
+OLD: [{"id": "uuid", "name": "str", "type": "str", "description": "str", "required": bool}]
+NEW: [{"name": "str", "fieldId": "uuid"}]
+- Remove id, type, description, required from path param interface
+- Add fieldId
+- Update path param UI: instead of manual type/description/required inputs, use a field selector dropdown
+
+========================================================================
+PHASE 5: NAMESPACES
+========================================================================
+
+Namespaces are the organizational container for all user entities.
+Every API, field, object, etc. belongs to a namespace.
+The "Global" namespace is locked and contains the seed types/constraints.
+
+------------------------------------------------------------------------
+ENTITY: Namespaces
+------------------------------------------------------------------------
+
+APIs:
+- GET    /v1/namespaces                        — list
+- GET    /v1/namespaces/{id}                   — get by ID
+- POST   /v1/namespaces                        — create
+- PUT    /v1/namespaces/{id}                   — update
+- DELETE /v1/namespaces/{id}                   — delete
+
+Create request shape:
+{
+  "name": "my-api-project",
+  "description": "My API project namespace" | null
+}
+
+Update request shape:
+{
+  "name": "updated-name" | null,
+  "description": "Updated description" | null
+}
+
+Response shape:
+{
+  "id": "uuid",
+  "name": "Global",
+  "description": "Built-in types and constraints" | null,
+  "locked": true,
+  "isDefault": false
+}
+
+TABLE COLUMNS (list view — or sidebar/dropdown, depending on current UI):
+| Column      | Field       | Display                                         |
+|-------------|-------------|-------------------------------------------------|
+| Name        | name        | Text, primary column                            |
+| Description | description | Text, truncated. Dash if null                   |
+| Locked      | locked      | Lock icon or badge if true, hidden if false     |
+| Default     | isDefault   | Star icon or badge if true, hidden if false     |
+
+NOTES:
+- Locked namespaces (the Global namespace) cannot be edited or deleted.
+- The Global namespace is system-created and contains seed types and constraints.
+- User namespaces are where users create their fields, objects, APIs, etc.
+- Namespaces serve as the scoping mechanism — most list endpoints accept a namespaceId query param to filter.
+- A user typically works within one namespace at a time (their default).
+
+MIGRATION:
+- No API contract changes. Verify the interface matches the shape above.
+
+========================================================================
+BACKEND-ONLY TABLES (NO FRONTEND IMPACT YET)
+========================================================================
+
+These tables exist in the database but have NO API endpoints yet.
+Do NOT build any UI for these. They are listed here for awareness only.
+
+- field_validators: Custom field validator function definitions (future feature)
+- field_validator_associations: Links custom field validators to fields
+- model_validators: Custom model-level validator function definitions (future feature)
+- object_model_validator_associations: Links model validators to objects
+
+========================================================================
+COMPREHENSIVE SEARCH CHECKLIST
+========================================================================
+
+Before making any changes, run these searches across the entire frontend codebase:
+
+ENTITY RENAMES:
+- [ ] validator / Validator / validators / Validators → constraint / Constraint / constraints / Constraints
+- [ ] /validators API path → /constraints
+- [ ] ValidatorResponse → ConstraintResponse
+- [ ] Any route path containing "validator" → "constraint"
+
+REMOVED FIELDS:
+- [ ] category on types (DELETE)
+- [ ] compatibleTypes on types (DELETE — now on constraints)
+- [ ] type field on validators/constraints (DELETE — replaced by compatibleTypes)
+- [ ] category on validators/constraints (DELETE)
+- [ ] exampleUsage on validators/constraints (DELETE)
+- [ ] tags on APIs — create, update, response (DELETE)
+- [ ] TagSchema / Tag interface (DELETE file)
+- [ ] namespaceId on endpoints — create and response (DELETE — still on API/field/object)
+- [ ] Old path param fields: id, type, description, required on endpoint path params (DELETE)
+
+ADDED FIELDS:
+- [ ] importPath on types (string | null)
+- [ ] parentTypeId on types (string | null)
+- [ ] compatibleTypes on constraints (string[])
+- [ ] constraints on field create/update request ({constraintId, value}[])
+- [ ] constraints on field response ({constraintId, name, value}[])
+- [ ] usedInApis on field response (string[])
+- [ ] fieldId on path params (replaces old schema)
+
+CHANGED FIELDS:
+- [ ] docsUrl on constraints — now nullable
+- [ ] pathParams on endpoints — schema changed from {id, name, type, description, required} to {name, fieldId}
 ```
 
 ---
 
-## Phase 2: `types`
+## Verification Summary
 
-### Changes
-| Column | Before | After | Reason |
-|--------|--------|-------|--------|
-| `name` | `String(50)` | `Text, not null` | TEXT standard |
-| `category` | `String(50), not null` | **DROPPED** | primitive/abstract distinction serves no purpose |
-| `python_type` | `String(100)` | `Text, not null` | TEXT standard |
-| `description` | `Text, not null` | `Text, not null, default=''` | Add default |
-| `compatible_types` | `JSONB, not null` | **DROPPED** | Compatibility now lives on constraints table |
-| `import_path` | — | `Text, nullable` | **NEW**: stores import statement (e.g., `from pydantic import EmailStr`) |
-| `user_id` | — | `Text, nullable` | **NEW**: for future custom user-defined types |
-| `parent_type_id` | — | `UUID FK → types.id, nullable` | **NEW**: self-referential FK for constrained types (EmailStr → str) |
+| Phase | Table(s) | Status |
+|-------|----------|--------|
+| 1 | namespaces + fields + objects (TEXT normalization) | DONE |
+| 2 | types (major restructure) | DONE |
+| 3 | validators → constraints (rename + restructure) | DONE |
+| 4 | apis (drop tags + TEXT) | DONE |
+| 5 | api_endpoints + endpoint_parameters (restructure + delete) | DONE |
+| 6 | field_validators + field_validator_associations (complete replacement + new) | DONE |
+| 7 | model_validators + object_model_validator_associations (new tables) | DONE |
+| 8 | constraint_field_values_associations (new table) | DONE |
 
-### Impact
-- **Heavy**. Affects: `TypeModel` in database.py, TypeResponse schema, types router, seed data, generation service.
-- `compatible_types` removal means the types API no longer returns this field.
-- `category` removal means the types API no longer returns this field.
-- `parent_type_id` addition means the types API should return this field.
-- Seed data must be updated: remove `category` and `compatible_types` from type seeds. Add `import_path` where applicable.
+### Integration Tasks (Post-Migration)
 
-### Backend Prompt
-```
-CONTEXT:
-Phase 2 of schema migration. We are restructuring the `types` table. We are editing existing migration files in-place (product not shipped).
-
-FILES TO MODIFY:
-1. src/api/models/database.py — TypeModel class
-2. src/api/migrations/versions/4141ad7f2255_initial_schema.py — types table creation
-3. src/api/migrations/versions/b1a2c3d4e5f6_seed_global_data.py — types seed data
-4. src/api/schemas/type.py — TypeResponse schema
-5. src/api/routers/types.py — types router (list_types handler)
-
-CHANGES FOR `types` TABLE:
-
-1. database.py TypeModel:
-   - REMOVE `category` column entirely
-   - REMOVE `compatible_types` column entirely
-   - CHANGE `name` from `String(50)` to `Text`
-   - CHANGE `python_type` from `String(100)` to `Text`
-   - CHANGE `description` to `Text, nullable=False, default=""`
-   - ADD `import_path: Mapped[str | None] = mapped_column(Text, nullable=True)`
-   - ADD `user_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)`
-   - ADD `parent_type_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("types.id"), nullable=True)`
-   - ADD relationship: `parent_type: Mapped["TypeModel | None"] = relationship(remote_side=[id])`
-   - ADD relationship: `children: Mapped[list["TypeModel"]] = relationship(back_populates="parent_type")`
-   - Update the docstring to reflect new columns
-
-2. Initial migration (4141ad7f2255) — types table:
-   - Remove `category` column
-   - Remove `compatible_types` column
-   - Change `name` to `sa.Text()`
-   - Change `python_type` to `sa.Text()`
-   - Add `sa.Column("import_path", sa.Text(), nullable=True)`
-   - Add `sa.Column("user_id", sa.Text(), nullable=True)`
-   - Add `sa.Column("parent_type_id", postgresql.UUID(as_uuid=True), nullable=True)`
-   - Add FK constraint: `sa.ForeignKeyConstraint(["parent_type_id"], ["types.id"])`
-   - Add index on `user_id`
-
-3. Seed data (b1a2c3d4e5f6) — TYPES_DATA:
-   - Remove `category` key from all type entries
-   - Remove `compatible_types` key from all type entries
-   - Add `import_path` key: null for primitives (str, int, float, bool), `"from datetime import datetime"` for datetime, `"from uuid import UUID"` for uuid
-   - Add `user_id` key: null for all (these are global/system types)
-   - Add `parent_type_id` key: null for all base types
-   - Update the sa.table() column definitions to match the new columns
-
-4. schemas/type.py TypeResponse:
-   - REMOVE `category` field
-   - REMOVE `compatible_types` field
-   - ADD `import_path: str | None = Field(default=None, alias="importPath")`
-   - ADD `parent_type_id: UUID | None = Field(default=None, alias="parentTypeId")`
-   - Keep `used_in_fields` as-is
-
-5. routers/types.py:
-   - Remove references to `category` and `compatible_types` in the TypeResponse construction
-   - Add `import_path=t.import_path` and `parent_type_id=t.parent_type_id` to TypeResponse construction
-
-6. services/generation.py:
-   - In `_fetch_fields`, the code accesses `field.field_type.name` — this still works.
-   - In `_map_field_type`, no changes needed — it maps by type name.
-   - No changes needed in generation service for this phase.
-
-Run `make test` after changes.
-
-FINAL STEP: After all backend changes are verified, write a detailed frontend prompt for this phase. The frontend prompt must:
-- Be a self-contained instruction for a separate Claude agent working on the frontend repo at /Users/evgesha/Documents/Projects/median-code-frontend
-- List the exact API response changes (fields removed, fields added, type changes)
-- Specify which TypeScript interfaces, API calls, and components need updating
-- Include the before/after shape of the types API response
-- The frontend agent should search the codebase for all usages of the changed fields before making changes
-Output the frontend prompt in a clearly marked section at the end of your response.
-```
+| Task | Status |
+|------|--------|
+| Wire `constraint_field_values_associations` into field CRUD | DONE |
+| Wire `constraint_field_values_associations` into generation service | DONE |
+| Wire `constraint_field_values_associations` into constraints router (`usedInFields`) | DONE |
+| Update generation service to use path_params field references for type resolution | DONE |
+| Build field_validators CRUD endpoints (custom validator management) | NOT YET — structural tables exist, no API |
+| Build model_validators CRUD endpoints (custom model validator management) | NOT YET — structural tables exist, no API |
 
 ---
 
-## Phase 3: `validators` → `constraints`
+## Archived: Original Phase-by-Phase Backend Prompts
 
-### Changes
-| Column | Before | After | Reason |
-|--------|--------|-------|--------|
-| Table name | `validators` | `constraints` | Better reflects purpose — these are field constraints, not arbitrary validators |
-| `name` | `String(255)` | `Text, not null` | TEXT standard |
-| `type` | `String(50), not null` | **DROPPED** | Replaced by `compatible_types` array |
-| `category` | `String(50), not null` | **DROPPED** | Was always "inline" — serves no purpose |
-| `parameter_type` | `String(50)` | `Text, not null` | TEXT standard |
-| `example_usage` | `String(255), not null` | **DROPPED** | Not essential for the schema |
-| `docs_url` | `String(500), not null` | `Text, nullable` | TEXT standard, made nullable |
-| `compatible_types` | — | `Text[], not null` | **NEW**: array of type names this constraint applies to (e.g., `["str", "uuid"]` for string constraints) |
+<details>
+<summary>Click to expand original backend execution prompts (for reference only)</summary>
 
-### Impact
-- **Heavy**. Table rename affects: model name, all imports, all references in services/routers/schemas.
-- `ValidatorModel` → `ConstraintModel`, `validators` → `constraints` throughout.
-- Seed data must be restructured: old `type` field values become entries in `compatible_types` array.
-- The old `type: "string"` becomes `compatible_types: ["str", "uuid"]` (because uuid has string-like constraints).
-- The old `type: "numeric"` becomes `compatible_types: ["int", "float"]`.
+### Phase 1: TEXT normalization (namespaces + fields + objects)
 
-### Backend Prompt
-```
-CONTEXT:
-Phase 3 of schema migration. We are renaming the `validators` table to `constraints` and restructuring its columns. The current table stores Pydantic Field() constraints like max_length, min_length, gt, ge, etc. The rename better reflects their purpose.
+All three tables: VARCHAR/String → TEXT. No logic changes.
 
-We are editing existing migration files in-place (product not shipped).
+**Tables**: namespaces, fields, objects
+**Columns changed**: `user_id`, `name` → Text in each
+**Frontend impact**: None (internal column types only)
 
-FILES TO MODIFY:
-1. src/api/models/database.py — rename ValidatorModel → ConstraintModel, update columns
-2. src/api/migrations/versions/4141ad7f2255_initial_schema.py — rename table, update columns
-3. src/api/migrations/versions/b1a2c3d4e5f6_seed_global_data.py — update seed data
-4. src/api/schemas/validator.py — rename to src/api/schemas/constraint.py, update schemas
-5. src/api/routers/validators.py — rename to src/api/routers/constraints.py, update router
-6. src/api/main.py — update router imports if routers are registered there
+### Phase 2: types
 
-CHANGES:
+**Removed**: `category` (String), `compatible_types` (JSONB)
+**Added**: `import_path` (Text nullable), `user_id` (Text nullable), `parent_type_id` (UUID FK nullable)
+**Changed**: `name`, `python_type` → Text; `description` default added
+**Frontend impact**: TypeResponse schema changed
 
-1. database.py:
-   - Rename class `ValidatorModel` → `ConstraintModel`
-   - Change `__tablename__` from `"validators"` to `"constraints"`
-   - REMOVE columns: `type`, `category`, `example_usage`
-   - CHANGE `name` from `String(255)` to `Text`
-   - CHANGE `parameter_type` from `String(50)` to `Text`
-   - CHANGE `description` from `Text, not null` to `Text, nullable=False, default=""`
-   - CHANGE `docs_url` from `String(500), not null` to `Text, nullable=True`
-   - ADD: `compatible_types: Mapped[list] = mapped_column(postgresql.ARRAY(sa.Text), nullable=False)`
-     (import ARRAY from sqlalchemy.dialects.postgresql)
-   - In Namespace model: rename relationship `validators` → `constraints`, update back_populates
-   - In ConstraintModel: update relationship to `namespace: Mapped["Namespace"] = relationship(back_populates="constraints")`
+### Phase 3: validators → constraints
 
-2. Initial migration (4141ad7f2255):
-   - Rename table creation from "validators" to "constraints"
-   - Remove columns: type, category, example_usage
-   - Change name to sa.Text()
-   - Change parameter_type to sa.Text()
-   - Change description default to ''
-   - Change docs_url to sa.Text(), nullable=True
-   - Add: sa.Column("compatible_types", postgresql.ARRAY(sa.Text()), nullable=False)
-   - Update all index names from ix_validators_* to ix_constraints_*
-   - Update downgrade() to drop "constraints" instead of "validators"
+**Renamed**: table `validators` → `constraints`, model `ValidatorModel` → `ConstraintModel`
+**Removed**: `type`, `category`, `example_usage`
+**Added**: `compatible_types` (Text[] array)
+**Changed**: `name`, `parameter_type` → Text; `docs_url` → nullable
+**Files renamed**: `validator.py` → `constraint.py`, `validators.py` → `constraints.py`
+**Endpoint renamed**: `/validators` → `/constraints`
+**Frontend impact**: Full entity rename + response schema changes
 
-3. Seed data (b1a2c3d4e5f6):
-   - Rename VALIDATORS_DATA → CONSTRAINTS_DATA
-   - For each entry:
-     - REMOVE keys: `type`, `category`, `example_usage`
-     - ADD `compatible_types` key:
-       - String constraints (max_length, min_length, pattern, email_format, url_format): `["str", "uuid"]`
-         (Note: email_format and url_format are actually type-level validators, not Field constraints.
-          Keep them as constraints for now but set compatible_types to ["str"])
-       - Numeric constraints (gt, ge, lt, le, multiple_of): `["int", "float"]`
-   - Update sa.table() definition: table name "constraints", remove old columns, add compatible_types
-   - Update downgrade: DELETE FROM constraints WHERE ...
+### Phase 4: apis
 
-4. Rename src/api/schemas/validator.py → src/api/schemas/constraint.py:
-   - Rename `ValidatorResponse` → `ConstraintResponse`
-   - REMOVE fields: `type`, `category`, `example_usage`
-   - ADD: `compatible_types: list[str] = Field(..., alias="compatibleTypes")`
-   - Change `docs_url` to allow None: `docs_url: str | None = Field(default=None, alias="docsUrl")`
-   - Keep `FieldReferenceSchema` (rename file reference in imports)
-   - Keep `used_in_fields` and `fields_using_validator` (rename latter to `fields_using_constraint` / alias `fieldsUsingConstraint`)
+**Removed**: `tags` (JSONB)
+**Changed**: `user_id`, `title`, `version`, `base_url`, `server_url` → Text
+**Deleted**: `src/api/schemas/tag.py`
+**Frontend impact**: tags removed from API create/update/response
 
-5. Rename src/api/routers/validators.py → src/api/routers/constraints.py:
-   - Update router prefix from "/validators" to "/constraints"
-   - Update tags from ["Validators"] to ["Constraints"]
-   - Update all imports: ValidatorModel → ConstraintModel, ValidatorResponse → ConstraintResponse
-   - Rename function `list_validators` → `list_constraints`
-   - Update internal variable names accordingly
-   - The logic for get_fields_by_validator should still work — it queries FieldValidator (the join table) by name, and those names still match constraint names
+### Phase 5: api_endpoints + delete endpoint_parameters
 
-6. Update imports everywhere:
-   - src/api/main.py: update router import
-   - src/api/routers/__init__.py if applicable
-   - Any other file importing from validators
+**Removed from api_endpoints**: `namespace_id`, `user_id`
+**Added to api_endpoints**: `path_params` (JSONB, format: `[{name, fieldId}]`)
+**Changed**: `path`, `tag_name` → Text
+**Deleted**: `endpoint_parameters` table and `EndpointParameter` model
+**Schema changed**: `EndpointParameterSchema` → `PathParamSchema` (simpler: just name + fieldId)
+**Frontend impact**: namespaceId removed from endpoints, path params schema completely changed
 
-DO NOT modify the field_validators table or its related code in this phase.
-Run `make test` after changes.
+### Phase 6: field_validators (complete replacement) + field_validator_associations
 
-FINAL STEP: After all backend changes are verified, write a detailed frontend prompt for this phase. The frontend prompt must:
-- Be a self-contained instruction for a separate Claude agent working on the frontend repo at /Users/evgesha/Documents/Projects/median-code-frontend
-- List the exact API changes: endpoint renamed from /validators to /constraints, response schema changes
-- Specify all fields removed (type, category, exampleUsage) and added (compatibleTypes)
-- Instruct renaming all "validator" references to "constraint" in interfaces, API calls, components, store/state
-- Include the before/after shape of the constraints API response
-- The frontend agent should search the codebase for all usages of the changed fields before making changes
-Output the frontend prompt in a clearly marked section at the end of your response.
-```
+**Replaced**: Old `FieldValidator` join table (field_id, name, params) → New `FieldValidatorModel` entity (custom validator functions: namespace_id, function_name, mode, function_body, description)
+**Added**: `FieldValidatorAssociation` table
+**Frontend impact**: Old validator-on-field concept replaced by constraint-on-field (via constraint_field_values_associations)
 
----
+### Phase 7: model_validators + object_model_validator_associations
 
-## Phase 4: `apis`
+**Added**: Two new tables for model-level custom validator functions
+**Frontend impact**: None (no API endpoints yet)
 
-### Changes
-| Column | Before | After | Reason |
-|--------|--------|-------|--------|
-| `user_id` | `String(255)` | `Text` | TEXT standard |
-| `title` | `String(255)` | `Text` | TEXT standard |
-| `version` | `String(50)` | `Text` | TEXT standard |
-| `base_url` | `String(255)` | `Text` | TEXT standard |
-| `server_url` | `String(255)` | `Text` | TEXT standard |
-| `tags` | `JSONB, not null, default=[]` | **DROPPED** | Tags are now derived from endpoint `tag_name` values — no need to store redundant data on the API |
+### Phase 8: constraint_field_values_associations
 
-### Impact
-- **Medium**. Drop tags column and remove `TagSchema` dependency.
-- API create/update schemas no longer accept tags.
-- API response schema no longer returns tags.
-- Generation service must derive tags from endpoints instead of reading `api.tags`.
-- Delete `src/api/schemas/tag.py` entirely.
+**Added**: New join table linking constraints to fields with parameter values
+**Frontend impact**: None directly (integration was done as separate work — see field schema changes above)
 
-### Backend Prompt
-```
-CONTEXT:
-Phase 4 of schema migration. We are simplifying the `apis` table by removing the `tags` JSONB column. Tags are now derived from endpoint `tag_name` values at query time — storing them redundantly on the API was a sync bug waiting to happen.
+### Post-Migration Integration (also completed)
 
-We are editing existing migration files in-place (product not shipped).
+- constraint_field_values_associations wired into field CRUD (FieldCreate/FieldUpdate accept constraints, FieldService manages associations)
+- constraint_field_values_associations wired into generation service (_build_validators reads constraint_values for code generation)
+- constraint_field_values_associations wired into constraints router (usedInFields counts via ConstraintFieldValueAssociation)
+- Field schema now includes FieldConstraintInput, FieldConstraintResponse, and constraints field
+- Field response now includes usedInApis (endpoint IDs where field is used through objects)
 
-FILES TO MODIFY:
-1. src/api/models/database.py — ApiModel class
-2. src/api/migrations/versions/4141ad7f2255_initial_schema.py — apis table
-3. src/api/schemas/api.py — ApiCreate, ApiUpdate, ApiResponse
-4. src/api/schemas/tag.py — DELETE this file entirely
-5. src/api/services/api.py — remove tags handling from create/update
-6. src/api/services/generation.py — derive tags from endpoints instead of api.tags
-7. src/api/routers/apis.py — no logic changes needed (uses schema)
-
-CHANGES:
-
-1. database.py ApiModel:
-   - REMOVE `tags` column entirely
-   - CHANGE `user_id` from `String(255)` to `Text`
-   - CHANGE `title` from `String(255)` to `Text`
-   - CHANGE `version` from `String(50)` to `Text`
-   - CHANGE `base_url` from `String(255)` to `Text`
-   - CHANGE `server_url` from `String(255)` to `Text`
-   - Update docstring (remove tags ivar)
-
-2. Initial migration (4141ad7f2255):
-   - Remove the `tags` JSONB column from apis table creation
-   - Change all String columns to sa.Text()
-
-3. schemas/api.py:
-   - REMOVE `from api.schemas.tag import TagSchema` import
-   - ApiCreate: REMOVE `tags` field
-   - ApiUpdate: REMOVE `tags` field
-   - ApiResponse: REMOVE `tags` field
-
-4. DELETE src/api/schemas/tag.py entirely
-
-5. services/api.py:
-   - create_for_user: Remove `tags=tags_data` and the `tags_data` list comprehension
-   - update_api: Remove the `if data.tags is not None:` block
-
-6. services/generation.py:
-   - In `_convert_to_input_api`:
-     - Remove the tags conversion from `api.tags`:
-       ```python
-       # OLD: input_tags = [InputTag(name=tag["name"], description=tag["description"]) for tag in api.tags]
-       ```
-     - Replace with deriving tags from endpoints:
-       ```python
-       # Derive tags from endpoint tag_names
-       tag_names = {ep.tag_name for ep in api.endpoints if ep.tag_name}
-       input_tags = [InputTag(name=name, description="") for name in sorted(tag_names)]
-       ```
-     - The InputTag still needs a description — use empty string since we no longer store tag descriptions
-
-Run `make test` after changes.
-
-FINAL STEP: After all backend changes are verified, write a detailed frontend prompt for this phase. The frontend prompt must:
-- Be a self-contained instruction for a separate Claude agent working on the frontend repo at /Users/evgesha/Documents/Projects/median-code-frontend
-- List the exact API changes: tags field removed from API create/update request and response schemas
-- Instruct removing tags from API create/edit forms and API detail/list views
-- If the frontend currently displays tags on APIs, explain that tags should now be derived by aggregating unique tagName values from the API's endpoints (client-side)
-- Include the before/after shape of the APIs API response
-- The frontend agent should search the codebase for all usages of tags and TagSchema before making changes
-Output the frontend prompt in a clearly marked section at the end of your response.
-```
-
----
-
-## Phase 5: `api_endpoints` + delete `endpoint_parameters`
-
-### Changes for `api_endpoints`
-| Column | Before | After | Reason |
-|--------|--------|-------|--------|
-| `namespace_id` | `UUID FK, not null` | **DROPPED** | Redundant — derive through `api_id → apis.namespace_id` |
-| `user_id` | `String(255), not null` | **DROPPED** | Redundant — derive through `api_id → apis.user_id` |
-| `path` | `String(500)` | `Text` | TEXT standard |
-| `tag_name` | `String(255)` | `Text` | TEXT standard |
-| `path_params` | — | `JSONB, not null, default=[]` | **NEW**: replaces endpoint_parameters table. Format: `[{"name": "user_id", "fieldId": "<uuid>"}]` |
-
-### Changes for `endpoint_parameters`
-| Action | Reason |
-|--------|--------|
-| **DELETE entire table** | Replaced by `path_params` JSONB column on `api_endpoints` |
-
-### Impact
-- **Heavy**. Major restructure of endpoint handling.
-- `EndpointParameter` model deleted entirely.
-- `EndpointService` rewritten — no more `_set_path_params` method, no more `selectinload(ApiEndpoint.path_params)`.
-- Endpoint schemas simplified — `EndpointParameterSchema` replaced with simpler `PathParamSchema`.
-- Endpoint router simplified — `_to_response` helper simplified.
-- Namespace relationship removed from `ApiEndpoint`.
-- Namespace model's `endpoints` relationship removed.
-- Endpoint queries that filter by namespace must now join through `ApiModel`.
-
-### Backend Prompt
-```
-CONTEXT:
-Phase 5 of schema migration. We are simplifying `api_endpoints` by:
-1. Removing `namespace_id` and `user_id` (redundant — derive through api)
-2. Replacing the `endpoint_parameters` table with a `path_params` JSONB column
-3. Converting remaining String columns to Text
-
-This is the most impactful single phase. Take care with the service layer query changes.
-
-We are editing existing migration files in-place (product not shipped).
-
-FILES TO MODIFY:
-1. src/api/models/database.py — ApiEndpoint, delete EndpointParameter, update Namespace
-2. src/api/migrations/versions/4141ad7f2255_initial_schema.py — update api_endpoints, delete endpoint_parameters
-3. src/api/schemas/endpoint.py — simplify schemas
-4. src/api/services/endpoint.py — rewrite service
-5. src/api/routers/endpoints.py — update router
-
-CHANGES:
-
-1. database.py:
-   - ApiEndpoint model:
-     - REMOVE `namespace_id` column and FK
-     - REMOVE `user_id` column
-     - REMOVE `namespace` relationship
-     - REMOVE `path_params` relationship (to EndpointParameter)
-     - ADD `path_params: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)`
-       This stores: [{"name": "user_id", "fieldId": "<uuid-string>"}]
-     - CHANGE `path` from `String(500)` to `Text`
-     - CHANGE `tag_name` from `String(255)` to `Text`
-     - Keep all object FK relationships (query_params_object_id, etc.)
-     - Update docstring
-
-   - DELETE `EndpointParameter` class entirely
-
-   - Namespace model:
-     - REMOVE the `endpoints` relationship (no longer has direct FK)
-
-2. Initial migration (4141ad7f2255):
-   - api_endpoints table:
-     - Remove `namespace_id` column and its FK constraint
-     - Remove `user_id` column
-     - Remove indexes: ix_api_endpoints_namespace_id, ix_api_endpoints_user_id
-     - Change `path` to sa.Text()
-     - Change `tag_name` to sa.Text()
-     - Add: `sa.Column("path_params", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default="[]")`
-
-   - DELETE entire endpoint_parameters table creation block
-   - DELETE endpoint_parameters indexes
-   - Update downgrade(): remove endpoint_parameters drops, remove namespace_id/user_id index drops from api_endpoints
-
-3. schemas/endpoint.py:
-   - Replace `EndpointParameterSchema` with a simpler schema:
-     ```python
-     class PathParamSchema(BaseModel):
-         name: str = Field(..., examples=["user_id"])
-         field_id: UUID = Field(..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"])
-     ```
-   - ApiEndpointCreate:
-     - REMOVE `namespace_id` field
-     - Change `path_params` type from `list[EndpointParameterSchema]` to `list[PathParamSchema]`
-   - ApiEndpointUpdate:
-     - Change `path_params` type from `list[EndpointParameterSchema] | None` to `list[PathParamSchema] | None`
-   - ApiEndpointResponse:
-     - REMOVE `namespace_id` field
-     - Change `path_params` type from `list[EndpointParameterSchema]` to `list[PathParamSchema]`
-
-4. services/endpoint.py:
-   - Remove import of EndpointParameter and EndpointParameterSchema
-   - Import ApiModel (needed for namespace/user joins)
-
-   - list_for_user:
-     - Remove `selectinload(ApiEndpoint.path_params)`
-     - Change the join: instead of `.join(Namespace)`, join through ApiModel:
-       `.join(ApiModel, ApiEndpoint.api_id == ApiModel.id).join(Namespace, ApiModel.namespace_id == Namespace.id)`
-     - For namespace_id filter: change `ApiEndpoint.namespace_id == namespace_id` to `ApiModel.namespace_id == namespace_id`
-
-   - get_by_id_for_user:
-     - Remove `selectinload(ApiEndpoint.path_params)`
-     - Same join change as list_for_user
-
-   - create_for_user:
-     - Remove `namespace_id=data.namespace_id` from ApiEndpoint constructor
-     - Remove `user_id=user_id` from constructor
-     - Set `path_params` directly: `path_params=[p.model_dump(mode="json") for p in data.path_params]`
-       (Convert PathParamSchema objects to dicts with camelCase keys for JSONB storage.
-        Use model_dump(by_alias=True) to get {"name": ..., "fieldId": ...})
-     - Remove the `await self._set_path_params(endpoint, data.path_params)` call
-
-   - update_endpoint:
-     - For path_params update: `endpoint.path_params = [p.model_dump(mode="json") for p in data.path_params]`
-       instead of calling _set_path_params
-     - Remove `namespace_id` update logic if any
-
-   - DELETE `_set_path_params` method entirely
-
-5. routers/endpoints.py:
-   - Remove import of EndpointParameterSchema
-   - Import PathParamSchema instead
-   - Simplify `_to_response`: since path_params is now JSONB on the model, use:
-     ```python
-     def _to_response(endpoint) -> ApiEndpointResponse:
-         return ApiEndpointResponse(
-             id=endpoint.id,
-             api_id=endpoint.api_id,
-             method=endpoint.method,
-             path=endpoint.path,
-             description=endpoint.description,
-             tag_name=endpoint.tag_name,
-             path_params=[PathParamSchema(**p) for p in (endpoint.path_params or [])],
-             query_params_object_id=endpoint.query_params_object_id,
-             request_body_object_id=endpoint.request_body_object_id,
-             response_body_object_id=endpoint.response_body_object_id,
-             use_envelope=endpoint.use_envelope,
-             response_shape=endpoint.response_shape,
-         )
-     ```
-     (Note: no more namespace_id in response)
-   - For ownership checks in update/delete: instead of `endpoint.user_id != user_id`, we need
-     to check ownership through the API. Load the API or pass user_id check through service.
-     Simplest approach: add a method to EndpointService that loads endpoint with its API and
-     checks api.user_id. OR, since the endpoint was fetched with a user access check already
-     (join through Namespace), and the namespace join ensures the user has access, the ownership
-     check can be done by loading the parent API:
-     ```python
-     # In the router, after fetching endpoint:
-     api = await api_service.get_by_id_for_user(endpoint.api_id, user_id)
-     if api.user_id != user_id:
-         raise HTTPException(...)
-     ```
-     Import and instantiate ApiService for this.
-
-6. services/generation.py:
-   - Update path params conversion in _convert_to_input_api:
-     - endpoint.path_params is now a list of dicts [{"name": ..., "fieldId": ...}]
-     - Convert to InputPathParam:
-       ```python
-       if endpoint.path_params:
-           path_params = []
-           for p in endpoint.path_params:
-               # Look up the field to get its type
-               field = fields_map.get(p["fieldId"])
-               field_type_name = field.field_type.name if field else "str"
-               path_params.append(InputPathParam(
-                   name=p["name"],
-                   type=_map_field_type(field_type_name),
-                   description=field.description or "" if field else "",
-               ))
-       ```
-     - This means we also need to fetch fields referenced by path params.
-       Update `_fetch_objects` or add a separate step to collect fieldIds from path_params
-       and include them in the fields_map.
-     - In `_fetch_fields`, add path param field IDs:
-       ```python
-       # Also collect field IDs from path params
-       for endpoint in api.endpoints:
-           for p in (endpoint.path_params or []):
-               if "fieldId" in p:
-                   field_ids.add(p["fieldId"])
-       ```
-       Wait — _fetch_fields takes objects_map, not api. Restructure: pass api to _fetch_fields as well,
-       or collect path param field IDs separately. Simplest: update _fetch_fields signature to also accept api.
-
-Run `make test` after changes.
-
-FINAL STEP: After all backend changes are verified, write a detailed frontend prompt for this phase. The frontend prompt must:
-- Be a self-contained instruction for a separate Claude agent working on the frontend repo at /Users/evgesha/Documents/Projects/median-code-frontend
-- List the exact API changes: namespaceId removed from endpoint create/update/response, path_params schema changed from {id, name, type, description, required} to {name, fieldId}
-- Instruct removing namespaceId from endpoint forms and interfaces
-- Instruct replacing the path params UI: instead of manual type/description/required inputs, use a name field + a field selector dropdown (referencing existing fields by UUID)
-- Include the before/after shape of the endpoint API request/response
-- The frontend agent should search the codebase for all usages of namespaceId on endpoints and EndpointParameterSchema before making changes
-Output the frontend prompt in a clearly marked section at the end of your response.
-```
-
----
-
-## Phase 6: `field_validators` (complete replacement) + `field_validator_associations` (new)
-
-### Current `field_validators` (codebase)
-```
-id UUID PK
-field_id UUID FK → fields.id (CASCADE)
-name String(255)
-params JSONB nullable
-```
-This is a join table: "field X uses constraint named Y with params Z."
-
-### Target `field_validators` (new standalone entity)
-```
-id UUID PK
-namespace_id UUID FK → namespaces.id
-user_id TEXT nullable
-function_name TEXT
-mode TEXT
-function_body TEXT
-description TEXT
-```
-This is a custom validator function definition (user-written Python validation logic).
-
-### Target `field_validator_associations` (new join table)
-```
-id UUID PK
-validator_id UUID FK → field_validators.id
-field_id UUID FK → fields.id
-```
-
-### Impact
-- **CRITICAL**. The old `field_validators` was a join table between fields and constraints (by name). The new `field_validators` is a completely different entity — custom validator functions.
-- The old join-table functionality (tracking which constraints are applied to which fields with what params) is now handled by `constraint_field_values_associations` (Phase 8).
-- All existing code that uses `FieldValidator` model needs to be rewritten or removed.
-- The field creation/update flow that adds validators to fields needs to be reworked.
-
-### Backend Prompt
-```
-CONTEXT:
-Phase 6 of schema migration. This is a COMPLETE REPLACEMENT of the `field_validators` table. The current table is a join table tracking "field X uses constraint Y with params Z." The new table is a standalone entity for user-defined custom validator functions.
-
-Additionally, we are creating a new `field_validator_associations` join table.
-
-IMPORTANT: The old field_validators join-table functionality (constraint application) will be handled by `constraint_field_values_associations` in a later phase. For now, we are just restructuring the tables.
-
-FILES TO MODIFY:
-1. src/api/models/database.py — replace FieldValidator, add FieldValidatorAssociation
-2. src/api/migrations/versions/4141ad7f2255_initial_schema.py — replace field_validators table, add field_validator_associations
-3. src/api/schemas/field.py — remove validator-related fields from FieldResponse for now
-4. src/api/services/field.py — remove validator handling from field create/update
-5. src/api/services/generation.py — temporarily remove validator conversion (will be re-added when constraint_field_values_associations is implemented)
-6. src/api/routers/fields.py — remove validator-related logic
-7. src/api/routers/constraints.py — update fields_using_constraint logic (the query against old field_validators table)
-
-CHANGES:
-
-1. database.py:
-   - REPLACE FieldValidator class entirely:
-     ```python
-     class FieldValidatorModel(Base):
-         """Custom field validator function definition.
-
-         User-defined Python validation functions that can be attached to fields.
-         """
-         __tablename__ = "field_validators"
-
-         id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=generate_uuid)
-         namespace_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True)
-         user_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
-         function_name: Mapped[str] = mapped_column(Text, nullable=False)
-         mode: Mapped[str] = mapped_column(Text, nullable=False)  # "before", "after", "wrap", "plain"
-         function_body: Mapped[str] = mapped_column(Text, nullable=False)
-         description: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-         # Relationships
-         namespace: Mapped["Namespace"] = relationship()
-         field_associations: Mapped[list["FieldValidatorAssociation"]] = relationship(
-             back_populates="validator", cascade="all, delete-orphan"
-         )
-     ```
-
-   - ADD new class:
-     ```python
-     class FieldValidatorAssociation(Base):
-         """Association between a custom field validator and a field."""
-         __tablename__ = "field_validator_associations"
-
-         id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=generate_uuid)
-         validator_id: Mapped[UUID] = mapped_column(
-             PgUUID(as_uuid=True), ForeignKey("field_validators.id", ondelete="CASCADE"), nullable=False, index=True
-         )
-         field_id: Mapped[UUID] = mapped_column(
-             PgUUID(as_uuid=True), ForeignKey("fields.id", ondelete="CASCADE"), nullable=False, index=True
-         )
-
-         # Relationships
-         validator: Mapped["FieldValidatorModel"] = relationship(back_populates="field_associations")
-         field: Mapped["FieldModel"] = relationship()
-     ```
-
-   - FieldModel:
-     - REMOVE: `validators` relationship (old FieldValidator join)
-     - This will be re-added later when we wire up constraint_field_values_associations
-
-   - Namespace model:
-     - ADD: `field_validators: Mapped[list["FieldValidatorModel"]] = relationship(back_populates="namespace", cascade="all, delete-orphan")`
-       (if you want namespace to manage these)
-
-2. Initial migration (4141ad7f2255):
-   - REPLACE field_validators table:
-     - New columns: id, namespace_id (FK → namespaces.id), user_id (Text nullable), function_name (Text), mode (Text), function_body (Text), description (Text nullable)
-     - Add indexes on namespace_id, user_id
-   - ADD field_validator_associations table:
-     - Columns: id, validator_id (FK → field_validators.id CASCADE), field_id (FK → fields.id CASCADE)
-     - Add indexes on validator_id, field_id
-
-3. schemas/field.py:
-   - Check current FieldCreate/FieldUpdate/FieldResponse schemas
-   - If they reference validators, remove those references for now
-   - Validator attachment to fields will be re-implemented in a later phase
-
-4. services/field.py:
-   - Remove any code that creates/manages FieldValidator instances during field create/update
-   - Remove selectinload(FieldModel.validators) from queries
-
-5. services/generation.py:
-   - The code currently does:
-     ```python
-     validators = [InputValidator(name=v.name, params=v.params) for v in field.validators]
-     ```
-   - Remove this for now. Set validators=[] in InputField construction.
-   - Remove selectinload(FieldModel.validators) from _fetch_fields query.
-   - TODO comment: "Constraint application will be re-added with constraint_field_values_associations"
-
-6. routers/constraints.py (was validators.py):
-   - The `get_fields_by_validator` function queries the OLD field_validators table by name.
-   - This logic no longer applies (old table is gone).
-   - Remove `get_fields_by_validator` function.
-   - Remove `used_in_fields` and `fields_using_validator` from constraint response construction.
-   - These usage statistics will be re-implemented when constraint_field_values_associations exists.
-
-Run `make test` after changes.
-
-FINAL STEP: After all backend changes are verified, write a detailed frontend prompt for this phase. The frontend prompt must:
-- Be a self-contained instruction for a separate Claude agent working on the frontend repo at /Users/evgesha/Documents/Projects/median-code-frontend
-- Explain that field_validators is now a completely different entity (custom validator functions, not constraint applications)
-- Instruct removing any validator attachment UI from field create/edit forms (temporarily — will return in a different form)
-- Instruct removing "used in fields" / "fields using validator" display from constraints list (temporarily)
-- Note that these features will return when constraint_field_values_associations is wired up
-- The frontend agent should search the codebase for all usages of field validators before making changes
-Output the frontend prompt in a clearly marked section at the end of your response.
-```
-
----
-
-## Phase 7: `model_validators` + `object_model_validator_associations`
-
-### New tables (do not exist in codebase yet)
-
-**`model_validators`** — Custom model-level validator function definitions (Pydantic `@model_validator`).
-```
-id UUID PK
-namespace_id UUID FK → namespaces.id
-user_id TEXT nullable
-function_name TEXT
-mode TEXT          -- "before", "after", "wrap"
-function_body TEXT
-description TEXT
-```
-
-**`object_model_validator_associations`** — Links model validators to objects.
-```
-id UUID PK
-validator_id UUID FK → model_validators.id
-object_id UUID FK → objects.id
-```
-
-### Impact
-- **Additive only**. No existing code changes — just new models, migration entries, schemas, and potentially a new router.
-- No frontend impact until the UI is built for this feature.
-
-### Backend Prompt
-```
-CONTEXT:
-Phase 7 of schema migration. Adding two new tables: `model_validators` (custom model-level validator functions) and `object_model_validator_associations` (links validators to objects). These are new entities with no existing code.
-
-FILES TO MODIFY:
-1. src/api/models/database.py — add ModelValidatorModel, ObjectModelValidatorAssociation
-2. src/api/migrations/versions/4141ad7f2255_initial_schema.py — add both tables
-
-CHANGES:
-
-1. database.py — ADD:
-   ```python
-   class ModelValidatorModel(Base):
-       """Custom model validator function definition.
-
-       User-defined Python validation functions that run on entire Pydantic models.
-       """
-       __tablename__ = "model_validators"
-
-       id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=generate_uuid)
-       namespace_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True)
-       user_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
-       function_name: Mapped[str] = mapped_column(Text, nullable=False)
-       mode: Mapped[str] = mapped_column(Text, nullable=False)  # "before", "after", "wrap"
-       function_body: Mapped[str] = mapped_column(Text, nullable=False)
-       description: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-       # Relationships
-       namespace: Mapped["Namespace"] = relationship()
-       object_associations: Mapped[list["ObjectModelValidatorAssociation"]] = relationship(
-           back_populates="validator", cascade="all, delete-orphan"
-       )
-
-
-   class ObjectModelValidatorAssociation(Base):
-       """Association between a model validator and an object."""
-       __tablename__ = "object_model_validator_associations"
-
-       id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=generate_uuid)
-       validator_id: Mapped[UUID] = mapped_column(
-           PgUUID(as_uuid=True), ForeignKey("model_validators.id", ondelete="CASCADE"), nullable=False, index=True
-       )
-       object_id: Mapped[UUID] = mapped_column(
-           PgUUID(as_uuid=True), ForeignKey("objects.id", ondelete="CASCADE"), nullable=False, index=True
-       )
-
-       # Relationships
-       validator: Mapped["ModelValidatorModel"] = relationship(back_populates="object_associations")
-       object: Mapped["ObjectDefinition"] = relationship()
-   ```
-
-2. Initial migration — ADD after object_field_associations table:
-   - model_validators table with all columns and indexes
-   - object_model_validator_associations table with FKs and indexes
-   - Update downgrade() to drop both tables
-
-DO NOT create schemas, services, or routers for these yet — they are structural placeholders.
-The schemas and API endpoints for managing model validators will be built when the feature is needed.
-
-Run `make test` after changes.
-
-FINAL STEP: No frontend changes needed for this phase (new backend-only tables with no API endpoints yet). Confirm this in your summary.
-```
-
----
-
-## Phase 8: `constraint_field_values_associations`
-
-### New table (does not exist in codebase yet)
-
-**`constraint_field_values_associations`** — Links constraints to fields with a value parameter.
-This is the replacement for the old `field_validators` join-table functionality.
-```
-id UUID PK
-constraint_id UUID FK → constraints.id
-field_id UUID FK → fields.id
-value TEXT            -- the parameter value (e.g., "255" for max_length=255)
-```
-
-### Impact
-- **Additive**. New table that enables constraint application to fields.
-- After this phase, the system can track "field X has constraint max_length with value 255."
-- Eventually, generation service and field CRUD should use this instead of the old field_validators.
-
-### Backend Prompt
-```
-CONTEXT:
-Phase 8 of schema migration. Adding `constraint_field_values_associations` table. This replaces the old field_validators join-table functionality. It links constraints (max_length, min_length, gt, etc.) to fields with a parameter value.
-
-Example: field "email" has constraint "max_length" with value "255"
-→ constraint_field_values_associations row: {constraint_id: <max_length_uuid>, field_id: <email_uuid>, value: "255"}
-
-FILES TO MODIFY:
-1. src/api/models/database.py — add ConstraintFieldValueAssociation
-2. src/api/migrations/versions/4141ad7f2255_initial_schema.py — add table
-
-CHANGES:
-
-1. database.py — ADD:
-   ```python
-   class ConstraintFieldValueAssociation(Base):
-       """Association between a constraint and a field, with parameter value.
-
-       Tracks which constraints are applied to which fields and with what value.
-       Example: max_length constraint applied to email field with value "255".
-       """
-       __tablename__ = "constraint_field_values_associations"
-
-       id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=generate_uuid)
-       constraint_id: Mapped[UUID] = mapped_column(
-           PgUUID(as_uuid=True), ForeignKey("constraints.id", ondelete="CASCADE"), nullable=False, index=True
-       )
-       field_id: Mapped[UUID] = mapped_column(
-           PgUUID(as_uuid=True), ForeignKey("fields.id", ondelete="CASCADE"), nullable=False, index=True
-       )
-       value: Mapped[str | None] = mapped_column(Text, nullable=True)  # null for constraints that take no params
-
-       # Relationships
-       constraint: Mapped["ConstraintModel"] = relationship()
-       field: Mapped["FieldModel"] = relationship()
-   ```
-
-   - Optionally add reverse relationship to FieldModel:
-     ```python
-     constraint_values: Mapped[list["ConstraintFieldValueAssociation"]] = relationship(
-         back_populates="field", cascade="all, delete-orphan"
-     )
-     ```
-
-2. Initial migration — ADD table:
-   - constraint_field_values_associations with all columns, FKs (CASCADE), and indexes
-   - Update downgrade()
-
-DO NOT wire this into field CRUD, generation service, or constraints router yet.
-That integration should be a follow-up task after all structural phases are complete.
-
-Run `make test` after changes.
-
-FINAL STEP: No frontend changes needed for this phase (new backend-only table with no API endpoints yet). Confirm this in your summary.
-```
-
----
-
-## Post-Migration Checklist
-
-After ALL phases are complete:
-
-1. **Drop and recreate the database**:
-   ```bash
-   # If using Railway:
-   railway run alembic downgrade base
-   railway run alembic upgrade head
-   # Or drop/recreate the database entirely
-   ```
-
-2. **Run full test suite**: `make test`
-
-3. **Verify seed data**: Ensure types and constraints are seeded correctly with new column structures.
-
-4. **Integration tasks** (separate from schema migration):
-   - [ ] Wire `constraint_field_values_associations` into field CRUD (create/update fields with constraints)
-   - [ ] Wire `constraint_field_values_associations` into generation service (read applied constraints for code gen)
-   - [ ] Wire `constraint_field_values_associations` into constraints router (show usage stats)
-   - [ ] Build field_validators CRUD endpoints (custom validator management)
-   - [ ] Build model_validators CRUD endpoints (custom model validator management)
-   - [ ] Update generation service to use path_params field references for type resolution
-
----
-
-## Summary Table
-
-| Phase | Table(s) | Change Type | Impact |
-|-------|----------|-------------|--------|
-| 1 | namespaces + fields + objects | TEXT normalization | Minimal |
-| 2 | types | Major restructure | Heavy |
-| 3 | validators → constraints | Rename + restructure | Heavy |
-| 4 | apis | Drop tags + TEXT | Medium |
-| 5 | api_endpoints + endpoint_parameters | Restructure + delete | Heavy |
-| 6 | field_validators + field_validator_associations | Complete replacement + new | Critical |
-| 7 | model_validators + object_model_validator_associations | New tables | Additive |
-| 8 | constraint_field_values_associations | New table | Additive |
+</details>
