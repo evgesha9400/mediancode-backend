@@ -29,9 +29,7 @@ async def test_type(db_session: AsyncSession, test_namespace: Namespace):
     yield type_model
 
     # Cleanup
-    await db_session.execute(
-        delete(TypeModel).where(TypeModel.id == type_model.id)
-    )
+    await db_session.execute(delete(TypeModel).where(TypeModel.id == type_model.id))
     await db_session.commit()
 
 
@@ -49,7 +47,9 @@ async def test_list_types_no_namespace_filter(
     assert len(all_types) > 0
 
     # Verify global types exist
-    global_types = [t for t in all_types if t.namespace_id == get_settings().global_namespace_id]
+    global_types = [
+        t for t in all_types if t.namespace_id == get_settings().global_namespace_id
+    ]
     assert len(global_types) > 0
 
     # Verify test type exists
@@ -81,7 +81,9 @@ async def test_list_types_with_user_namespace(
     assert len(types) > 0
 
     # Verify global types are included
-    global_types = [t for t in types if t.namespace_id == get_settings().global_namespace_id]
+    global_types = [
+        t for t in types if t.namespace_id == get_settings().global_namespace_id
+    ]
     assert len(global_types) > 0
 
     # Verify test type is included
@@ -90,7 +92,8 @@ async def test_list_types_with_user_namespace(
 
     # Verify no types from other namespaces
     other_types = [
-        t for t in types
+        t
+        for t in types
         if t.namespace_id != test_namespace.id
         and t.namespace_id != settings.global_namespace_id
     ]

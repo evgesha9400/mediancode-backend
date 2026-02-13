@@ -52,7 +52,10 @@ class TestParseType:
         assert parse_type("Item | None") == ("Optional", ["Item"])
 
     def test_complex_nested(self):
-        assert parse_type("Dict[str, Dict[str, int]]") == ("Dict", ["str", "Dict[str, int]"])
+        assert parse_type("Dict[str, Dict[str, int]]") == (
+            "Dict",
+            ["str", "Dict[str, int]"],
+        )
         assert parse_type("List[Dict[str, int]]") == ("List", ["Dict[str, int]"])
 
 
@@ -203,16 +206,29 @@ class TestPlaceholderGenerator:
         """Simple model with primitive fields."""
         return {
             "Item": [
-                TemplateField(type="int", name="id", required=True, validators=[
-                    TemplateValidator(name="ge", params={"value": 1})
-                ]),
-                TemplateField(type="str", name="name", required=True, validators=[
-                    TemplateValidator(name="min_length", params={"value": 1})
-                ]),
-                TemplateField(type="float", name="price", required=True, validators=[
-                    TemplateValidator(name="gt", params={"value": 0})
-                ]),
-                TemplateField(type="str", name="description", required=False, validators=[]),
+                TemplateField(
+                    type="int",
+                    name="id",
+                    required=True,
+                    validators=[TemplateValidator(name="ge", params={"value": 1})],
+                ),
+                TemplateField(
+                    type="str",
+                    name="name",
+                    required=True,
+                    validators=[
+                        TemplateValidator(name="min_length", params={"value": 1})
+                    ],
+                ),
+                TemplateField(
+                    type="float",
+                    name="price",
+                    required=True,
+                    validators=[TemplateValidator(name="gt", params={"value": 0})],
+                ),
+                TemplateField(
+                    type="str", name="description", required=False, validators=[]
+                ),
             ]
         }
 
@@ -226,7 +242,9 @@ class TestPlaceholderGenerator:
             ],
             "Person": [
                 TemplateField(type="str", name="name", required=True, validators=[]),
-                TemplateField(type="Address", name="address", required=True, validators=[]),
+                TemplateField(
+                    type="Address", name="address", required=True, validators=[]
+                ),
             ],
         }
 
@@ -239,7 +257,9 @@ class TestPlaceholderGenerator:
             ],
             "Article": [
                 TemplateField(type="str", name="title", required=True, validators=[]),
-                TemplateField(type="List[Tag]", name="tags", required=True, validators=[]),
+                TemplateField(
+                    type="List[Tag]", name="tags", required=True, validators=[]
+                ),
             ],
         }
 
@@ -310,7 +330,9 @@ class TestComplexTypes:
     def test_list_of_primitives(self):
         models = {
             "Numbers": [
-                TemplateField(type="List[int]", name="values", required=True, validators=[]),
+                TemplateField(
+                    type="List[int]", name="values", required=True, validators=[]
+                ),
             ]
         }
         generator = PlaceholderGenerator(models)
@@ -322,7 +344,9 @@ class TestComplexTypes:
     def test_dict_type(self):
         models = {
             "Config": [
-                TemplateField(type="Dict[str, int]", name="settings", required=True, validators=[]),
+                TemplateField(
+                    type="Dict[str, int]", name="settings", required=True, validators=[]
+                ),
             ]
         }
         generator = PlaceholderGenerator(models)
@@ -334,7 +358,9 @@ class TestComplexTypes:
     def test_optional_type(self):
         models = {
             "Item": [
-                TemplateField(type="str | None", name="value", required=True, validators=[]),
+                TemplateField(
+                    type="str | None", name="value", required=True, validators=[]
+                ),
             ]
         }
         generator = PlaceholderGenerator(models)
@@ -346,7 +372,9 @@ class TestComplexTypes:
     def test_nested_list(self):
         models = {
             "Matrix": [
-                TemplateField(type="List[List[int]]", name="rows", required=True, validators=[]),
+                TemplateField(
+                    type="List[List[int]]", name="rows", required=True, validators=[]
+                ),
             ]
         }
         generator = PlaceholderGenerator(models)

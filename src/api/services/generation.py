@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from api.models.database import (
     ApiModel,
+    ConstraintFieldValueAssociation,
     FieldModel,
     ObjectDefinition,
 )
@@ -25,6 +26,7 @@ from api_craft.models.input import (
     InputPathParam,
     InputQueryParam,
     InputTag,
+    InputValidator,
 )
 
 
@@ -127,10 +129,15 @@ async def _fetch_fields(
     if not field_ids:
         return {}
 
-    # Fetch fields with type
+    # Fetch fields with type and constraint values
     query = (
         select(FieldModel)
-        .options(selectinload(FieldModel.field_type))
+        .options(
+            selectinload(FieldModel.field_type),
+            selectinload(FieldModel.constraint_values).selectinload(
+                ConstraintFieldValueAssociation.constraint
+            ),
+        )
         .where(FieldModel.id.in_(field_ids))
     )
     result = await db.execute(query)
@@ -158,15 +165,13 @@ def _convert_to_input_api(
         for assoc in sorted(obj.field_associations, key=lambda x: x.position):
             field = fields_map.get(assoc.field_id)
             if field:
-                # TODO: Constraint application will be re-added with
-                # constraint_field_values_associations
                 input_field = InputField(
                     name=field.name,
                     type=_map_field_type(field.field_type.name),
                     required=assoc.required,
                     description=field.description,
                     default_value=field.default_value,
-                    validators=[],
+                    validators=_build_validators(field),
                 )
                 fields.append(input_field)
 
@@ -333,3 +338,33 @@ def _build_endpoint_name(method: str, path: str) -> str:
         name = f"{method_prefix}Root"
 
     return name
+
+
+def _build_validators(field: FieldModel) -> list[InputValidator]:
+    """Convert a field's constraint associations to InputValidator list.
+
+    :param field: Field model with constraint_values loaded.
+    :returns: List of InputValidator instances for code generation.
+    """
+    validators = []
+    for cv in field.constraint_values:
+        parsed = _parse_constraint_value(cv.value, cv.constraint.parameter_type)
+        params = {"value": parsed} if parsed is not None else None
+        validators.append(InputValidator(name=cv.constraint.name, params=params))
+    return validators
+
+
+def _parse_constraint_value(value: str | None, parameter_type: str) -> object:
+    """Parse a string constraint value to its typed Python representation.
+
+    :param value: Raw string value from the database (may be None).
+    :param parameter_type: The constraint's declared parameter type.
+    :returns: Typed Python value, or None if value is None.
+    """
+    if value is None:
+        return None
+    if parameter_type == "int":
+        return int(value)
+    if parameter_type == "float":
+        return float(value)
+    return value

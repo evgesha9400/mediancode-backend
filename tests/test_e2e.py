@@ -37,7 +37,9 @@ def assert_valid_response(response, expected_status: int = 200):
             detail = response.json().get("detail", response.text)
         except Exception:
             detail = response.text
-        pytest.fail(f"Expected: {expected_status}\nGot: {response.status_code}\nDetail: {detail}")
+        pytest.fail(
+            f"Expected: {expected_status}\nGot: {response.status_code}\nDetail: {detail}"
+        )
     logger.info(f"  -> PASS: {response.status_code} OK")
 
 
@@ -130,7 +132,12 @@ class TestCreateItemValidation:
 
     def test_create_item_valid(self, items_api_client: TestClient):
         """POST /items with valid data succeeds."""
-        payload = {"sku": "TEST-123", "name": "Test Item", "price": 29.99, "quantity": 100}
+        payload = {
+            "sku": "TEST-123",
+            "name": "Test Item",
+            "price": 29.99,
+            "quantity": 100,
+        }
         log_test(f"POST /items - Valid item creation: {payload}")
         response = items_api_client.post("/items", json=payload)
         assert_valid_response(response)
@@ -253,28 +260,52 @@ class TestCreateItemValidation:
     def test_create_item_discount_valid_multiples(self, items_api_client: TestClient):
         """Discount percentages that are multiples of 5 are accepted."""
         for discount in [0, 5, 10, 25, 50, 100]:
-            payload = {"sku": "TEST-001", "name": "Test", "price": 10.0, "quantity": 1, "discount_percent": discount}
+            payload = {
+                "sku": "TEST-001",
+                "name": "Test",
+                "price": 10.0,
+                "quantity": 1,
+                "discount_percent": discount,
+            }
             log_test(f"POST /items - Discount={discount} should pass multiple_of=5")
             response = items_api_client.post("/items", json=payload)
             assert_valid_response(response)
 
     def test_create_item_discount_not_multiple_of_5(self, items_api_client: TestClient):
         """Discount not a multiple of 5 (multiple_of=5 violation) is rejected."""
-        payload = {"sku": "TEST-001", "name": "Test", "price": 10.0, "quantity": 1, "discount_percent": 7}
+        payload = {
+            "sku": "TEST-001",
+            "name": "Test",
+            "price": 10.0,
+            "quantity": 1,
+            "discount_percent": 7,
+        }
         log_test("POST /items - Discount=7 should fail multiple_of=5")
         response = items_api_client.post("/items", json=payload)
         assert_validation_error(response, expected_field="discount_percent")
 
     def test_create_item_discount_negative(self, items_api_client: TestClient):
         """Negative discount (ge=0 violation) is rejected."""
-        payload = {"sku": "TEST-001", "name": "Test", "price": 10.0, "quantity": 1, "discount_percent": -5}
+        payload = {
+            "sku": "TEST-001",
+            "name": "Test",
+            "price": 10.0,
+            "quantity": 1,
+            "discount_percent": -5,
+        }
         log_test("POST /items - Discount=-5 should fail ge=0")
         response = items_api_client.post("/items", json=payload)
         assert_validation_error(response, expected_field="discount_percent")
 
     def test_create_item_discount_over_100(self, items_api_client: TestClient):
         """Discount over 100% (le=100 violation) is rejected."""
-        payload = {"sku": "TEST-001", "name": "Test", "price": 10.0, "quantity": 1, "discount_percent": 105}
+        payload = {
+            "sku": "TEST-001",
+            "name": "Test",
+            "price": 10.0,
+            "quantity": 1,
+            "discount_percent": 105,
+        }
         log_test("POST /items - Discount=105 should fail le=100")
         response = items_api_client.post("/items", json=payload)
         assert_validation_error(response, expected_field="discount_percent")
@@ -284,7 +315,13 @@ class TestCreateItemValidation:
     def test_create_item_description_too_long(self, items_api_client: TestClient):
         """Description longer than max_length=1000 is rejected."""
         long_desc = "A" * 1001
-        payload = {"sku": "TEST-001", "name": "Test", "price": 10.0, "quantity": 1, "description": long_desc}
+        payload = {
+            "sku": "TEST-001",
+            "name": "Test",
+            "price": 10.0,
+            "quantity": 1,
+            "description": long_desc,
+        }
         log_test("POST /items - Description length=1001 should fail max_length=1000")
         response = items_api_client.post("/items", json=payload)
         assert_validation_error(response, expected_field="description")

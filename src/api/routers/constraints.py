@@ -4,18 +4,32 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
 from api.database import get_db
-from api.models.database import ConstraintModel
+from api.models.database import ConstraintFieldValueAssociation, ConstraintModel
 from api.schemas.constraint import ConstraintResponse
 from api.settings import get_settings
 
 router = APIRouter(prefix="/constraints", tags=["Constraints"])
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+async def get_field_counts_by_constraint(db: AsyncSession) -> dict[str, int]:
+    """Get count of fields for each constraint.
+
+    :param db: Database session.
+    :returns: Dict mapping constraint ID (as string) to field count.
+    """
+    query = select(
+        ConstraintFieldValueAssociation.constraint_id,
+        func.count(ConstraintFieldValueAssociation.id),
+    ).group_by(ConstraintFieldValueAssociation.constraint_id)
+    result = await db.execute(query)
+    return {str(row[0]): row[1] for row in result.fetchall()}
 
 
 @router.get(
@@ -50,8 +64,8 @@ async def list_constraints(
     result = await db.execute(query)
     constraints = result.scalars().all()
 
-    # TODO: Usage statistics (used_in_fields, fields_using_constraint) will be
-    # re-added when constraint_field_values_associations is wired up
+    field_counts = await get_field_counts_by_constraint(db)
+
     return [
         ConstraintResponse(
             id=c.id,
@@ -61,6 +75,7 @@ async def list_constraints(
             parameter_type=c.parameter_type,
             docs_url=c.docs_url,
             compatible_types=c.compatible_types,
+            used_in_fields=field_counts.get(str(c.id), 0),
         )
         for c in constraints
     ]

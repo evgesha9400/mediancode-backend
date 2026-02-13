@@ -140,7 +140,5 @@ async def test_namespace(db_session: AsyncSession):
     yield namespace
 
     # Cleanup
-    await db_session.execute(
-        delete(Namespace).where(Namespace.id == namespace.id)
-    )
+    await db_session.execute(delete(Namespace).where(Namespace.id == namespace.id))
     await db_session.commit()

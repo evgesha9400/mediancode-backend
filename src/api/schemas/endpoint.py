@@ -96,9 +96,7 @@ class ApiEndpointUpdate(BaseModel):
         default=None, examples=["Updated endpoint description"]
     )
     tag_name: str | None = Field(default=None, alias="tagName")
-    path_params: list[PathParamSchema] | None = Field(
-        default=None, alias="pathParams"
-    )
+    path_params: list[PathParamSchema] | None = Field(default=None, alias="pathParams")
     query_params_object_id: UUID | None = Field(
         default=None, alias="queryParamsObjectId"
     )
@@ -139,9 +137,7 @@ class ApiEndpointResponse(BaseModel):
     path: str = Field(..., examples=["/users/{user_id}"])
     description: str = Field(..., examples=["Retrieve user by ID"])
     tag_name: str | None = Field(default=None, alias="tagName", examples=["Users"])
-    path_params: list[PathParamSchema] = Field(
-        default_factory=list, alias="pathParams"
-    )
+    path_params: list[PathParamSchema] = Field(default_factory=list, alias="pathParams")
     query_params_object_id: UUID | None = Field(
         default=None,
         alias="queryParamsObjectId",

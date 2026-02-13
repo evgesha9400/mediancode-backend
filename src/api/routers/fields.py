@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
 from api.database import get_db
-from api.schemas.field import FieldCreate, FieldResponse, FieldUpdate
+from api.schemas.field import (
+    FieldConstraintResponse,
+    FieldCreate,
+    FieldResponse,
+    FieldUpdate,
+)
 from api.services.field import FieldService, get_field_service
 
 router = APIRouter(prefix="/fields", tags=["Fields"])
@@ -33,6 +38,14 @@ async def _to_response(field, service: FieldService) -> FieldResponse:
     :returns: FieldResponse schema.
     """
     used_in_apis = await service.get_used_in_apis(field.id)
+    constraints = [
+        FieldConstraintResponse(
+            constraint_id=cv.constraint_id,
+            name=cv.constraint.name,
+            value=cv.value,
+        )
+        for cv in field.constraint_values
+    ]
     return FieldResponse(
         id=field.id,
         namespace_id=field.namespace_id,
@@ -41,6 +54,7 @@ async def _to_response(field, service: FieldService) -> FieldResponse:
         description=field.description,
         default_value=field.default_value,
         used_in_apis=used_in_apis,
+        constraints=constraints,
     )
 
 

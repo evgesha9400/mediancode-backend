@@ -33,5 +33,6 @@ class ConstraintResponse(BaseModel):
     compatible_types: list[str] = Field(
         ..., alias="compatibleTypes", examples=[["str", "uuid"]]
     )
+    used_in_fields: int = Field(default=0, alias="usedInFields")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

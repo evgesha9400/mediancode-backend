@@ -98,7 +98,10 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_constraints_namespace_id"), "constraints", ["namespace_id"], unique=False
+        op.f("ix_constraints_namespace_id"),
+        "constraints",
+        ["namespace_id"],
+        unique=False,
     )
 
     # Create apis table
@@ -427,9 +430,7 @@ def downgrade() -> None:
         table_name="object_model_validator_associations",
     )
     op.drop_table("object_model_validator_associations")
-    op.drop_index(
-        op.f("ix_model_validators_user_id"), table_name="model_validators"
-    )
+    op.drop_index(op.f("ix_model_validators_user_id"), table_name="model_validators")
     op.drop_index(
         op.f("ix_model_validators_namespace_id"), table_name="model_validators"
     )
@@ -452,9 +453,7 @@ def downgrade() -> None:
         table_name="field_validator_associations",
     )
     op.drop_table("field_validator_associations")
-    op.drop_index(
-        op.f("ix_field_validators_user_id"), table_name="field_validators"
-    )
+    op.drop_index(op.f("ix_field_validators_user_id"), table_name="field_validators")
     op.drop_index(
         op.f("ix_field_validators_namespace_id"), table_name="field_validators"
     )

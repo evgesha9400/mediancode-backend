@@ -52,7 +52,9 @@ async def test_list_constraints_no_namespace_filter(
 
     # Verify global constraints exist
     settings = get_settings()
-    global_constraints = [c for c in all_constraints if c.namespace_id == settings.global_namespace_id]
+    global_constraints = [
+        c for c in all_constraints if c.namespace_id == settings.global_namespace_id
+    ]
     assert len(global_constraints) > 0
 
     # Verify test constraint exists
@@ -84,7 +86,9 @@ async def test_list_constraints_with_user_namespace(
     assert len(constraints) > 0
 
     # Verify global constraints are included
-    global_constraints = [c for c in constraints if c.namespace_id == settings.global_namespace_id]
+    global_constraints = [
+        c for c in constraints if c.namespace_id == settings.global_namespace_id
+    ]
     assert len(global_constraints) > 0
 
     # Verify test constraint is included
@@ -93,7 +97,8 @@ async def test_list_constraints_with_user_namespace(
 
     # Verify no constraints from other namespaces
     other_constraints = [
-        c for c in constraints
+        c
+        for c in constraints
         if c.namespace_id != test_namespace.id
         and c.namespace_id != settings.global_namespace_id
     ]
@@ -150,6 +155,8 @@ async def test_list_constraints_includes_standard_constraints(
         ), f"Constraint '{expected_name}' should be available in filtered results"
 
     # Verify global constraints have compatible_types set
-    global_constraints = [c for c in constraints if c.namespace_id == settings.global_namespace_id]
+    global_constraints = [
+        c for c in constraints if c.namespace_id == settings.global_namespace_id
+    ]
     assert len(global_constraints) > 0
     assert all(len(c.compatible_types) > 0 for c in global_constraints)

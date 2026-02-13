@@ -4,17 +4,18 @@
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from api.models.database import (
     ApiEndpoint,
+    ConstraintFieldValueAssociation,
     FieldModel,
     Namespace,
     ObjectFieldAssociation,
 )
-from api.schemas.field import FieldCreate, FieldUpdate
+from api.schemas.field import FieldConstraintInput, FieldCreate, FieldUpdate
 from api.services.base import BaseService
 from api.settings import get_settings
 
@@ -42,7 +43,12 @@ class FieldService(BaseService[FieldModel]):
         query = (
             select(FieldModel)
             .join(Namespace)
-            .options(selectinload(FieldModel.field_type))
+            .options(
+                selectinload(FieldModel.field_type),
+                selectinload(FieldModel.constraint_values).selectinload(
+                    ConstraintFieldValueAssociation.constraint
+                ),
+            )
             .where(
                 or_(
                     Namespace.user_id == user_id,
@@ -68,7 +74,12 @@ class FieldService(BaseService[FieldModel]):
         query = (
             select(FieldModel)
             .join(Namespace)
-            .options(selectinload(FieldModel.field_type))
+            .options(
+                selectinload(FieldModel.field_type),
+                selectinload(FieldModel.constraint_values).selectinload(
+                    ConstraintFieldValueAssociation.constraint
+                ),
+            )
             .where(
                 FieldModel.id == field_id,
                 or_(
@@ -97,6 +108,10 @@ class FieldService(BaseService[FieldModel]):
         )
         self.db.add(field)
         await self.db.flush()
+
+        if data.constraints:
+            await self._set_constraint_associations(field, data.constraints)
+
         await self.db.refresh(field)
         return field
 
@@ -114,9 +129,34 @@ class FieldService(BaseService[FieldModel]):
         if data.default_value is not None:
             field.default_value = data.default_value
 
+        if data.constraints is not None:
+            await self._set_constraint_associations(field, data.constraints)
+
         await self.db.flush()
         await self.db.refresh(field)
         return field
+
+    async def _set_constraint_associations(
+        self, field: FieldModel, constraints: list[FieldConstraintInput]
+    ) -> None:
+        """Replace constraint associations for a field.
+
+        :param field: The field model.
+        :param constraints: New constraint inputs (empty list clears all).
+        """
+        await self.db.execute(
+            delete(ConstraintFieldValueAssociation).where(
+                ConstraintFieldValueAssociation.field_id == field.id
+            )
+        )
+        for c in constraints:
+            assoc = ConstraintFieldValueAssociation(
+                constraint_id=c.constraint_id,
+                field_id=field.id,
+                value=c.value,
+            )
+            self.db.add(assoc)
+        await self.db.flush()
 
     async def delete_field(self, field: FieldModel) -> None:
         """Delete a field if not in use.
