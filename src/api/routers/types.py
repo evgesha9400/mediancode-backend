@@ -35,7 +35,7 @@ async def get_field_counts_by_type(db: AsyncSession) -> dict[str, int]:
     "",
     response_model=list[TypeResponse],
     summary="List all types",
-    description="Retrieve all primitive and abstract type definitions.",
+    description="Retrieve all type definitions.",
 )
 async def list_types(
     user_id: CurrentUser,
@@ -72,10 +72,10 @@ async def list_types(
             id=t.id,
             namespace_id=t.namespace_id,
             name=t.name,
-            category=t.category,
             python_type=t.python_type,
             description=t.description,
-            compatible_types=t.compatible_types,
+            import_path=t.import_path,
+            parent_type_id=t.parent_type_id,
             used_in_fields=field_counts.get(str(t.id), 0),
         )
         for t in types

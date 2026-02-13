@@ -87,11 +87,12 @@ class TypeModel(Base):
 
     :ivar id: Unique identifier for the type.
     :ivar namespace_id: Reference to the containing namespace.
+    :ivar user_id: Owner user ID (null for global/system types).
     :ivar name: Type name (str, int, float, bool, datetime, uuid).
-    :ivar category: Type category (primitive, abstract).
     :ivar python_type: Python type representation.
     :ivar description: Type description.
-    :ivar compatible_types: List of compatible validator categories.
+    :ivar import_path: Import statement for this type (e.g. 'from datetime import datetime').
+    :ivar parent_type_id: Self-referential FK for constrained types (e.g. EmailStr → str).
     """
 
     __tablename__ = "types"
@@ -102,15 +103,22 @@ class TypeModel(Base):
     namespace_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
-    name: Mapped[str] = mapped_column(String(50), nullable=False)
-    category: Mapped[str] = mapped_column(String(50), nullable=False)
-    python_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    compatible_types: Mapped[list] = mapped_column(JSONB, nullable=False)
+    user_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    python_type: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    import_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    parent_type_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("types.id"), nullable=True
+    )
 
     # Relationships
     namespace: Mapped["Namespace"] = relationship(back_populates="types")
     fields: Mapped[list["FieldModel"]] = relationship(back_populates="field_type")
+    parent_type: Mapped["TypeModel | None"] = relationship(
+        remote_side=[id], back_populates="children"
+    )
+    children: Mapped[list["TypeModel"]] = relationship(back_populates="parent_type")
 
 
 class ValidatorModel(Base):

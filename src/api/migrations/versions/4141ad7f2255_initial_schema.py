@@ -64,19 +64,20 @@ def upgrade() -> None:
             server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("name", sa.String(length=50), nullable=False),
-        sa.Column("category", sa.String(length=50), nullable=False),
-        sa.Column("python_type", sa.String(length=100), nullable=False),
-        sa.Column("description", sa.Text(), nullable=False),
-        sa.Column(
-            "compatible_types", postgresql.JSONB(astext_type=sa.Text()), nullable=False
-        ),
+        sa.Column("user_id", sa.Text(), nullable=True),
+        sa.Column("name", sa.Text(), nullable=False),
+        sa.Column("python_type", sa.Text(), nullable=False),
+        sa.Column("description", sa.Text(), nullable=False, server_default=""),
+        sa.Column("import_path", sa.Text(), nullable=True),
+        sa.Column("parent_type_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
+        sa.ForeignKeyConstraint(["parent_type_id"], ["types.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
         op.f("ix_types_namespace_id"), "types", ["namespace_id"], unique=False
     )
+    op.create_index(op.f("ix_types_user_id"), "types", ["user_id"], unique=False)
 
     # Create validators table
     op.create_table(
@@ -347,6 +348,7 @@ def downgrade() -> None:
     op.drop_table("apis")
     op.drop_index(op.f("ix_validators_namespace_id"), table_name="validators")
     op.drop_table("validators")
+    op.drop_index(op.f("ix_types_user_id"), table_name="types")
     op.drop_index(op.f("ix_types_namespace_id"), table_name="types")
     op.drop_table("types")
     op.drop_index("ix_namespaces_one_default_per_user", table_name="namespaces")

@@ -67,10 +67,8 @@ async def test_type(db_session: AsyncSession, test_namespace: Namespace):
     type_model = TypeModel(
         namespace_id=test_namespace.id,
         name="CustomType",
-        category="abstract",
         python_type="CustomType",
         description="Custom test type",
-        compatible_types=["string"],
     )
     db_session.add(type_model)
     await db_session.commit()
@@ -201,10 +199,9 @@ async def test_list_types_includes_primitives(
             expected_name in type_names
         ), f"Primitive type '{expected_name}' should be available in filtered results"
 
-    # Verify primitives are in global namespace
-    primitive_types = [t for t in types if t.category == "primitive"]
-    assert len(primitive_types) > 0
-    assert all(t.namespace_id == settings.global_namespace_id for t in primitive_types)
+    # Verify global types are from global namespace
+    global_types = [t for t in types if t.namespace_id == settings.global_namespace_id]
+    assert len(global_types) > 0
 
 
 @pytest.mark.asyncio
