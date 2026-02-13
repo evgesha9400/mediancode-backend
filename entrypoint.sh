@@ -6,7 +6,7 @@ if [ "$DB_RESET" = "true" ]; then
     python -c "
 from sqlalchemy import create_engine, text
 import os
-url = os.environ['DATABASE_URL'].replace('+asyncpg', '')
+url = os.environ['DATABASE_URL'].replace('+asyncpg', '').replace('postgres://', 'postgresql://')
 engine = create_engine(url)
 with engine.connect() as conn:
     conn.execute(text('DROP SCHEMA public CASCADE'))
