@@ -1,10 +1,5 @@
 # tests/conftest.py
-"""Pytest configuration and fixtures for api_craft E2E tests."""
-
-# TODO: Add test database isolation for integration tests (test_api_types.py,
-# test_api_validators.py). Currently they write directly to the dev database
-# with manual cleanup, which can leave stale data on crashes. Consider
-# transaction-based rollback or a dedicated test database.
+"""Pytest configuration and shared fixtures."""
 
 import importlib.util
 import sys
@@ -12,8 +7,11 @@ import uuid
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 import yaml
 from fastapi.testclient import TestClient
+from sqlalchemy import delete
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from api_craft.main import APIGenerator
 from api_craft.models.input import InputAPI
@@ -74,6 +72,9 @@ def load_app(src_path: Path):
             sys.modules.pop(mod_name, None)
 
 
+# --- E2E fixtures ---
+
+
 @pytest.fixture(scope="session")
 def items_api_client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
     """Generate Items API once per test session and return TestClient."""
@@ -86,3 +87,60 @@ def items_api_client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
     app = load_app(src_path)
 
     return TestClient(app)
+
+
+# --- Integration test (database) fixtures ---
+
+
+@pytest_asyncio.fixture
+async def test_engine():
+    """Create a test database engine."""
+    from api.settings import get_settings
+
+    settings = get_settings()
+    engine = create_async_engine(
+        settings.database_url,
+        echo=False,
+    )
+    yield engine
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def test_session_factory(test_engine):
+    """Create a session factory for tests."""
+    return async_sessionmaker(
+        test_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+
+@pytest_asyncio.fixture
+async def db_session(test_session_factory):
+    """Provide a database session that rolls back after each test."""
+    async with test_session_factory() as session:
+        yield session
+        await session.rollback()
+
+
+@pytest_asyncio.fixture
+async def test_namespace(db_session: AsyncSession):
+    """Create a test namespace, cleaned up after the test."""
+    from api.models.database import Namespace
+
+    namespace = Namespace(
+        name="Test Namespace",
+        description="Test namespace for integration tests",
+    )
+    db_session.add(namespace)
+    await db_session.commit()
+    await db_session.refresh(namespace)
+
+    yield namespace
+
+    # Cleanup
+    await db_session.execute(
+        delete(Namespace).where(Namespace.id == namespace.id)
+    )
+    await db_session.commit()

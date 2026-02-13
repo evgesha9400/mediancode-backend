@@ -21,9 +21,9 @@ from api.schemas.object import (
     ObjectResponse,
     ObjectUpdate,
 )
+from api.schemas.constraint import ConstraintResponse
 from api.schemas.tag import TagSchema
 from api.schemas.type import TypeResponse
-from api.schemas.validator import ValidatorResponse
 
 __all__ = [
     "ApiCreate",
@@ -32,6 +32,7 @@ __all__ = [
     "ApiEndpointUpdate",
     "ApiResponse",
     "ApiUpdate",
+    "ConstraintResponse",
     "EndpointParameterSchema",
     "FieldCreate",
     "FieldResponse",
@@ -46,5 +47,4 @@ __all__ = [
     "ObjectUpdate",
     "TagSchema",
     "TypeResponse",
-    "ValidatorResponse",
 ]

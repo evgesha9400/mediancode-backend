@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, String, Text, text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from api.database import Base
@@ -77,7 +77,7 @@ class Namespace(Base):
     types: Mapped[list["TypeModel"]] = relationship(
         back_populates="namespace", cascade="all, delete-orphan"
     )
-    validators: Mapped[list["ValidatorModel"]] = relationship(
+    constraints: Mapped[list["ConstraintModel"]] = relationship(
         back_populates="namespace", cascade="all, delete-orphan"
     )
 
@@ -121,21 +121,19 @@ class TypeModel(Base):
     children: Mapped[list["TypeModel"]] = relationship(back_populates="parent_type")
 
 
-class ValidatorModel(Base):
-    """Validator definition for field validation.
+class ConstraintModel(Base):
+    """Constraint definition for field validation (Pydantic Field constraints).
 
-    :ivar id: Unique identifier for the validator.
+    :ivar id: Unique identifier for the constraint.
     :ivar namespace_id: Reference to the containing namespace.
-    :ivar name: Validator name (max_length, min_length, etc.).
-    :ivar type: Validator type category (string, numeric, collection).
-    :ivar description: Validator description.
-    :ivar category: Whether this is inline or custom.
-    :ivar parameter_type: Type of parameter this validator accepts.
-    :ivar example_usage: Example Pydantic code usage.
+    :ivar name: Constraint name (max_length, min_length, gt, ge, etc.).
+    :ivar description: Constraint description.
+    :ivar parameter_type: Type of parameter this constraint accepts.
     :ivar docs_url: URL to documentation.
+    :ivar compatible_types: List of type names this constraint applies to.
     """
 
-    __tablename__ = "validators"
+    __tablename__ = "constraints"
 
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
@@ -143,16 +141,14 @@ class ValidatorModel(Base):
     namespace_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    type: Mapped[str] = mapped_column(String(50), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    category: Mapped[str] = mapped_column(String(50), nullable=False)
-    parameter_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    example_usage: Mapped[str] = mapped_column(String(255), nullable=False)
-    docs_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    parameter_type: Mapped[str] = mapped_column(Text, nullable=False)
+    docs_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    compatible_types: Mapped[list] = mapped_column(ARRAY(Text), nullable=False)
 
     # Relationships
-    namespace: Mapped["Namespace"] = relationship(back_populates="validators")
+    namespace: Mapped["Namespace"] = relationship(back_populates="constraints")
 
 
 class ApiModel(Base):
@@ -244,7 +240,7 @@ class FieldValidator(Base):
 
     :ivar id: Unique identifier for the validator instance.
     :ivar field_id: Reference to the parent field.
-    :ivar name: Validator name (references ValidatorModel.name).
+    :ivar name: Constraint name (references ConstraintModel.name).
     :ivar params: Validator parameters as JSON.
     """
 

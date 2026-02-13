@@ -3,6 +3,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 from api_craft.models.template import TemplateField, TemplateValidator
 from api_craft.placeholders import (
     PlaceholderGenerator,

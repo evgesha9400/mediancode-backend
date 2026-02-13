@@ -50,4 +50,9 @@ python_functions = ["test_*"]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-m 'not manual'"
-markers = ["manual: generate output to tests/output/ for manual verification"]
+markers = [
+    "manual: generate output to tests/output/ for manual verification",
+    "unit: pure logic tests with no external dependencies",
+    "integration: tests requiring database or external services",
+    "e2e: end-to-end tests that generate and boot full applications",
+]

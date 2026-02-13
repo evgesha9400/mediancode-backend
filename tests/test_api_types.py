@@ -2,63 +2,15 @@
 """Integration tests for types endpoint."""
 
 import pytest
+
+pytestmark = pytest.mark.integration
+
 import pytest_asyncio
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.database import Base
 from api.models.database import Namespace, TypeModel
 from api.settings import get_settings
-
-
-@pytest_asyncio.fixture
-async def test_engine():
-    """Create a test database engine."""
-    settings = get_settings()
-    engine = create_async_engine(
-        settings.database_url,
-        echo=False,
-    )
-    yield engine
-    await engine.dispose()
-
-
-@pytest_asyncio.fixture
-async def test_session_factory(test_engine):
-    """Create a session factory for tests."""
-    return async_sessionmaker(
-        test_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
-
-
-@pytest_asyncio.fixture
-async def db_session(test_session_factory):
-    """Provide a clean database session for each test."""
-    async with test_session_factory() as session:
-        yield session
-        await session.rollback()
-
-
-@pytest_asyncio.fixture
-async def test_namespace(db_session: AsyncSession):
-    """Create a test namespace."""
-    namespace = Namespace(
-        name="Test Namespace",
-        description="Test namespace for type tests",
-    )
-    db_session.add(namespace)
-    await db_session.commit()
-    await db_session.refresh(namespace)
-
-    yield namespace
-
-    # Cleanup
-    await db_session.execute(
-        delete(Namespace).where(Namespace.id == namespace.id)
-    )
-    await db_session.commit()
 
 
 @pytest_asyncio.fixture
@@ -89,7 +41,6 @@ async def test_list_types_no_namespace_filter(
     test_type: TypeModel,
 ):
     """Test that all types are returned when no namespace filter is provided."""
-    # Query types without filter
     query = select(TypeModel)
     result = await db_session.execute(query)
     all_types = result.scalars().all()
@@ -115,7 +66,6 @@ async def test_list_types_with_user_namespace(
     """Test that global + user namespace types are returned when filtering by user namespace."""
     settings = get_settings()
 
-    # Simulate the endpoint logic with user namespace filter
     from sqlalchemy import or_, select
 
     query = select(TypeModel).where(
@@ -152,7 +102,6 @@ async def test_list_types_global_namespace_only(db_session: AsyncSession):
     """Test that only global types are returned when filtering by global namespace."""
     settings = get_settings()
 
-    # Simulate the endpoint logic with global namespace filter
     from sqlalchemy import or_, select
 
     query = select(TypeModel).where(
@@ -180,7 +129,6 @@ async def test_list_types_includes_primitives(
     # Critical primitive types that should always be available
     expected_primitives = ["str", "int", "float", "bool", "datetime", "uuid"]
 
-    # Query with user namespace filter
     from sqlalchemy import or_, select
 
     query = select(TypeModel).where(
@@ -202,20 +150,3 @@ async def test_list_types_includes_primitives(
     # Verify global types are from global namespace
     global_types = [t for t in types if t.namespace_id == settings.global_namespace_id]
     assert len(global_types) > 0
-
-
-@pytest.mark.asyncio
-async def test_types_endpoint_behavior():
-    """Test the actual API endpoint behavior (requires auth mock)."""
-    # This test demonstrates how to test the actual endpoint
-    # In practice, you'd need to override the auth dependency
-    # See: https://fastapi.tiangolo.com/advanced/testing-dependencies/
-
-    # Example structure (requires auth dependency override):
-    # async with AsyncClient(app=app, base_url="http://test") as client:
-    #     response = await client.get("/v1/types?namespace_id=test-namespace")
-    #     assert response.status_code == 200
-    #     types = response.json()
-    #     assert len(types) > 0
-
-    pass  # Skip for now - requires auth mock setup

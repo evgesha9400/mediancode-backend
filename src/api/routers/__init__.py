@@ -7,7 +7,7 @@ from api.routers.fields import router as fields_router
 from api.routers.namespaces import router as namespaces_router
 from api.routers.objects import router as objects_router
 from api.routers.types import router as types_router
-from api.routers.validators import router as validators_router
+from api.routers.constraints import router as constraints_router
 
 __all__ = [
     "apis_router",
@@ -16,5 +16,5 @@ __all__ = [
     "namespaces_router",
     "objects_router",
     "types_router",
-    "validators_router",
+    "constraints_router",
 ]

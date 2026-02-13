@@ -79,9 +79,9 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_types_user_id"), "types", ["user_id"], unique=False)
 
-    # Create validators table
+    # Create constraints table
     op.create_table(
-        "validators",
+        "constraints",
         sa.Column(
             "id",
             postgresql.UUID(as_uuid=True),
@@ -89,18 +89,16 @@ def upgrade() -> None:
             server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("name", sa.String(length=255), nullable=False),
-        sa.Column("type", sa.String(length=50), nullable=False),
-        sa.Column("description", sa.Text(), nullable=False),
-        sa.Column("category", sa.String(length=50), nullable=False),
-        sa.Column("parameter_type", sa.String(length=50), nullable=False),
-        sa.Column("example_usage", sa.String(length=255), nullable=False),
-        sa.Column("docs_url", sa.String(length=500), nullable=False),
+        sa.Column("name", sa.Text(), nullable=False),
+        sa.Column("description", sa.Text(), nullable=False, server_default=""),
+        sa.Column("parameter_type", sa.Text(), nullable=False),
+        sa.Column("docs_url", sa.Text(), nullable=True),
+        sa.Column("compatible_types", postgresql.ARRAY(sa.Text()), nullable=False),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_validators_namespace_id"), "validators", ["namespace_id"], unique=False
+        op.f("ix_constraints_namespace_id"), "constraints", ["namespace_id"], unique=False
     )
 
     # Create apis table (with tags JSONB column)
@@ -346,8 +344,8 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_apis_user_id"), table_name="apis")
     op.drop_index(op.f("ix_apis_namespace_id"), table_name="apis")
     op.drop_table("apis")
-    op.drop_index(op.f("ix_validators_namespace_id"), table_name="validators")
-    op.drop_table("validators")
+    op.drop_index(op.f("ix_constraints_namespace_id"), table_name="constraints")
+    op.drop_table("constraints")
     op.drop_index(op.f("ix_types_user_id"), table_name="types")
     op.drop_index(op.f("ix_types_namespace_id"), table_name="types")
     op.drop_table("types")

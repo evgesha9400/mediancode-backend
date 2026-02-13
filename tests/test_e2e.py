@@ -17,6 +17,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+pytestmark = pytest.mark.e2e
+
 from api_craft.main import APIGenerator
 from conftest import SPECS_PATH, load_input
 
