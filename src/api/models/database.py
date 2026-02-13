@@ -279,7 +279,7 @@ class FieldValidatorAssociation(Base):
     :ivar field_id: Reference to the field.
     """
 
-    __tablename__ = "field_validator_associations"
+    __tablename__ = "field_validator_field_associations"
 
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
@@ -410,7 +410,7 @@ class ObjectModelValidatorAssociation(Base):
     :ivar object_id: Reference to the object.
     """
 
-    __tablename__ = "object_model_validator_associations"
+    __tablename__ = "model_validator_object_associations"
 
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
@@ -444,7 +444,7 @@ class FieldConstraintValueAssociation(Base):
     :ivar value: Parameter value for the constraint (null for parameterless constraints).
     """
 
-    __tablename__ = "field_constraint_values"
+    __tablename__ = "field_constraint_field_associations"
 
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid

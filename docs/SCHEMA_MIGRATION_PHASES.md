@@ -560,9 +560,9 @@ These tables exist in the database but have NO API endpoints yet.
 Do NOT build any UI for these. They are listed here for awareness only.
 
 - field_validators: Custom field validator function definitions (future feature)
-- field_validator_associations: Links custom field validators to fields
+- field_validator_field_associations: Links custom field validators to fields
 - model_validators: Custom model-level validator function definitions (future feature)
-- object_model_validator_associations: Links model validators to objects
+- model_validator_object_associations: Links model validators to objects
 
 ========================================================================
 COMPREHENSIVE SEARCH CHECKLIST
@@ -618,17 +618,17 @@ SEED DATA CHANGES:
 | 3 | validators → field_constraints (rename + restructure) | DONE |
 | 4 | apis (drop tags + TEXT) | DONE |
 | 5 | api_endpoints + endpoint_parameters (restructure + delete) | DONE |
-| 6 | field_validators + field_validator_associations (complete replacement + new) | DONE |
-| 7 | model_validators + object_model_validator_associations (new tables) | DONE |
-| 8 | field_constraint_values (new table) | DONE |
+| 6 | field_validators + field_validator_field_associations (complete replacement + new) | DONE |
+| 7 | model_validators + model_validator_object_associations (new tables) | DONE |
+| 8 | field_constraint_field_associations (new table) | DONE |
 
 ### Integration Tasks (Post-Migration)
 
 | Task | Status |
 |------|--------|
-| Wire `field_constraint_values` into field CRUD | DONE |
-| Wire `field_constraint_values` into generation service | DONE |
-| Wire `field_constraint_values` into field constraints router (`usedInFields`) | DONE |
+| Wire `field_constraint_field_associations` into field CRUD | DONE |
+| Wire `field_constraint_field_associations` into generation service | DONE |
+| Wire `field_constraint_field_associations` into field constraints router (`usedInFields`) | DONE |
 | Update generation service to use path_params field references for type resolution | DONE |
 | Build field_validators CRUD endpoints (custom validator management) | NOT YET — structural tables exist, no API |
 | Build model_validators CRUD endpoints (custom model validator management) | NOT YET — structural tables exist, no API |
@@ -657,7 +657,7 @@ All three tables: VARCHAR/String → TEXT. No logic changes.
 
 ### Phase 3: validators → constraints
 
-**Renamed**: table `validators` → `constraints`, model `ValidatorModel` → `ConstraintModel`
+**Renamed**: table `validators` → `field_constraints`, model `ValidatorModel` → `FieldConstraintModel`
 **Removed**: `type`, `category`, `example_usage`
 **Added**: `compatible_types` (Text[] array)
 **Changed**: `name`, `parameter_type` → Text; `docs_url` → nullable
@@ -681,28 +681,28 @@ All three tables: VARCHAR/String → TEXT. No logic changes.
 **Schema changed**: `EndpointParameterSchema` → `PathParamSchema` (simpler: just name + fieldId)
 **Frontend impact**: namespaceId removed from endpoints, path params schema completely changed
 
-### Phase 6: field_validators (complete replacement) + field_validator_associations
+### Phase 6: field_validators (complete replacement) + field_validator_field_associations
 
 **Replaced**: Old `FieldValidator` join table (field_id, name, params) → New `FieldValidatorModel` entity (custom validator functions: namespace_id, function_name, mode, function_body, description)
 **Added**: `FieldValidatorAssociation` table
-**Frontend impact**: Old validator-on-field concept replaced by constraint-on-field (via constraint_field_values_associations)
+**Frontend impact**: Old validator-on-field concept replaced by constraint-on-field (via field_constraint_field_associations)
 
-### Phase 7: model_validators + object_model_validator_associations
+### Phase 7: model_validators + model_validator_object_associations
 
 **Added**: Two new tables for model-level custom validator functions
 **Frontend impact**: None (no API endpoints yet)
 
-### Phase 8: constraint_field_values_associations
+### Phase 8: field_constraint_field_associations
 
 **Added**: New join table linking constraints to fields with parameter values
 **Frontend impact**: None directly (integration was done as separate work — see field schema changes above)
 
 ### Post-Migration Integration (also completed)
 
-- constraint_field_values_associations wired into field CRUD (FieldCreate/FieldUpdate accept constraints, FieldService manages associations)
-- constraint_field_values_associations wired into generation service (_build_validators reads constraint_values for code generation)
-- constraint_field_values_associations wired into constraints router (usedInFields counts via ConstraintFieldValueAssociation)
-- Field schema now includes FieldConstraintInput, FieldConstraintResponse, and constraints field
+- field_constraint_field_associations wired into field CRUD (FieldCreate/FieldUpdate accept constraints, FieldService manages associations)
+- field_constraint_field_associations wired into generation service (_build_validators reads constraint_values for code generation)
+- field_constraint_field_associations wired into field constraints router (usedInFields counts via FieldConstraintValueAssociation)
+- Field schema now includes FieldConstraintValueInput, FieldConstraintValueResponse, and constraints field
 - Field response now includes usedInApis (endpoint IDs where field is used through objects)
 
 </details>

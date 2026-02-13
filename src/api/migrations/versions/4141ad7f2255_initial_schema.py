@@ -207,9 +207,9 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # Create field_validator_associations table
+    # Create field_validator_field_associations table
     op.create_table(
-        "field_validator_associations",
+        "field_validator_field_associations",
         sa.Column(
             "id",
             postgresql.UUID(as_uuid=True),
@@ -225,14 +225,14 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_field_validator_associations_validator_id"),
-        "field_validator_associations",
+        op.f("ix_field_validator_field_associations_validator_id"),
+        "field_validator_field_associations",
         ["validator_id"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_field_validator_associations_field_id"),
-        "field_validator_associations",
+        op.f("ix_field_validator_field_associations_field_id"),
+        "field_validator_field_associations",
         ["field_id"],
         unique=False,
     )
@@ -298,9 +298,9 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # Create object_model_validator_associations table
+    # Create model_validator_object_associations table
     op.create_table(
-        "object_model_validator_associations",
+        "model_validator_object_associations",
         sa.Column(
             "id",
             postgresql.UUID(as_uuid=True),
@@ -316,21 +316,21 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_object_model_validator_associations_validator_id"),
-        "object_model_validator_associations",
+        op.f("ix_model_validator_object_associations_validator_id"),
+        "model_validator_object_associations",
         ["validator_id"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_object_model_validator_associations_object_id"),
-        "object_model_validator_associations",
+        op.f("ix_model_validator_object_associations_object_id"),
+        "model_validator_object_associations",
         ["object_id"],
         unique=False,
     )
 
-    # Create field_constraint_values table
+    # Create field_constraint_field_associations table
     op.create_table(
-        "field_constraint_values",
+        "field_constraint_field_associations",
         sa.Column(
             "id",
             postgresql.UUID(as_uuid=True),
@@ -347,14 +347,14 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_field_constraint_values_constraint_id"),
-        "field_constraint_values",
+        op.f("ix_field_constraint_field_associations_constraint_id"),
+        "field_constraint_field_associations",
         ["constraint_id"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_field_constraint_values_field_id"),
-        "field_constraint_values",
+        op.f("ix_field_constraint_field_associations_field_id"),
+        "field_constraint_field_associations",
         ["field_id"],
         unique=False,
     )
@@ -413,23 +413,23 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_api_endpoints_api_id"), table_name="api_endpoints")
     op.drop_table("api_endpoints")
     op.drop_index(
-        op.f("ix_field_constraint_values_field_id"),
-        table_name="field_constraint_values",
+        op.f("ix_field_constraint_field_associations_field_id"),
+        table_name="field_constraint_field_associations",
     )
     op.drop_index(
-        op.f("ix_field_constraint_values_constraint_id"),
-        table_name="field_constraint_values",
+        op.f("ix_field_constraint_field_associations_constraint_id"),
+        table_name="field_constraint_field_associations",
     )
-    op.drop_table("field_constraint_values")
+    op.drop_table("field_constraint_field_associations")
     op.drop_index(
-        op.f("ix_object_model_validator_associations_object_id"),
-        table_name="object_model_validator_associations",
+        op.f("ix_model_validator_object_associations_object_id"),
+        table_name="model_validator_object_associations",
     )
     op.drop_index(
-        op.f("ix_object_model_validator_associations_validator_id"),
-        table_name="object_model_validator_associations",
+        op.f("ix_model_validator_object_associations_validator_id"),
+        table_name="model_validator_object_associations",
     )
-    op.drop_table("object_model_validator_associations")
+    op.drop_table("model_validator_object_associations")
     op.drop_index(op.f("ix_model_validators_user_id"), table_name="model_validators")
     op.drop_index(
         op.f("ix_model_validators_namespace_id"), table_name="model_validators"
@@ -445,14 +445,14 @@ def downgrade() -> None:
     )
     op.drop_table("object_field_associations")
     op.drop_index(
-        op.f("ix_field_validator_associations_field_id"),
-        table_name="field_validator_associations",
+        op.f("ix_field_validator_field_associations_field_id"),
+        table_name="field_validator_field_associations",
     )
     op.drop_index(
-        op.f("ix_field_validator_associations_validator_id"),
-        table_name="field_validator_associations",
+        op.f("ix_field_validator_field_associations_validator_id"),
+        table_name="field_validator_field_associations",
     )
-    op.drop_table("field_validator_associations")
+    op.drop_table("field_validator_field_associations")
     op.drop_index(op.f("ix_field_validators_user_id"), table_name="field_validators")
     op.drop_index(
         op.f("ix_field_validators_namespace_id"), table_name="field_validators"
