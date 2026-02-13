@@ -74,7 +74,7 @@ class Namespace(Base):
     types: Mapped[list["TypeModel"]] = relationship(
         back_populates="namespace", cascade="all, delete-orphan"
     )
-    constraints: Mapped[list["ConstraintModel"]] = relationship(
+    field_constraints: Mapped[list["FieldConstraintModel"]] = relationship(
         back_populates="namespace", cascade="all, delete-orphan"
     )
     field_validators: Mapped[list["FieldValidatorModel"]] = relationship(
@@ -124,10 +124,10 @@ class TypeModel(Base):
     children: Mapped[list["TypeModel"]] = relationship(back_populates="parent_type")
 
 
-class ConstraintModel(Base):
-    """Constraint definition for field validation (Pydantic Field constraints).
+class FieldConstraintModel(Base):
+    """Field constraint definition (Pydantic Field constraints like max_length, gt, etc.).
 
-    :ivar id: Unique identifier for the constraint.
+    :ivar id: Unique identifier for the field constraint.
     :ivar namespace_id: Reference to the containing namespace.
     :ivar name: Constraint name (max_length, min_length, gt, ge, etc.).
     :ivar description: Constraint description.
@@ -136,7 +136,7 @@ class ConstraintModel(Base):
     :ivar compatible_types: List of type names this constraint applies to.
     """
 
-    __tablename__ = "constraints"
+    __tablename__ = "field_constraints"
 
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
@@ -151,7 +151,7 @@ class ConstraintModel(Base):
     compatible_types: Mapped[list] = mapped_column(ARRAY(Text), nullable=False)
 
     # Relationships
-    namespace: Mapped["Namespace"] = relationship(back_populates="constraints")
+    namespace: Mapped["Namespace"] = relationship(back_populates="field_constraints")
 
 
 class ApiModel(Base):
@@ -231,7 +231,7 @@ class FieldModel(Base):
     object_associations: Mapped[list["ObjectFieldAssociation"]] = relationship(
         back_populates="field"
     )
-    constraint_values: Mapped[list["ConstraintFieldValueAssociation"]] = relationship(
+    constraint_values: Mapped[list["FieldConstraintValueAssociation"]] = relationship(
         back_populates="field", cascade="all, delete-orphan"
     )
 
@@ -435,23 +435,23 @@ class ObjectModelValidatorAssociation(Base):
     object: Mapped["ObjectDefinition"] = relationship()
 
 
-class ConstraintFieldValueAssociation(Base):
-    """Association between a constraint and a field with an optional value.
+class FieldConstraintValueAssociation(Base):
+    """Association between a field constraint and a field with an optional parameter value.
 
     :ivar id: Unique identifier for the association.
-    :ivar constraint_id: Reference to the constraint.
+    :ivar constraint_id: Reference to the field constraint.
     :ivar field_id: Reference to the field.
     :ivar value: Parameter value for the constraint (null for parameterless constraints).
     """
 
-    __tablename__ = "constraint_field_values_associations"
+    __tablename__ = "field_constraint_values"
 
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
     constraint_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True),
-        ForeignKey("constraints.id", ondelete="CASCADE"),
+        ForeignKey("field_constraints.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -464,7 +464,7 @@ class ConstraintFieldValueAssociation(Base):
     value: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
-    constraint: Mapped["ConstraintModel"] = relationship()
+    constraint: Mapped["FieldConstraintModel"] = relationship()
     field: Mapped["FieldModel"] = relationship(back_populates="constraint_values")
 
 

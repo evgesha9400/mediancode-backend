@@ -1,4 +1,4 @@
-"""Seed global namespace, types, and constraints
+"""Seed global namespace, types, and field constraints
 
 Revision ID: b1a2c3d4e5f6
 Revises: 4141ad7f2255
@@ -26,6 +26,8 @@ TYPE_FLOAT_ID = UUID("00000000-0000-0000-0001-000000000003")
 TYPE_BOOL_ID = UUID("00000000-0000-0000-0001-000000000004")
 TYPE_DATETIME_ID = UUID("00000000-0000-0000-0001-000000000005")
 TYPE_UUID_ID = UUID("00000000-0000-0000-0001-000000000006")
+TYPE_EMAIL_STR_ID = UUID("00000000-0000-0000-0001-000000000007")
+TYPE_HTTP_URL_ID = UUID("00000000-0000-0000-0001-000000000008")
 
 # Seed data for types
 TYPES_DATA = [
@@ -89,9 +91,29 @@ TYPES_DATA = [
         "user_id": None,
         "parent_type_id": None,
     },
+    {
+        "id": TYPE_EMAIL_STR_ID,
+        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "name": "EmailStr",
+        "python_type": "EmailStr",
+        "description": "Email address validated using Pydantic EmailStr",
+        "import_path": "from pydantic import EmailStr",
+        "user_id": None,
+        "parent_type_id": TYPE_STR_ID,
+    },
+    {
+        "id": TYPE_HTTP_URL_ID,
+        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "name": "HttpUrl",
+        "python_type": "HttpUrl",
+        "description": "HTTP URL validated using Pydantic HttpUrl",
+        "import_path": "from pydantic import HttpUrl",
+        "user_id": None,
+        "parent_type_id": TYPE_STR_ID,
+    },
 ]
 
-# Seed data for constraints (Pydantic Field constraints)
+# Seed data for field constraints (Pydantic Field constraints)
 CONSTRAINTS_DATA = [
     # String constraints
     {
@@ -120,24 +142,6 @@ CONSTRAINTS_DATA = [
         "parameter_type": "str",
         "docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#string-constraints",
         "compatible_types": ["str", "uuid"],
-    },
-    {
-        "id": UUID("00000000-0000-0000-0002-000000000004"),
-        "namespace_id": GLOBAL_NAMESPACE_ID,
-        "name": "email_format",
-        "description": "Validates email format using EmailStr type",
-        "parameter_type": "None",
-        "docs_url": "https://docs.pydantic.dev/latest/api/networks/#pydantic.networks.EmailStr",
-        "compatible_types": ["str"],
-    },
-    {
-        "id": UUID("00000000-0000-0000-0002-000000000005"),
-        "namespace_id": GLOBAL_NAMESPACE_ID,
-        "name": "url_format",
-        "description": "Validates URL format using HttpUrl type",
-        "parameter_type": "None",
-        "docs_url": "https://docs.pydantic.dev/latest/api/networks/#pydantic.networks.HttpUrl",
-        "compatible_types": ["str"],
     },
     # Numeric constraints
     {
@@ -193,7 +197,7 @@ def upgrade() -> None:
     op.execute(
         f"""
         INSERT INTO namespaces (id, user_id, name, description, locked, is_default)
-        VALUES ('{GLOBAL_NAMESPACE_ID}'::uuid, NULL, 'Global', 'Built-in types and constraints', true, false)
+        VALUES ('{GLOBAL_NAMESPACE_ID}'::uuid, NULL, 'Global', 'Built-in types and field constraints', true, false)
         """
     )
 
@@ -211,9 +215,9 @@ def upgrade() -> None:
     )
     op.bulk_insert(types_table, TYPES_DATA)
 
-    # Seed constraints data
+    # Seed field constraints data
     constraints_table = sa.table(
-        "constraints",
+        "field_constraints",
         sa.column("id", postgresql.UUID),
         sa.column("namespace_id", postgresql.UUID),
         sa.column("name", sa.Text),
@@ -226,9 +230,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Delete seed data in reverse order (constraints, types, namespace)
+    # Delete seed data in reverse order (field_constraints, types, namespace)
     op.execute(
-        f"DELETE FROM constraints WHERE namespace_id = '{GLOBAL_NAMESPACE_ID}'::uuid"
+        f"DELETE FROM field_constraints WHERE namespace_id = '{GLOBAL_NAMESPACE_ID}'::uuid"
     )
     op.execute(f"DELETE FROM types WHERE namespace_id = '{GLOBAL_NAMESPACE_ID}'::uuid")
     op.execute(f"DELETE FROM namespaces WHERE id = '{GLOBAL_NAMESPACE_ID}'::uuid")

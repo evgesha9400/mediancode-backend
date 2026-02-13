@@ -1,5 +1,5 @@
 # tests/test_api_constraints.py
-"""Integration tests for constraints endpoint."""
+"""Integration tests for field constraints endpoint."""
 
 import pytest
 
@@ -9,14 +9,14 @@ import pytest_asyncio
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.database import ConstraintModel, Namespace
+from api.models.database import FieldConstraintModel, Namespace
 from api.settings import get_settings
 
 
 @pytest_asyncio.fixture
 async def test_constraint(db_session: AsyncSession, test_namespace: Namespace):
     """Create a test constraint in the user namespace."""
-    constraint = ConstraintModel(
+    constraint = FieldConstraintModel(
         namespace_id=test_namespace.id,
         name="custom_test",
         description="Custom test constraint",
@@ -32,7 +32,7 @@ async def test_constraint(db_session: AsyncSession, test_namespace: Namespace):
 
     # Cleanup
     await db_session.execute(
-        delete(ConstraintModel).where(ConstraintModel.id == constraint.id)
+        delete(FieldConstraintModel).where(FieldConstraintModel.id == constraint.id)
     )
     await db_session.commit()
 
@@ -40,10 +40,10 @@ async def test_constraint(db_session: AsyncSession, test_namespace: Namespace):
 @pytest.mark.asyncio
 async def test_list_constraints_no_namespace_filter(
     db_session: AsyncSession,
-    test_constraint: ConstraintModel,
+    test_constraint: FieldConstraintModel,
 ):
     """Test that all constraints are returned when no namespace filter is provided."""
-    query = select(ConstraintModel)
+    query = select(FieldConstraintModel)
     result = await db_session.execute(query)
     all_constraints = result.scalars().all()
 
@@ -66,17 +66,17 @@ async def test_list_constraints_no_namespace_filter(
 async def test_list_constraints_with_user_namespace(
     db_session: AsyncSession,
     test_namespace: Namespace,
-    test_constraint: ConstraintModel,
+    test_constraint: FieldConstraintModel,
 ):
     """Test that global + user namespace constraints are returned when filtering by user namespace."""
     settings = get_settings()
 
     from sqlalchemy import or_, select
 
-    query = select(ConstraintModel).where(
+    query = select(FieldConstraintModel).where(
         or_(
-            ConstraintModel.namespace_id == test_namespace.id,
-            ConstraintModel.namespace_id == settings.global_namespace_id,
+            FieldConstraintModel.namespace_id == test_namespace.id,
+            FieldConstraintModel.namespace_id == settings.global_namespace_id,
         )
     )
     result = await db_session.execute(query)
@@ -112,10 +112,10 @@ async def test_list_constraints_global_namespace_only(db_session: AsyncSession):
 
     from sqlalchemy import or_, select
 
-    query = select(ConstraintModel).where(
+    query = select(FieldConstraintModel).where(
         or_(
-            ConstraintModel.namespace_id == settings.global_namespace_id,
-            ConstraintModel.namespace_id == settings.global_namespace_id,
+            FieldConstraintModel.namespace_id == settings.global_namespace_id,
+            FieldConstraintModel.namespace_id == settings.global_namespace_id,
         )
     )
     result = await db_session.execute(query)
@@ -134,14 +134,14 @@ async def test_list_constraints_includes_standard_constraints(
     """Test that standard constraints are always included regardless of namespace filter."""
     settings = get_settings()
 
-    expected_constraints = ["max_length", "min_length", "pattern", "email_format"]
+    expected_constraints = ["max_length", "min_length", "pattern", "gt"]
 
     from sqlalchemy import or_, select
 
-    query = select(ConstraintModel).where(
+    query = select(FieldConstraintModel).where(
         or_(
-            ConstraintModel.namespace_id == test_namespace.id,
-            ConstraintModel.namespace_id == settings.global_namespace_id,
+            FieldConstraintModel.namespace_id == test_namespace.id,
+            FieldConstraintModel.namespace_id == settings.global_namespace_id,
         )
     )
     result = await db_session.execute(query)

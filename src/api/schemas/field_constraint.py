@@ -1,16 +1,16 @@
-# src/api/schemas/constraint.py
-"""Pydantic schemas for Constraint entity."""
+# src/api/schemas/field_constraint.py
+"""Pydantic schemas for Field Constraint entity."""
 
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class ConstraintResponse(BaseModel):
-    """Response schema for constraint data.
+class FieldConstraintResponse(BaseModel):
+    """Response schema for field constraint data.
 
-    :ivar id: Unique identifier for the constraint.
-    :ivar namespace_id: Namespace this constraint belongs to.
+    :ivar id: Unique identifier for the field constraint.
+    :ivar namespace_id: Namespace this field constraint belongs to.
     :ivar name: Constraint name.
     :ivar description: Constraint description.
     :ivar parameter_type: Type of parameter this constraint accepts.

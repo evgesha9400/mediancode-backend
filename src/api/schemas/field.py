@@ -6,10 +6,10 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class FieldConstraintInput(BaseModel):
-    """Request schema for attaching a constraint to a field.
+class FieldConstraintValueInput(BaseModel):
+    """Request schema for attaching a field constraint to a field.
 
-    :ivar constraint_id: Reference to the constraint definition.
+    :ivar constraint_id: Reference to the field constraint definition.
     :ivar value: Parameter value for the constraint (null for parameterless).
     """
 
@@ -19,10 +19,10 @@ class FieldConstraintInput(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class FieldConstraintResponse(BaseModel):
-    """Response schema for a constraint attached to a field.
+class FieldConstraintValueResponse(BaseModel):
+    """Response schema for a field constraint value attached to a field.
 
-    :ivar constraint_id: Reference to the constraint definition.
+    :ivar constraint_id: Reference to the field constraint definition.
     :ivar name: Constraint name.
     :ivar value: Parameter value for the constraint.
     """
@@ -54,7 +54,7 @@ class FieldCreate(BaseModel):
     )
     description: str | None = Field(default=None, examples=["User email address"])
     default_value: str | None = Field(default=None, alias="defaultValue", examples=[""])
-    constraints: list[FieldConstraintInput] = Field(default_factory=list)
+    constraints: list[FieldConstraintValueInput] = Field(default_factory=list)
 
 
 class FieldUpdate(BaseModel):
@@ -71,7 +71,7 @@ class FieldUpdate(BaseModel):
     default_value: str | None = Field(
         default=None, alias="defaultValue", examples=["new_default"]
     )
-    constraints: list[FieldConstraintInput] | None = Field(default=None)
+    constraints: list[FieldConstraintValueInput] | None = Field(default=None)
 
 
 class FieldResponse(BaseModel):
@@ -102,6 +102,6 @@ class FieldResponse(BaseModel):
         alias="usedInApis",
         examples=[["00000000-0000-0000-0004-000000000001"]],
     )
-    constraints: list[FieldConstraintResponse] = Field(default_factory=list)
+    constraints: list[FieldConstraintValueResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

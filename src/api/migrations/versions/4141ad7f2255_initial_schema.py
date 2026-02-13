@@ -79,9 +79,9 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_types_user_id"), "types", ["user_id"], unique=False)
 
-    # Create constraints table
+    # Create field_constraints table
     op.create_table(
-        "constraints",
+        "field_constraints",
         sa.Column(
             "id",
             postgresql.UUID(as_uuid=True),
@@ -98,8 +98,8 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_constraints_namespace_id"),
-        "constraints",
+        op.f("ix_field_constraints_namespace_id"),
+        "field_constraints",
         ["namespace_id"],
         unique=False,
     )
@@ -328,9 +328,9 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # Create constraint_field_values_associations table
+    # Create field_constraint_values table
     op.create_table(
-        "constraint_field_values_associations",
+        "field_constraint_values",
         sa.Column(
             "id",
             postgresql.UUID(as_uuid=True),
@@ -341,20 +341,20 @@ def upgrade() -> None:
         sa.Column("field_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("value", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(
-            ["constraint_id"], ["constraints.id"], ondelete="CASCADE"
+            ["constraint_id"], ["field_constraints.id"], ondelete="CASCADE"
         ),
         sa.ForeignKeyConstraint(["field_id"], ["fields.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_constraint_field_values_associations_constraint_id"),
-        "constraint_field_values_associations",
+        op.f("ix_field_constraint_values_constraint_id"),
+        "field_constraint_values",
         ["constraint_id"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_constraint_field_values_associations_field_id"),
-        "constraint_field_values_associations",
+        op.f("ix_field_constraint_values_field_id"),
+        "field_constraint_values",
         ["field_id"],
         unique=False,
     )
@@ -413,14 +413,14 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_api_endpoints_api_id"), table_name="api_endpoints")
     op.drop_table("api_endpoints")
     op.drop_index(
-        op.f("ix_constraint_field_values_associations_field_id"),
-        table_name="constraint_field_values_associations",
+        op.f("ix_field_constraint_values_field_id"),
+        table_name="field_constraint_values",
     )
     op.drop_index(
-        op.f("ix_constraint_field_values_associations_constraint_id"),
-        table_name="constraint_field_values_associations",
+        op.f("ix_field_constraint_values_constraint_id"),
+        table_name="field_constraint_values",
     )
-    op.drop_table("constraint_field_values_associations")
+    op.drop_table("field_constraint_values")
     op.drop_index(
         op.f("ix_object_model_validator_associations_object_id"),
         table_name="object_model_validator_associations",
@@ -468,8 +468,10 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_apis_user_id"), table_name="apis")
     op.drop_index(op.f("ix_apis_namespace_id"), table_name="apis")
     op.drop_table("apis")
-    op.drop_index(op.f("ix_constraints_namespace_id"), table_name="constraints")
-    op.drop_table("constraints")
+    op.drop_index(
+        op.f("ix_field_constraints_namespace_id"), table_name="field_constraints"
+    )
+    op.drop_table("field_constraints")
     op.drop_index(op.f("ix_types_user_id"), table_name="types")
     op.drop_index(op.f("ix_types_namespace_id"), table_name="types")
     op.drop_table("types")

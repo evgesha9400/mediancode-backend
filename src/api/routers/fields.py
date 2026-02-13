@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.auth import CurrentUser
 from api.database import get_db
 from api.schemas.field import (
-    FieldConstraintResponse,
+    FieldConstraintValueResponse,
     FieldCreate,
     FieldResponse,
     FieldUpdate,
@@ -39,7 +39,7 @@ async def _to_response(field, service: FieldService) -> FieldResponse:
     """
     used_in_apis = await service.get_used_in_apis(field.id)
     constraints = [
-        FieldConstraintResponse(
+        FieldConstraintValueResponse(
             constraint_id=cv.constraint_id,
             name=cv.constraint.name,
             value=cv.value,

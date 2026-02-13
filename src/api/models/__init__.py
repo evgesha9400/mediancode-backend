@@ -4,7 +4,7 @@
 from api.models.database import (
     ApiEndpoint,
     ApiModel,
-    ConstraintModel,
+    FieldConstraintModel,
     FieldModel,
     FieldValidatorAssociation,
     FieldValidatorModel,
@@ -17,7 +17,7 @@ from api.models.database import (
 __all__ = [
     "ApiEndpoint",
     "ApiModel",
-    "ConstraintModel",
+    "FieldConstraintModel",
     "FieldModel",
     "FieldValidatorAssociation",
     "FieldValidatorModel",

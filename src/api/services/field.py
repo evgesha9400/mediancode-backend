@@ -10,12 +10,12 @@ from sqlalchemy.orm import selectinload
 
 from api.models.database import (
     ApiEndpoint,
-    ConstraintFieldValueAssociation,
+    FieldConstraintValueAssociation,
     FieldModel,
     Namespace,
     ObjectFieldAssociation,
 )
-from api.schemas.field import FieldConstraintInput, FieldCreate, FieldUpdate
+from api.schemas.field import FieldConstraintValueInput, FieldCreate, FieldUpdate
 from api.services.base import BaseService
 from api.settings import get_settings
 
@@ -46,7 +46,7 @@ class FieldService(BaseService[FieldModel]):
             .options(
                 selectinload(FieldModel.field_type),
                 selectinload(FieldModel.constraint_values).selectinload(
-                    ConstraintFieldValueAssociation.constraint
+                    FieldConstraintValueAssociation.constraint
                 ),
             )
             .where(
@@ -77,7 +77,7 @@ class FieldService(BaseService[FieldModel]):
             .options(
                 selectinload(FieldModel.field_type),
                 selectinload(FieldModel.constraint_values).selectinload(
-                    ConstraintFieldValueAssociation.constraint
+                    FieldConstraintValueAssociation.constraint
                 ),
             )
             .where(
@@ -137,7 +137,7 @@ class FieldService(BaseService[FieldModel]):
         return field
 
     async def _set_constraint_associations(
-        self, field: FieldModel, constraints: list[FieldConstraintInput]
+        self, field: FieldModel, constraints: list[FieldConstraintValueInput]
     ) -> None:
         """Replace constraint associations for a field.
 
@@ -145,12 +145,12 @@ class FieldService(BaseService[FieldModel]):
         :param constraints: New constraint inputs (empty list clears all).
         """
         await self.db.execute(
-            delete(ConstraintFieldValueAssociation).where(
-                ConstraintFieldValueAssociation.field_id == field.id
+            delete(FieldConstraintValueAssociation).where(
+                FieldConstraintValueAssociation.field_id == field.id
             )
         )
         for c in constraints:
-            assoc = ConstraintFieldValueAssociation(
+            assoc = FieldConstraintValueAssociation(
                 constraint_id=c.constraint_id,
                 field_id=field.id,
                 value=c.value,

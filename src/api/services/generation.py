@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from api.models.database import (
     ApiModel,
-    ConstraintFieldValueAssociation,
+    FieldConstraintValueAssociation,
     FieldModel,
     ObjectDefinition,
 )
@@ -135,7 +135,7 @@ async def _fetch_fields(
         .options(
             selectinload(FieldModel.field_type),
             selectinload(FieldModel.constraint_values).selectinload(
-                ConstraintFieldValueAssociation.constraint
+                FieldConstraintValueAssociation.constraint
             ),
         )
         .where(FieldModel.id.in_(field_ids))
@@ -289,6 +289,8 @@ def _map_field_type(field_type: str) -> str:
         "bool": "bool",
         "datetime": "datetime.datetime",
         "uuid": "str",  # UUIDs are typically strings in API inputs
+        "EmailStr": "EmailStr",
+        "HttpUrl": "HttpUrl",
     }
     return type_mapping.get(field_type, "str")
 

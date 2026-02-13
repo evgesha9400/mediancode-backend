@@ -1,5 +1,5 @@
-# src/api/routers/constraints.py
-"""Router for Constraint endpoints (read-only)."""
+# src/api/routers/field_constraints.py
+"""Router for Field Constraint endpoints (read-only)."""
 
 from typing import Annotated
 
@@ -9,55 +9,55 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
 from api.database import get_db
-from api.models.database import ConstraintFieldValueAssociation, ConstraintModel
-from api.schemas.constraint import ConstraintResponse
+from api.models.database import FieldConstraintModel, FieldConstraintValueAssociation
+from api.schemas.field_constraint import FieldConstraintResponse
 from api.settings import get_settings
 
-router = APIRouter(prefix="/constraints", tags=["Constraints"])
+router = APIRouter(prefix="/field-constraints", tags=["Field Constraints"])
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
 async def get_field_counts_by_constraint(db: AsyncSession) -> dict[str, int]:
-    """Get count of fields for each constraint.
+    """Get count of fields for each field constraint.
 
     :param db: Database session.
-    :returns: Dict mapping constraint ID (as string) to field count.
+    :returns: Dict mapping field constraint ID (as string) to field count.
     """
     query = select(
-        ConstraintFieldValueAssociation.constraint_id,
-        func.count(ConstraintFieldValueAssociation.id),
-    ).group_by(ConstraintFieldValueAssociation.constraint_id)
+        FieldConstraintValueAssociation.constraint_id,
+        func.count(FieldConstraintValueAssociation.id),
+    ).group_by(FieldConstraintValueAssociation.constraint_id)
     result = await db.execute(query)
     return {str(row[0]): row[1] for row in result.fetchall()}
 
 
 @router.get(
     "",
-    response_model=list[ConstraintResponse],
-    summary="List all constraints",
-    description="Retrieve all constraint definitions (Pydantic Field constraints).",
+    response_model=list[FieldConstraintResponse],
+    summary="List all field constraints",
+    description="Retrieve all field constraint definitions (Pydantic Field constraints).",
 )
-async def list_constraints(
+async def list_field_constraints(
     user_id: CurrentUser,
     db: DbSession,
     namespace_id: str | None = None,
-) -> list[ConstraintResponse]:
-    """List all constraints.
+) -> list[FieldConstraintResponse]:
+    """List all field constraints.
 
     :param user_id: Authenticated user ID.
     :param db: Database session.
     :param namespace_id: Optional namespace filter. If provided, returns constraints
         from the specified namespace plus all global constraints.
-    :returns: List of constraint responses.
+    :returns: List of field constraint responses.
     """
-    query = select(ConstraintModel)
+    query = select(FieldConstraintModel)
     if namespace_id:
         settings = get_settings()
         query = query.where(
             or_(
-                ConstraintModel.namespace_id == namespace_id,
-                ConstraintModel.namespace_id == settings.global_namespace_id,
+                FieldConstraintModel.namespace_id == namespace_id,
+                FieldConstraintModel.namespace_id == settings.global_namespace_id,
             )
         )
 
@@ -67,7 +67,7 @@ async def list_constraints(
     field_counts = await get_field_counts_by_constraint(db)
 
     return [
-        ConstraintResponse(
+        FieldConstraintResponse(
             id=c.id,
             namespace_id=c.namespace_id,
             name=c.name,

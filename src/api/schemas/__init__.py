@@ -9,6 +9,7 @@ from api.schemas.endpoint import (
     PathParamSchema,
 )
 from api.schemas.field import FieldCreate, FieldResponse, FieldUpdate
+from api.schemas.field_constraint import FieldConstraintResponse
 from api.schemas.namespace import NamespaceCreate, NamespaceResponse, NamespaceUpdate
 from api.schemas.object import (
     ObjectCreate,
@@ -16,7 +17,6 @@ from api.schemas.object import (
     ObjectResponse,
     ObjectUpdate,
 )
-from api.schemas.constraint import ConstraintResponse
 from api.schemas.type import TypeResponse
 
 __all__ = [
@@ -26,7 +26,7 @@ __all__ = [
     "ApiEndpointUpdate",
     "ApiResponse",
     "ApiUpdate",
-    "ConstraintResponse",
+    "FieldConstraintResponse",
     "PathParamSchema",
     "FieldCreate",
     "FieldResponse",

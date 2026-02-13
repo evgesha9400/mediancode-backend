@@ -15,11 +15,11 @@ from api.rate_limit import limiter
 from api.routers import (
     apis_router,
     endpoints_router,
+    field_constraints_router,
     fields_router,
     namespaces_router,
     objects_router,
     types_router,
-    constraints_router,
 )
 from api.settings import get_settings
 
@@ -107,7 +107,7 @@ api_v1_prefix = "/v1"
 app.include_router(namespaces_router, prefix=api_v1_prefix)
 app.include_router(apis_router, prefix=api_v1_prefix)
 app.include_router(types_router, prefix=api_v1_prefix)
-app.include_router(constraints_router, prefix=api_v1_prefix)
+app.include_router(field_constraints_router, prefix=api_v1_prefix)
 app.include_router(fields_router, prefix=api_v1_prefix)
 app.include_router(objects_router, prefix=api_v1_prefix)
 app.include_router(endpoints_router, prefix=api_v1_prefix)
