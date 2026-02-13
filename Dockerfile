@@ -26,8 +26,7 @@ ENV PYTHONPATH=/app/src
 # Default port
 ENV PORT=8080
 
-# Copy Alembic config for migrations
-COPY alembic.ini ./
+# Copy Alembic config and entrypoint
+COPY alembic.ini entrypoint.sh ./
 
-# Run migrations then start the application (shell form to expand $PORT)
-CMD alembic -c alembic.ini upgrade head && uvicorn api.main:app --host 0.0.0.0 --port $PORT
+ENTRYPOINT ["./entrypoint.sh"]

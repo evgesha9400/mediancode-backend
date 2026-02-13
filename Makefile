@@ -38,9 +38,13 @@ db-stop: ## Stop PostgreSQL database
 	@docker compose down
 
 .PHONY: db-reset
-db-reset: ## Stop PostgreSQL and DELETE all data
+db-reset: ## Reset database: delete all data, restart, re-migrate
 	@docker compose down -v
-	@echo "Database data deleted"
+	@docker compose up -d
+	@echo "Waiting for database..."
+	@sleep 3
+	@$(POETRY) run alembic upgrade head
+	@echo "Database reset complete"
 
 .PHONY: test
 test: ## Run tests
@@ -163,7 +167,7 @@ help: ## Show this help message
 	@echo "  make dev             Start backend server with hot reload (localhost:8000)"
 	@echo "  make db              Start PostgreSQL database (Docker)"
 	@echo "  make db-stop         Stop PostgreSQL database"
-	@echo "  make db-reset        Stop PostgreSQL and DELETE all data"
+	@echo "  make db-reset        Reset database: delete data, restart, re-migrate"
 	@echo "  make test            Run tests"
 	@echo ""
 	@echo "DEPLOY TO RAILWAY:"
