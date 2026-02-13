@@ -25,7 +25,6 @@ from api_craft.models.input import (
     InputPathParam,
     InputQueryParam,
     InputTag,
-    InputValidator,
 )
 
 
@@ -128,13 +127,10 @@ async def _fetch_fields(
     if not field_ids:
         return {}
 
-    # Fetch fields with validators and type
+    # Fetch fields with type
     query = (
         select(FieldModel)
-        .options(
-            selectinload(FieldModel.validators),
-            selectinload(FieldModel.field_type),
-        )
+        .options(selectinload(FieldModel.field_type))
         .where(FieldModel.id.in_(field_ids))
     )
     result = await db.execute(query)
@@ -162,18 +158,15 @@ def _convert_to_input_api(
         for assoc in sorted(obj.field_associations, key=lambda x: x.position):
             field = fields_map.get(assoc.field_id)
             if field:
-                # Convert field validators
-                validators = [
-                    InputValidator(name=v.name, params=v.params)
-                    for v in field.validators
-                ]
+                # TODO: Constraint application will be re-added with
+                # constraint_field_values_associations
                 input_field = InputField(
                     name=field.name,
                     type=_map_field_type(field.field_type.name),
                     required=assoc.required,
                     description=field.description,
                     default_value=field.default_value,
-                    validators=validators,
+                    validators=[],
                 )
                 fields.append(input_field)
 

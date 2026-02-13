@@ -8,12 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
 from api.database import get_db
-from api.schemas.field import (
-    FieldCreate,
-    FieldResponse,
-    FieldUpdate,
-    FieldValidatorSchema,
-)
+from api.schemas.field import FieldCreate, FieldResponse, FieldUpdate
 from api.services.field import FieldService, get_field_service
 
 router = APIRouter(prefix="/fields", tags=["Fields"])
@@ -37,9 +32,6 @@ async def _to_response(field, service: FieldService) -> FieldResponse:
     :param service: FieldService instance for fetching usage data.
     :returns: FieldResponse schema.
     """
-    validators = [
-        FieldValidatorSchema(name=v.name, params=v.params) for v in field.validators
-    ]
     used_in_apis = await service.get_used_in_apis(field.id)
     return FieldResponse(
         id=field.id,
@@ -48,7 +40,6 @@ async def _to_response(field, service: FieldService) -> FieldResponse:
         type_id=field.type_id,
         description=field.description,
         default_value=field.default_value,
-        validators=validators,
         used_in_apis=used_in_apis,
     )
 
@@ -97,7 +88,7 @@ async def create_field(
     """
     service = get_service(db)
     field = await service.create_for_user(user_id, data)
-    # Reload with validators
+    # Reload with relationships
     field = await service.get_by_id_for_user(field.id, user_id)
     return await _to_response(field, service)
 
@@ -168,7 +159,7 @@ async def update_field(
         )
 
     updated = await service.update_field(field, data)
-    # Reload with validators
+    # Reload with relationships
     updated = await service.get_by_id_for_user(updated.id, user_id)
     return await _to_response(updated, service)
 

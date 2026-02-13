@@ -11,11 +11,10 @@ from sqlalchemy.orm import selectinload
 from api.models.database import (
     ApiEndpoint,
     FieldModel,
-    FieldValidator,
     Namespace,
     ObjectFieldAssociation,
 )
-from api.schemas.field import FieldCreate, FieldUpdate, FieldValidatorSchema
+from api.schemas.field import FieldCreate, FieldUpdate
 from api.services.base import BaseService
 from api.settings import get_settings
 
@@ -43,10 +42,7 @@ class FieldService(BaseService[FieldModel]):
         query = (
             select(FieldModel)
             .join(Namespace)
-            .options(
-                selectinload(FieldModel.validators),
-                selectinload(FieldModel.field_type),
-            )
+            .options(selectinload(FieldModel.field_type))
             .where(
                 or_(
                     Namespace.user_id == user_id,
@@ -72,10 +68,7 @@ class FieldService(BaseService[FieldModel]):
         query = (
             select(FieldModel)
             .join(Namespace)
-            .options(
-                selectinload(FieldModel.validators),
-                selectinload(FieldModel.field_type),
-            )
+            .options(selectinload(FieldModel.field_type))
             .where(
                 FieldModel.id == field_id,
                 or_(
@@ -104,11 +97,6 @@ class FieldService(BaseService[FieldModel]):
         )
         self.db.add(field)
         await self.db.flush()
-
-        # Add validators
-        if data.validators:
-            await self._set_validators(field, data.validators)
-
         await self.db.refresh(field)
         return field
 
@@ -125,8 +113,6 @@ class FieldService(BaseService[FieldModel]):
             field.description = data.description
         if data.default_value is not None:
             field.default_value = data.default_value
-        if data.validators is not None:
-            await self._set_validators(field, data.validators)
 
         await self.db.flush()
         await self.db.refresh(field)
@@ -154,33 +140,6 @@ class FieldService(BaseService[FieldModel]):
             )
 
         await self.db.delete(field)
-        await self.db.flush()
-
-    async def _set_validators(
-        self,
-        field: FieldModel,
-        validators: list[FieldValidatorSchema],
-    ) -> None:
-        """Set validators for a field, replacing existing ones.
-
-        :param field: The field to update validators for.
-        :param validators: List of validator schemas.
-        """
-        # Delete existing validators
-        delete_query = select(FieldValidator).where(FieldValidator.field_id == field.id)
-        result = await self.db.execute(delete_query)
-        for validator in result.scalars().all():
-            await self.db.delete(validator)
-
-        # Add new validators
-        for validator_data in validators:
-            validator = FieldValidator(
-                field_id=field.id,
-                name=validator_data.name,
-                params=validator_data.params,
-            )
-            self.db.add(validator)
-
         await self.db.flush()
 
     async def get_used_in_apis(self, field_id: UUID) -> list[UUID]:

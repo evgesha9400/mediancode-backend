@@ -1,21 +1,9 @@
 # src/api/schemas/field.py
 """Pydantic schemas for Field entity."""
 
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-
-
-class FieldValidatorSchema(BaseModel):
-    """Schema for a validator applied to a field.
-
-    :ivar name: Validator name (references ValidatorBase.name).
-    :ivar params: Validator parameters.
-    """
-
-    name: str = Field(..., examples=["max_length"])
-    params: dict[str, Any] | None = Field(default=None, examples=[{"value": 255}])
 
 
 class FieldCreate(BaseModel):
@@ -26,7 +14,6 @@ class FieldCreate(BaseModel):
     :ivar type_id: Reference to the type definition UUID.
     :ivar description: Field description.
     :ivar default_value: Default value expression.
-    :ivar validators: List of validators to apply.
     """
 
     namespace_id: UUID = Field(
@@ -38,7 +25,6 @@ class FieldCreate(BaseModel):
     )
     description: str | None = Field(default=None, examples=["User email address"])
     default_value: str | None = Field(default=None, alias="defaultValue", examples=[""])
-    validators: list[FieldValidatorSchema] | None = Field(default=None)
 
 
 class FieldUpdate(BaseModel):
@@ -47,7 +33,6 @@ class FieldUpdate(BaseModel):
     :ivar name: Updated field name.
     :ivar description: Updated description.
     :ivar default_value: Updated default value.
-    :ivar validators: Updated list of validators.
     """
 
     name: str | None = Field(default=None, examples=["updated_field_name"])
@@ -55,7 +40,6 @@ class FieldUpdate(BaseModel):
     default_value: str | None = Field(
         default=None, alias="defaultValue", examples=["new_default"]
     )
-    validators: list[FieldValidatorSchema] | None = Field(default=None)
 
 
 class FieldResponse(BaseModel):
@@ -67,7 +51,6 @@ class FieldResponse(BaseModel):
     :ivar type_id: Reference to the type definition UUID.
     :ivar description: Field description.
     :ivar default_value: Default value expression.
-    :ivar validators: List of validators applied.
     :ivar used_in_apis: Array of endpoint IDs where this field is used.
     """
 
@@ -81,7 +64,6 @@ class FieldResponse(BaseModel):
     )
     description: str | None = Field(default=None, examples=["User email address"])
     default_value: str | None = Field(default=None, alias="defaultValue", examples=[""])
-    validators: list[FieldValidatorSchema] = Field(default_factory=list)
     used_in_apis: list[UUID] = Field(
         default_factory=list,
         alias="usedInApis",

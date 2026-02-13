@@ -9,37 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
 from api.database import get_db
-from api.models.database import ConstraintModel, FieldModel, FieldValidator
-from api.schemas.constraint import ConstraintResponse, FieldReferenceSchema
+from api.models.database import ConstraintModel
+from api.schemas.constraint import ConstraintResponse
 from api.settings import get_settings
 
 router = APIRouter(prefix="/constraints", tags=["Constraints"])
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
-
-
-async def get_fields_by_constraint(
-    db: AsyncSession,
-) -> dict[str, list[FieldReferenceSchema]]:
-    """Get fields grouped by constraint name.
-
-    :param db: Database session.
-    :returns: Dict mapping constraint name to list of field references.
-    """
-    query = select(FieldValidator.name, FieldModel.id, FieldModel.name).join(
-        FieldModel, FieldValidator.field_id == FieldModel.id
-    )
-    result = await db.execute(query)
-
-    fields_by_constraint: dict[str, list[FieldReferenceSchema]] = {}
-    for constraint_name, field_id, field_name in result.fetchall():
-        if constraint_name not in fields_by_constraint:
-            fields_by_constraint[constraint_name] = []
-        fields_by_constraint[constraint_name].append(
-            FieldReferenceSchema(name=field_name, field_id=field_id)
-        )
-
-    return fields_by_constraint
 
 
 @router.get(
@@ -74,9 +50,8 @@ async def list_constraints(
     result = await db.execute(query)
     constraints = result.scalars().all()
 
-    # Get fields using each constraint
-    fields_by_constraint = await get_fields_by_constraint(db)
-
+    # TODO: Usage statistics (used_in_fields, fields_using_constraint) will be
+    # re-added when constraint_field_values_associations is wired up
     return [
         ConstraintResponse(
             id=c.id,
@@ -86,8 +61,6 @@ async def list_constraints(
             parameter_type=c.parameter_type,
             docs_url=c.docs_url,
             compatible_types=c.compatible_types,
-            used_in_fields=len(fields_by_constraint.get(c.name, [])),
-            fields_using_constraint=fields_by_constraint.get(c.name, []),
         )
         for c in constraints
     ]

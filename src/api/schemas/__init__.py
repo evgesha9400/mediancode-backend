@@ -8,12 +8,7 @@ from api.schemas.endpoint import (
     ApiEndpointUpdate,
     PathParamSchema,
 )
-from api.schemas.field import (
-    FieldCreate,
-    FieldResponse,
-    FieldUpdate,
-    FieldValidatorSchema,
-)
+from api.schemas.field import FieldCreate, FieldResponse, FieldUpdate
 from api.schemas.namespace import NamespaceCreate, NamespaceResponse, NamespaceUpdate
 from api.schemas.object import (
     ObjectCreate,
@@ -36,7 +31,6 @@ __all__ = [
     "FieldCreate",
     "FieldResponse",
     "FieldUpdate",
-    "FieldValidatorSchema",
     "NamespaceCreate",
     "NamespaceResponse",
     "NamespaceUpdate",
