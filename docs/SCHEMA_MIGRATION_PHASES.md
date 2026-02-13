@@ -19,10 +19,10 @@ YOUR WORKFLOW:
 IMPORTANT: Before making ANY changes, search the entire codebase for all references to each entity. Use grep/search for field names, interface names, API paths, route paths, component names. Miss nothing.
 
 ========================================================================
-PHASE 1: TYPES + CONSTRAINTS (Reference Data)
+PHASE 1: TYPES + FIELD CONSTRAINTS (Reference Data)
 ========================================================================
 
-Types and Constraints are READ-ONLY global reference data seeded by the backend.
+Types and Field Constraints are READ-ONLY global reference data seeded by the backend.
 They are not created/edited by users — only listed and used as references by other entities.
 These two entities should share a page (e.g., a "Reference Data" or "Building Blocks" page with two tabs or two sections).
 
@@ -54,29 +54,38 @@ TABLE COLUMNS (list view):
 | Used in Fields| usedInFields   | Numeric badge/count                              |
 
 NOTES:
-- parentTypeId is not displayed in the table — it's for future use (constrained type hierarchies). Ignore it for now.
+- parentTypeId links constrained types to their parent (e.g., EmailStr → str, HttpUrl → str).
+  Consider displaying a "Parent" column or grouping child types under their parent.
 - This table is read-only: no create/edit/delete actions.
 - Rows are not clickable (no detail view needed).
+- The 8 seed types are:
+  Base: str, int, float, bool, datetime, uuid
+  Constrained (parent=str): EmailStr, HttpUrl
 
 MIGRATION — fields REMOVED from old interface:
 - category (string) — DELETE all references
-- compatibleTypes (string[]) — DELETE all references (this concept moved to Constraints)
+- compatibleTypes (string[]) — DELETE all references (this concept moved to Field Constraints)
 
 MIGRATION — fields ADDED to interface:
 - importPath: string | null
 - parentTypeId: string | null
 
 ------------------------------------------------------------------------
-ENTITY: Constraints (was "Validators")
+ENTITY: Field Constraints (was "Validators")
 ------------------------------------------------------------------------
 
-THE FRONTEND CURRENTLY HAS A "VALIDATORS" PAGE. This page must be renamed to "CONSTRAINTS".
-The backend entity "validators" has been fully renamed to "constraints" — table, model,
+THE FRONTEND CURRENTLY HAS A "VALIDATORS" PAGE. This page must be renamed to "FIELD CONSTRAINTS".
+The backend entity "validators" has been fully renamed to "field constraints" — table, model,
 schema, router, API path, everything. The frontend must match: rename the page, its route,
-all interfaces, stores, API calls, and UI labels from "validator(s)" to "constraint(s)".
+all interfaces, stores, API calls, and UI labels.
 
-API: GET /v1/constraints?namespaceId={optional}
-(old path that no longer exists: GET /v1/validators)
+IMPORTANT — this is a TWO-STEP rename:
+  1. "validators" → "field-constraints" (the old entity name is gone)
+  2. The concept is specifically "Field Constraints" (Pydantic Field() keyword arguments),
+     NOT "type constraints" (those are now actual types like EmailStr, HttpUrl).
+
+API: GET /v1/field-constraints?namespaceId={optional}
+(old paths that no longer exist: GET /v1/validators, GET /v1/constraints)
 
 Response shape (array of):
 {
@@ -103,22 +112,29 @@ TABLE COLUMNS (list view):
 NOTES:
 - Read-only: no create/edit/delete actions.
 - Rows are not clickable (no detail view needed).
-- The 10 seed constraints are:
-  String: max_length, min_length, pattern, email_format, url_format
+- The 8 seed field constraints are:
+  String: max_length, min_length, pattern
   Numeric: gt, ge, lt, le, multiple_of
+- email_format and url_format NO LONGER EXIST as constraints.
+  EmailStr and HttpUrl are now TYPES (see Types above).
 
 MIGRATION — entity rename:
-- Rename ALL of: validator → constraint, Validator → Constraint, validators → constraints, Validators → Constraints
-- API path: /validators → /constraints
-- Interface: ValidatorResponse → ConstraintResponse
-- Route paths: any route containing "validator" → "constraint"
-- Store/state: any validator store → constraint store
-- Labels/headings in UI: "Validators" → "Constraints"
+- Rename ALL of: validator → fieldConstraint, Validator → FieldConstraint, validators → fieldConstraints, Validators → FieldConstraints
+- API path: /validators → /field-constraints
+- Interface: ValidatorResponse → FieldConstraintResponse
+- Route paths: any route containing "validator" → "field-constraint"
+- Store/state: any validator store → fieldConstraint store
+- Labels/headings in UI: "Validators" → "Field Constraints"
 
 MIGRATION — fields REMOVED from old validator interface:
 - type (string — was "string" or "numeric") — DELETE (replaced by compatibleTypes)
 - category (string — was always "inline") — DELETE
 - exampleUsage (string) — DELETE
+
+MIGRATION — seed data removed:
+- email_format — NO LONGER A CONSTRAINT. Now the type "EmailStr" (see Types).
+- url_format — NO LONGER A CONSTRAINT. Now the type "HttpUrl" (see Types).
+- If the frontend had any special handling for these, remove it.
 
 MIGRATION — fields ADDED:
 - compatibleTypes: string[]
@@ -131,7 +147,7 @@ PHASE 2: FIELDS
 ========================================================================
 
 Fields are user-created entities that define individual data points (like "email", "age", "username").
-Each field has a type (from Phase 1) and optional constraints (from Phase 1).
+Each field has a type (from Phase 1) and optional field constraints (from Phase 1).
 Fields are the building blocks used to compose Objects (Phase 3).
 
 ------------------------------------------------------------------------
@@ -178,7 +194,7 @@ Response shape:
   "usedInApis": ["endpoint-uuid-1", "endpoint-uuid-2"],
   "constraints": [
     {"constraintId": "uuid", "name": "max_length", "value": "255"},
-    {"constraintId": "uuid", "name": "email_format", "value": null}
+    {"constraintId": "uuid", "name": "pattern", "value": "^[a-z]+$"}
   ]
 }
 
@@ -198,12 +214,12 @@ FORM (create/edit):
 - description: textarea (optional)
 - defaultValue: text input (optional)
 - constraints section:
-  - When user selects a type, filter available constraints by checking if the type's
-    name (e.g., "str") is in each constraint's compatibleTypes array
-  - Show applicable constraints as a list/checklist
-  - For each constraint that takes a parameter (parameterType != "None"), show a value input
-  - For parameterless constraints (parameterType == "None"), just a toggle/checkbox
+  - When user selects a type, filter available field constraints by checking if the type's
+    name (e.g., "str") is in each field constraint's compatibleTypes array
+  - Show applicable field constraints as a list/checklist
+  - All 8 seed field constraints take a parameter — show a value input for each
   - On submit, send array of {constraintId, value} pairs for selected constraints
+  - Fetch field constraints from GET /v1/field-constraints
 
 DELETE:
 - Cannot delete if usedInApis is non-empty (backend returns 400)
@@ -555,14 +571,15 @@ COMPREHENSIVE SEARCH CHECKLIST
 Before making any changes, run these searches across the entire frontend codebase:
 
 ENTITY RENAMES:
-- [ ] validator / Validator / validators / Validators → constraint / Constraint / constraints / Constraints
-- [ ] /validators API path → /constraints
-- [ ] ValidatorResponse → ConstraintResponse
-- [ ] Any route path containing "validator" → "constraint"
+- [ ] validator / Validator / validators / Validators → fieldConstraint / FieldConstraint / fieldConstraints / FieldConstraints
+- [ ] /validators API path → /field-constraints
+- [ ] ValidatorResponse → FieldConstraintResponse
+- [ ] Any route path containing "validator" → "field-constraint"
+- [ ] Any store/state named "validator" → "fieldConstraint"
 
 REMOVED FIELDS:
 - [ ] category on types (DELETE)
-- [ ] compatibleTypes on types (DELETE — now on constraints)
+- [ ] compatibleTypes on types (DELETE — now on field constraints)
 - [ ] type field on validators/constraints (DELETE — replaced by compatibleTypes)
 - [ ] category on validators/constraints (DELETE)
 - [ ] exampleUsage on validators/constraints (DELETE)
@@ -570,19 +587,24 @@ REMOVED FIELDS:
 - [ ] TagSchema / Tag interface (DELETE file)
 - [ ] namespaceId on endpoints — create and response (DELETE — still on API/field/object)
 - [ ] Old path param fields: id, type, description, required on endpoint path params (DELETE)
+- [ ] email_format / url_format references — these are now TYPES (EmailStr, HttpUrl), not constraints
 
 ADDED FIELDS:
 - [ ] importPath on types (string | null)
 - [ ] parentTypeId on types (string | null)
-- [ ] compatibleTypes on constraints (string[])
+- [ ] compatibleTypes on field constraints (string[])
 - [ ] constraints on field create/update request ({constraintId, value}[])
 - [ ] constraints on field response ({constraintId, name, value}[])
 - [ ] usedInApis on field response (string[])
 - [ ] fieldId on path params (replaces old schema)
 
 CHANGED FIELDS:
-- [ ] docsUrl on constraints — now nullable
+- [ ] docsUrl on field constraints — now nullable
 - [ ] pathParams on endpoints — schema changed from {id, name, type, description, required} to {name, fieldId}
+
+SEED DATA CHANGES:
+- [ ] Types now include: EmailStr (parent=str), HttpUrl (parent=str) — these are NEW types
+- [ ] Field constraints reduced from 10 to 8 — email_format and url_format REMOVED
 ```
 
 ---
@@ -593,20 +615,20 @@ CHANGED FIELDS:
 |-------|----------|--------|
 | 1 | namespaces + fields + objects (TEXT normalization) | DONE |
 | 2 | types (major restructure) | DONE |
-| 3 | validators → constraints (rename + restructure) | DONE |
+| 3 | validators → field_constraints (rename + restructure) | DONE |
 | 4 | apis (drop tags + TEXT) | DONE |
 | 5 | api_endpoints + endpoint_parameters (restructure + delete) | DONE |
 | 6 | field_validators + field_validator_associations (complete replacement + new) | DONE |
 | 7 | model_validators + object_model_validator_associations (new tables) | DONE |
-| 8 | constraint_field_values_associations (new table) | DONE |
+| 8 | field_constraint_values (new table) | DONE |
 
 ### Integration Tasks (Post-Migration)
 
 | Task | Status |
 |------|--------|
-| Wire `constraint_field_values_associations` into field CRUD | DONE |
-| Wire `constraint_field_values_associations` into generation service | DONE |
-| Wire `constraint_field_values_associations` into constraints router (`usedInFields`) | DONE |
+| Wire `field_constraint_values` into field CRUD | DONE |
+| Wire `field_constraint_values` into generation service | DONE |
+| Wire `field_constraint_values` into field constraints router (`usedInFields`) | DONE |
 | Update generation service to use path_params field references for type resolution | DONE |
 | Build field_validators CRUD endpoints (custom validator management) | NOT YET — structural tables exist, no API |
 | Build model_validators CRUD endpoints (custom model validator management) | NOT YET — structural tables exist, no API |
