@@ -7,33 +7,30 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class EndpointParameterSchema(BaseModel):
-    """Schema for a path parameter.
+class PathParamSchema(BaseModel):
+    """Schema for a path parameter reference.
 
-    :ivar id: Parameter identifier.
-    :ivar name: Parameter name.
-    :ivar type: Primitive type name.
-    :ivar description: Parameter description.
-    :ivar required: Whether parameter is required.
+    :ivar name: Parameter name (extracted from path {braces}).
+    :ivar field_id: Reference to the field definition.
     """
 
-    id: UUID = Field(..., examples=["00000000-0000-0000-0006-000000000001"])
     name: str = Field(..., examples=["user_id"])
-    type: str = Field(..., examples=["uuid"])
-    description: str = Field(..., examples=["Unique user identifier"])
-    required: bool = Field(..., examples=[True])
+    field_id: UUID = Field(
+        ..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"]
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ApiEndpointCreate(BaseModel):
     """Request schema for creating an endpoint.
 
-    :ivar namespace_id: Namespace this endpoint belongs to.
     :ivar api_id: API this endpoint belongs to.
     :ivar method: HTTP method.
     :ivar path: URL path with optional parameters.
     :ivar description: Endpoint description.
     :ivar tag_name: Optional tag name (must exist in the parent API's tags).
-    :ivar path_params: Path parameters.
+    :ivar path_params: Path parameters referencing field definitions.
     :ivar query_params_object_id: Optional query params object reference.
     :ivar request_body_object_id: Optional request body object reference.
     :ivar response_body_object_id: Optional response body object reference.
@@ -41,9 +38,6 @@ class ApiEndpointCreate(BaseModel):
     :ivar response_shape: Response shape (object or list).
     """
 
-    namespace_id: UUID = Field(
-        ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"]
-    )
     api_id: UUID = Field(
         ..., alias="apiId", examples=["00000000-0000-0000-0005-000000000001"]
     )
@@ -53,7 +47,7 @@ class ApiEndpointCreate(BaseModel):
     path: str = Field(..., examples=["/users/{user_id}"])
     description: str = Field(..., examples=["Get user by ID"])
     tag_name: str | None = Field(default=None, alias="tagName", examples=["Users"])
-    path_params: list[EndpointParameterSchema] = Field(..., alias="pathParams")
+    path_params: list[PathParamSchema] = Field(..., alias="pathParams")
     query_params_object_id: UUID | None = Field(
         default=None,
         alias="queryParamsObjectId",
@@ -102,7 +96,7 @@ class ApiEndpointUpdate(BaseModel):
         default=None, examples=["Updated endpoint description"]
     )
     tag_name: str | None = Field(default=None, alias="tagName")
-    path_params: list[EndpointParameterSchema] | None = Field(
+    path_params: list[PathParamSchema] | None = Field(
         default=None, alias="pathParams"
     )
     query_params_object_id: UUID | None = Field(
@@ -124,13 +118,12 @@ class ApiEndpointResponse(BaseModel):
     """Response schema for endpoint data.
 
     :ivar id: Unique identifier for the endpoint.
-    :ivar namespace_id: Namespace this endpoint belongs to.
     :ivar api_id: API this endpoint belongs to.
     :ivar method: HTTP method.
     :ivar path: URL path.
     :ivar description: Endpoint description.
     :ivar tag_name: Tag name (references a tag in the parent API).
-    :ivar path_params: Path parameters.
+    :ivar path_params: Path parameters referencing field definitions.
     :ivar query_params_object_id: Query params object reference.
     :ivar request_body_object_id: Request body object reference.
     :ivar response_body_object_id: Response body object reference.
@@ -139,9 +132,6 @@ class ApiEndpointResponse(BaseModel):
     """
 
     id: UUID = Field(..., examples=["00000000-0000-0000-0004-000000000001"])
-    namespace_id: UUID = Field(
-        ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000001"]
-    )
     api_id: UUID = Field(
         ..., alias="apiId", examples=["00000000-0000-0000-0005-000000000001"]
     )
@@ -149,7 +139,7 @@ class ApiEndpointResponse(BaseModel):
     path: str = Field(..., examples=["/users/{user_id}"])
     description: str = Field(..., examples=["Retrieve user by ID"])
     tag_name: str | None = Field(default=None, alias="tagName", examples=["Users"])
-    path_params: list[EndpointParameterSchema] = Field(
+    path_params: list[PathParamSchema] = Field(
         default_factory=list, alias="pathParams"
     )
     query_params_object_id: UUID | None = Field(

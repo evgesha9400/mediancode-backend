@@ -6,8 +6,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from api.schemas.tag import TagSchema
-
 
 class ApiCreate(BaseModel):
     """Request schema for creating an API.
@@ -18,7 +16,6 @@ class ApiCreate(BaseModel):
     :ivar description: API description.
     :ivar base_url: Base path for all endpoints.
     :ivar server_url: Full server URL.
-    :ivar tags: List of tag definitions for this API.
     """
 
     namespace_id: UUID = Field(
@@ -33,10 +30,6 @@ class ApiCreate(BaseModel):
     server_url: str | None = Field(
         default="", alias="serverUrl", examples=["https://api.example.com"]
     )
-    tags: list[TagSchema] = Field(
-        default_factory=list,
-        examples=[[{"name": "Users", "description": "User management endpoints"}]],
-    )
 
 
 class ApiUpdate(BaseModel):
@@ -47,7 +40,6 @@ class ApiUpdate(BaseModel):
     :ivar description: Updated API description.
     :ivar base_url: Updated base path.
     :ivar server_url: Updated server URL.
-    :ivar tags: Updated list of tag definitions.
     """
 
     title: str | None = Field(default=None, examples=["Updated API Title"])
@@ -56,10 +48,6 @@ class ApiUpdate(BaseModel):
     base_url: str | None = Field(default=None, alias="baseUrl", examples=["/api/v2"])
     server_url: str | None = Field(
         default=None, alias="serverUrl", examples=["https://api.example.com"]
-    )
-    tags: list[TagSchema] | None = Field(
-        default=None,
-        examples=[[{"name": "Users", "description": "Updated user endpoints"}]],
     )
 
 
@@ -73,7 +61,6 @@ class ApiResponse(BaseModel):
     :ivar description: API description.
     :ivar base_url: Base path for all endpoints.
     :ivar server_url: Full server URL.
-    :ivar tags: List of tag definitions for this API.
     :ivar created_at: Creation timestamp.
     :ivar updated_at: Last update timestamp.
     """
@@ -88,10 +75,6 @@ class ApiResponse(BaseModel):
     base_url: str = Field(..., alias="baseUrl", examples=["/api/v1"])
     server_url: str = Field(
         ..., alias="serverUrl", examples=["https://api.example.com"]
-    )
-    tags: list[TagSchema] = Field(
-        default_factory=list,
-        examples=[[{"name": "Users", "description": "User management endpoints"}]],
     )
     created_at: datetime = Field(
         ..., alias="createdAt", examples=["2026-01-25T10:30:00Z"]

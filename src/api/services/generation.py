@@ -38,7 +38,7 @@ async def generate_api_zip(api: ApiModel, db: AsyncSession) -> io.BytesIO:
     """
     # Fetch all related data
     objects_map = await _fetch_objects(api, db)
-    fields_map = await _fetch_fields(objects_map, db)
+    fields_map = await _fetch_fields(api, objects_map, db)
 
     # Convert to api_craft InputAPI format
     input_api = _convert_to_input_api(api, objects_map, fields_map)
@@ -101,11 +101,13 @@ async def _fetch_objects(
 
 
 async def _fetch_fields(
+    api: ApiModel,
     objects_map: dict[str, ObjectDefinition],
     db: AsyncSession,
 ) -> dict[str, FieldModel]:
-    """Fetch all fields referenced by objects.
+    """Fetch all fields referenced by objects and path parameters.
 
+    :param api: The API model with endpoints loaded.
     :param objects_map: Map of object ID to ObjectDefinition.
     :param db: Database session.
     :returns: Map of field ID to FieldModel.
@@ -115,6 +117,13 @@ async def _fetch_fields(
     for obj in objects_map.values():
         for assoc in obj.field_associations:
             field_ids.add(assoc.field_id)
+
+    # Collect field IDs from endpoint path_params
+    for endpoint in api.endpoints:
+        for param in endpoint.path_params or []:
+            field_id = param.get("fieldId")
+            if field_id:
+                field_ids.add(field_id)
 
     if not field_ids:
         return {}
@@ -174,10 +183,9 @@ def _convert_to_input_api(
             InputModel(name=obj_name, fields=fields, description=obj.description)
         )
 
-    # Convert tags from JSONB array to InputTag list
-    input_tags = [
-        InputTag(name=tag["name"], description=tag["description"]) for tag in api.tags
-    ]
+    # Derive tags from endpoint tag_names
+    tag_names = {ep.tag_name for ep in api.endpoints if ep.tag_name}
+    input_tags = [InputTag(name=name, description="") for name in sorted(tag_names)]
 
     # Convert endpoints to InputEndpoint
     input_endpoints: list[InputEndpoint] = []
@@ -188,17 +196,21 @@ def _convert_to_input_api(
         # Get tag name directly from endpoint (no longer need lookup)
         tag_name = endpoint.tag_name
 
-        # Convert path params
+        # Convert path params (JSONB dicts with name and fieldId)
         path_params = None
         if endpoint.path_params:
-            path_params = [
-                InputPathParam(
-                    name=p.name,
-                    type=_map_field_type(p.type),
-                    description=p.description,
+            path_params = []
+            for p in endpoint.path_params:
+                field = fields_map.get(p.get("fieldId"))
+                field_type = _map_field_type(field.field_type.name) if field else "str"
+                description = field.description or "" if field else ""
+                path_params.append(
+                    InputPathParam(
+                        name=p["name"],
+                        type=field_type,
+                        description=description,
+                    )
                 )
-                for p in sorted(endpoint.path_params, key=lambda x: x.position)
-            ]
 
         # Get query params from object
         query_params = None

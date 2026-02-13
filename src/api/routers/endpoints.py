@@ -12,8 +12,9 @@ from api.schemas.endpoint import (
     ApiEndpointCreate,
     ApiEndpointResponse,
     ApiEndpointUpdate,
-    EndpointParameterSchema,
+    PathParamSchema,
 )
+from api.services.api import get_api_service
 from api.services.endpoint import EndpointService, get_endpoint_service
 
 router = APIRouter(prefix="/endpoints", tags=["Endpoints"])
@@ -36,25 +37,14 @@ def _to_response(endpoint) -> ApiEndpointResponse:
     :param endpoint: Endpoint database model.
     :returns: ApiEndpointResponse schema.
     """
-    path_params = [
-        EndpointParameterSchema(
-            id=p.id,
-            name=p.name,
-            type=p.type,
-            description=p.description,
-            required=p.required,
-        )
-        for p in sorted(endpoint.path_params, key=lambda x: x.position)
-    ]
     return ApiEndpointResponse(
         id=endpoint.id,
-        namespace_id=endpoint.namespace_id,
         api_id=endpoint.api_id,
         method=endpoint.method,
         path=endpoint.path,
         description=endpoint.description,
-        tag_id=endpoint.tag_id,
-        path_params=path_params,
+        tag_name=endpoint.tag_name,
+        path_params=[PathParamSchema(**p) for p in (endpoint.path_params or [])],
         query_params_object_id=endpoint.query_params_object_id,
         request_body_object_id=endpoint.request_body_object_id,
         response_body_object_id=endpoint.response_body_object_id,
@@ -107,8 +97,6 @@ async def create_endpoint(
     """
     service = get_service(db)
     endpoint = await service.create_for_user(user_id, data)
-    # Reload with path params
-    endpoint = await service.get_by_id_for_user(endpoint.id, user_id)
     return _to_response(endpoint)
 
 
@@ -170,16 +158,16 @@ async def update_endpoint(
             detail=f"Endpoint with ID '{endpoint_id}' not found",
         )
 
-    # Verify ownership
-    if endpoint.user_id != user_id:
+    # Verify ownership through parent API
+    api_service = get_api_service(db)
+    api = await api_service.get_by_id_for_user(str(endpoint.api_id), user_id)
+    if not api or api.user_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot modify endpoint in locked namespace",
         )
 
     updated = await service.update_endpoint(endpoint, data)
-    # Reload with path params
-    updated = await service.get_by_id_for_user(updated.id, user_id)
     return _to_response(updated)
 
 
@@ -209,8 +197,10 @@ async def delete_endpoint(
             detail=f"Endpoint with ID '{endpoint_id}' not found",
         )
 
-    # Verify ownership
-    if endpoint.user_id != user_id:
+    # Verify ownership through parent API
+    api_service = get_api_service(db)
+    api = await api_service.get_by_id_for_user(str(endpoint.api_id), user_id)
+    if not api or api.user_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete endpoint in locked namespace",

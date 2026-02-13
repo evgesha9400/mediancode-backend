@@ -3,14 +3,9 @@
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from api.models.database import ApiEndpoint, EndpointParameter, Namespace
-from api.schemas.endpoint import (
-    ApiEndpointCreate,
-    ApiEndpointUpdate,
-    EndpointParameterSchema,
-)
+from api.models.database import ApiEndpoint, ApiModel, Namespace
+from api.schemas.endpoint import ApiEndpointCreate, ApiEndpointUpdate
 from api.services.base import BaseService
 from api.settings import get_settings
 
@@ -32,13 +27,13 @@ class EndpointService(BaseService[ApiEndpoint]):
 
         :param user_id: The authenticated user's ID.
         :param namespace_id: Optional namespace filter.
-        :returns: List of accessible endpoints with path params loaded.
+        :returns: List of accessible endpoints.
         """
         settings = get_settings()
         query = (
             select(ApiEndpoint)
+            .join(ApiModel)
             .join(Namespace)
-            .options(selectinload(ApiEndpoint.path_params))
             .where(
                 or_(
                     Namespace.user_id == user_id,
@@ -47,7 +42,7 @@ class EndpointService(BaseService[ApiEndpoint]):
             )
         )
         if namespace_id:
-            query = query.where(ApiEndpoint.namespace_id == namespace_id)
+            query = query.where(ApiModel.namespace_id == namespace_id)
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
@@ -63,8 +58,8 @@ class EndpointService(BaseService[ApiEndpoint]):
         settings = get_settings()
         query = (
             select(ApiEndpoint)
+            .join(ApiModel)
             .join(Namespace)
-            .options(selectinload(ApiEndpoint.path_params))
             .where(
                 ApiEndpoint.id == endpoint_id,
                 or_(
@@ -86,13 +81,12 @@ class EndpointService(BaseService[ApiEndpoint]):
         :returns: The created endpoint.
         """
         endpoint = ApiEndpoint(
-            namespace_id=data.namespace_id,
             api_id=data.api_id,
-            user_id=user_id,
             method=data.method,
             path=data.path,
             description=data.description,
             tag_name=data.tag_name,
+            path_params=[p.model_dump(by_alias=True) for p in data.path_params],
             query_params_object_id=data.query_params_object_id,
             request_body_object_id=data.request_body_object_id,
             response_body_object_id=data.response_body_object_id,
@@ -101,10 +95,6 @@ class EndpointService(BaseService[ApiEndpoint]):
         )
         self.db.add(endpoint)
         await self.db.flush()
-
-        # Add path parameters
-        await self._set_path_params(endpoint, data.path_params)
-
         await self.db.refresh(endpoint)
         return endpoint
 
@@ -140,7 +130,9 @@ class EndpointService(BaseService[ApiEndpoint]):
         if data.response_shape is not None:
             endpoint.response_shape = data.response_shape
         if data.path_params is not None:
-            await self._set_path_params(endpoint, data.path_params)
+            endpoint.path_params = [
+                p.model_dump(by_alias=True) for p in data.path_params
+            ]
 
         await self.db.flush()
         await self.db.refresh(endpoint)
@@ -152,39 +144,6 @@ class EndpointService(BaseService[ApiEndpoint]):
         :param endpoint: The endpoint to delete.
         """
         await self.db.delete(endpoint)
-        await self.db.flush()
-
-    async def _set_path_params(
-        self,
-        endpoint: ApiEndpoint,
-        params: list[EndpointParameterSchema],
-    ) -> None:
-        """Set path parameters for an endpoint, replacing existing ones.
-
-        :param endpoint: The endpoint to update parameters for.
-        :param params: List of parameter schemas.
-        """
-        # Delete existing parameters
-        delete_query = select(EndpointParameter).where(
-            EndpointParameter.endpoint_id == endpoint.id
-        )
-        result = await self.db.execute(delete_query)
-        for param in result.scalars().all():
-            await self.db.delete(param)
-
-        # Add new parameters
-        for position, param_data in enumerate(params):
-            param = EndpointParameter(
-                id=param_data.id,
-                endpoint_id=endpoint.id,
-                name=param_data.name,
-                type=param_data.type,
-                description=param_data.description,
-                required=param_data.required,
-                position=position,
-            )
-            self.db.add(param)
-
         await self.db.flush()
 
 

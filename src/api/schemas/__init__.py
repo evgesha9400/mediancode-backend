@@ -6,7 +6,7 @@ from api.schemas.endpoint import (
     ApiEndpointCreate,
     ApiEndpointResponse,
     ApiEndpointUpdate,
-    EndpointParameterSchema,
+    PathParamSchema,
 )
 from api.schemas.field import (
     FieldCreate,
@@ -22,7 +22,6 @@ from api.schemas.object import (
     ObjectUpdate,
 )
 from api.schemas.constraint import ConstraintResponse
-from api.schemas.tag import TagSchema
 from api.schemas.type import TypeResponse
 
 __all__ = [
@@ -33,7 +32,7 @@ __all__ = [
     "ApiResponse",
     "ApiUpdate",
     "ConstraintResponse",
-    "EndpointParameterSchema",
+    "PathParamSchema",
     "FieldCreate",
     "FieldResponse",
     "FieldUpdate",
@@ -45,6 +44,5 @@ __all__ = [
     "ObjectFieldReferenceSchema",
     "ObjectResponse",
     "ObjectUpdate",
-    "TagSchema",
     "TypeResponse",
 ]

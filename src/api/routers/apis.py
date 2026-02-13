@@ -156,7 +156,7 @@ async def update_api(
     "/{api_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete API",
-    description="Delete an API definition. This cascades to endpoints and tags.",
+    description="Delete an API definition. This cascades to endpoints.",
 )
 async def delete_api(
     api_id: str,

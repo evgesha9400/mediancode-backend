@@ -101,7 +101,7 @@ def upgrade() -> None:
         op.f("ix_constraints_namespace_id"), "constraints", ["namespace_id"], unique=False
     )
 
-    # Create apis table (with tags JSONB column)
+    # Create apis table
     op.create_table(
         "apis",
         sa.Column(
@@ -111,18 +111,12 @@ def upgrade() -> None:
             server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("user_id", sa.String(length=255), nullable=False),
-        sa.Column("title", sa.String(length=255), nullable=False),
-        sa.Column("version", sa.String(length=50), nullable=False),
+        sa.Column("user_id", sa.Text(), nullable=False),
+        sa.Column("title", sa.Text(), nullable=False),
+        sa.Column("version", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=False),
-        sa.Column("base_url", sa.String(length=255), nullable=False),
-        sa.Column("server_url", sa.String(length=255), nullable=False),
-        sa.Column(
-            "tags",
-            postgresql.JSONB(astext_type=sa.Text()),
-            nullable=False,
-            server_default="[]",
-        ),
+        sa.Column("base_url", sa.Text(), nullable=False),
+        sa.Column("server_url", sa.Text(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
@@ -231,7 +225,7 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # Create api_endpoints table (with tag_name instead of tag_id)
+    # Create api_endpoints table
     op.create_table(
         "api_endpoints",
         sa.Column(
@@ -240,17 +234,21 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("gen_random_uuid()"),
         ),
-        sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("api_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("user_id", sa.String(length=255), nullable=False),
         sa.Column(
             "method",
             sa.Enum("GET", "POST", "PUT", "PATCH", "DELETE", name="http_method"),
             nullable=False,
         ),
-        sa.Column("path", sa.String(length=500), nullable=False),
+        sa.Column("path", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=False),
-        sa.Column("tag_name", sa.String(length=255), nullable=True),
+        sa.Column("tag_name", sa.Text(), nullable=True),
+        sa.Column(
+            "path_params",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default="[]",
+        ),
         sa.Column(
             "query_params_object_id", postgresql.UUID(as_uuid=True), nullable=True
         ),
@@ -267,7 +265,6 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.ForeignKeyConstraint(["api_id"], ["apis.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
         sa.ForeignKeyConstraint(["query_params_object_id"], ["objects.id"]),
         sa.ForeignKeyConstraint(["request_body_object_id"], ["objects.id"]),
         sa.ForeignKeyConstraint(["response_body_object_id"], ["objects.id"]),
@@ -276,51 +273,9 @@ def upgrade() -> None:
     op.create_index(
         op.f("ix_api_endpoints_api_id"), "api_endpoints", ["api_id"], unique=False
     )
-    op.create_index(
-        op.f("ix_api_endpoints_namespace_id"),
-        "api_endpoints",
-        ["namespace_id"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_api_endpoints_user_id"), "api_endpoints", ["user_id"], unique=False
-    )
-
-    # Create endpoint_parameters table
-    op.create_table(
-        "endpoint_parameters",
-        sa.Column(
-            "id",
-            postgresql.UUID(as_uuid=True),
-            nullable=False,
-            server_default=sa.text("gen_random_uuid()"),
-        ),
-        sa.Column("endpoint_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("name", sa.String(length=255), nullable=False),
-        sa.Column("type", sa.String(length=50), nullable=False),
-        sa.Column("description", sa.Text(), nullable=False),
-        sa.Column("required", sa.Boolean(), nullable=False),
-        sa.Column("position", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["endpoint_id"], ["api_endpoints.id"], ondelete="CASCADE"
-        ),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_endpoint_parameters_endpoint_id"),
-        "endpoint_parameters",
-        ["endpoint_id"],
-        unique=False,
-    )
 
 
 def downgrade() -> None:
-    op.drop_index(
-        op.f("ix_endpoint_parameters_endpoint_id"), table_name="endpoint_parameters"
-    )
-    op.drop_table("endpoint_parameters")
-    op.drop_index(op.f("ix_api_endpoints_user_id"), table_name="api_endpoints")
-    op.drop_index(op.f("ix_api_endpoints_namespace_id"), table_name="api_endpoints")
     op.drop_index(op.f("ix_api_endpoints_api_id"), table_name="api_endpoints")
     op.drop_table("api_endpoints")
     op.drop_index(

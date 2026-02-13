@@ -100,9 +100,6 @@ class ApiService(BaseService[ApiModel]):
         :param data: API creation data.
         :returns: The created API.
         """
-        # Convert tags from Pydantic models to dicts for JSONB storage
-        tags_data = [{"name": t.name, "description": t.description} for t in data.tags]
-
         api = ApiModel(
             namespace_id=data.namespace_id,
             user_id=user_id,
@@ -111,7 +108,6 @@ class ApiService(BaseService[ApiModel]):
             description=data.description or "",
             base_url=data.base_url or "",
             server_url=data.server_url or "",
-            tags=tags_data,
         )
         self.db.add(api)
         await self.db.flush()
@@ -135,11 +131,6 @@ class ApiService(BaseService[ApiModel]):
             api.base_url = data.base_url
         if data.server_url is not None:
             api.server_url = data.server_url
-        if data.tags is not None:
-            # Convert tags from Pydantic models to dicts for JSONB storage
-            api.tags = [
-                {"name": t.name, "description": t.description} for t in data.tags
-            ]
 
         await self.db.flush()
         await self.db.refresh(api)
