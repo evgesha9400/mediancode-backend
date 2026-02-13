@@ -252,13 +252,15 @@ Go to **Environment Variables** tab and add:
 
 ### 9e. Database Migrations
 
-Coolify v4 does not have a pre-deploy command feature. Instead, migrations are handled in the Dockerfile `CMD`:
+Migrations run automatically on every deployment via `entrypoint.sh`. The entrypoint runs `alembic upgrade head` before starting the server — no additional configuration needed in Coolify.
 
-```dockerfile
-CMD alembic -c alembic.ini upgrade head && uvicorn api.main:app --host 0.0.0.0 --port $PORT
-```
+**Resetting the database (development phase only):** While the schema is still evolving and migrations are being rewritten, add a `DB_RESET` environment variable to force a clean slate on the next deploy:
 
-This runs `alembic upgrade head` before starting the server on every deployment. No additional configuration needed in Coolify.
+| Variable    | Value  | Notes                                          |
+| ----------- | ------ | ---------------------------------------------- |
+| `DB_RESET`  | `true` | Drops and recreates the schema before migrating |
+
+The entrypoint will drop the `public` schema, recreate it, then run all migrations from scratch. **Remove this variable after the deploy** — it should not stay set permanently.
 
 ### 9f. Configure Health Check
 
@@ -283,6 +285,8 @@ Click **Enable Healthcheck**, then **Save**.
 
 Go to the **Resource Limits** tab. These limits ensure dev containers don't starve production on a shared 2GB droplet.
 
+> **Important**: Memory values must include the `m` suffix (e.g., `256m` not `256`). Without the suffix, Docker interprets the value as bytes and rejects it with "Minimum memory limit allowed is 6MB".
+
 **For the API container (`median-code-dev-api`):**
 
 | Field                  | Value  | Notes                                              |
@@ -290,9 +294,9 @@ Go to the **Resource Limits** tab. These limits ensure dev containers don't star
 | **Number of CPUs**     | `0.25` |                                                    |
 | **CPU sets to use**    | *(empty)* | Not useful with a single vCPU                   |
 | **CPU Weight**         | `512`  | Half of default — prod gets priority under contention |
-| **Soft Memory Limit**  | `192`  | Target memory usage (can exceed if RAM is free)    |
+| **Soft Memory Limit**  | `192m` | Target memory usage (can exceed if RAM is free)    |
 | **Swappiness**         | `60`   | Default, balanced                                  |
-| **Maximum Memory Limit** | `256` | Hard cap — container is OOM-killed if exceeded   |
+| **Maximum Memory Limit** | `256m` | Hard cap — container is OOM-killed if exceeded   |
 | **Maximum Swap Limit** | `0`    |                                                    |
 
 **For the database (`median-code-dev-db`):** apply the same values via its Resource Limits tab.
@@ -386,13 +390,7 @@ Go to **Environment Variables** tab and add:
 
 ### 10e. Database Migrations
 
-Coolify v4 does not have a pre-deploy command feature. Instead, migrations are handled in the Dockerfile `CMD`:
-
-```dockerfile
-CMD alembic -c alembic.ini upgrade head && uvicorn api.main:app --host 0.0.0.0 --port $PORT
-```
-
-This runs `alembic upgrade head` before starting the server on every deployment. No additional configuration needed in Coolify.
+Same as development (step 9e) — migrations run automatically via `entrypoint.sh` on every deployment. The `DB_RESET` variable works here too when needed during the development phase.
 
 ### 10f. Configure Health Check
 
@@ -424,9 +422,9 @@ Go to the **Resource Limits** tab. Production gets ~2x the resources of developm
 | **Number of CPUs**     | `0.5`  |                                                    |
 | **CPU sets to use**    | *(empty)* | Not useful with a single vCPU                   |
 | **CPU Weight**         | `1024` | Default — gets 2x priority over dev (512) under contention |
-| **Soft Memory Limit**  | `384`  | Target memory usage (can exceed if RAM is free)    |
+| **Soft Memory Limit**  | `384m` | Target memory usage (can exceed if RAM is free)    |
 | **Swappiness**         | `60`   | Default, balanced                                  |
-| **Maximum Memory Limit** | `512` | Hard cap — container is OOM-killed if exceeded   |
+| **Maximum Memory Limit** | `512m` | Hard cap — container is OOM-killed if exceeded   |
 | **Maximum Swap Limit** | `0`    |                                                    |
 
 **For the database (`median-code-prod-db`):** apply the same values via its Resource Limits tab.
@@ -652,6 +650,24 @@ Coolify provides built-in backup scheduling for database resources:
 3. Coolify provisions Let's Encrypt certs automatically — may take a few minutes
 4. If using Cloudflare, set proxy to **DNS only** (gray cloud) initially
 
+### Build Fails During "Exporting Layers"
+
+Each deployment builds a new Docker image. Old images accumulate and can fill the disk, causing builds to fail during the image export phase with exit code 255 and no clear error message.
+
+**Immediate fix** — prune from your machine:
+
+```bash
+ssh median-server "docker system prune -a -f"
+```
+
+**Permanent fix** — enable automatic cleanup in Coolify:
+
+1. Go to **Servers** (sidebar) > click your **localhost** server
+2. Find the **Docker Cleanup** section
+3. Enable scheduled cleanup of unused Docker resources
+
+This should be configured during initial setup to prevent disk exhaustion.
+
 ### Server Resources
 
 If the droplet runs low on memory:
@@ -663,7 +679,7 @@ htop
 docker stats
 
 # Clear unused Docker resources
-docker system prune -a
+docker system prune -a -f
 ```
 
 Consider upgrading to a $12/mo droplet (2GB RAM) if consistently hitting limits.

@@ -28,5 +28,6 @@ ENV PORT=8080
 
 # Copy Alembic config and entrypoint
 COPY alembic.ini entrypoint.sh ./
+RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]

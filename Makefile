@@ -145,8 +145,9 @@ clean: ## Remove Python caches and test output
 	@echo "Cleaned"
 
 .PHONY: docker-build
-docker-build: ## Build Docker image locally
+docker-build: ## Build Docker image locally (prunes old layers)
 	@docker build -t median-code-backend .
+	@docker image prune -f
 
 .PHONY: docker-run
 docker-run: ## Run Docker image locally (port 8000)
