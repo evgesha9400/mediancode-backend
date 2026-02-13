@@ -210,7 +210,7 @@ Select the **development** environment, then:
 | **Password**       | Keep the auto-generated strong password |
 | **Initial Database** | `median_code` |
 
-3. **Make it publicly available**: Under the **Proxy** section, leave unchecked unless you need to connect from a local DB client (DBeaver, TablePlus, etc.). If enabled, the **Public Port** defaults to `5432` — connect via `<droplet-ip>:5432`. You can always access the database via Coolify's built-in **Terminal** tab without public access.
+3. **Make it publicly available**: Leave **unchecked**. External DB client access (DBeaver, TablePlus) is handled via SSH tunnel instead — see [Connecting from a Local DB Client](#connecting-from-a-local-db-client).
 4. Click **Save**, then **Start**
 5. Once running, copy the **Postgres URL (internal)** — you'll need it for the app config
 
@@ -348,7 +348,7 @@ Select the **production** environment, then:
 | **Password**       | Keep the auto-generated strong password |
 | **Initial Database** | `median_code` |
 
-3. **Make it publicly available**: Under the **Proxy** section, leave unchecked unless you need to connect from a local DB client (DBeaver, TablePlus, etc.). If enabled, the **Public Port** defaults to `5432` — connect via `<droplet-ip>:5432`. You can always access the database via Coolify's built-in **Terminal** tab without public access.
+3. **Make it publicly available**: Leave **unchecked**. External DB client access (DBeaver, TablePlus) is handled via SSH tunnel instead — see [Connecting from a Local DB Client](#connecting-from-a-local-db-client).
 4. Click **Save**, then **Start**
 5. Once running, copy the **Postgres URL (internal)** — you'll need it for the app config
 
@@ -579,7 +579,49 @@ In Coolify, click the Postgres resource and use the built-in **Terminal** tab to
 psql -U postgres -d median_code
 ```
 
-This works without making the database publicly accessible. For external client access (DBeaver, TablePlus), enable **Make it publicly available** in the database General settings and connect via `<droplet-ip>:5432`.
+### Connecting from a Local DB Client
+
+Use an SSH tunnel to connect from DBeaver, TablePlus, or other local clients. This avoids exposing the database port publicly — all traffic is encrypted through your SSH key.
+
+Both databases listen on port 5432 inside their containers. Map them to different local ports to avoid conflicts:
+
+**Development database:**
+
+| Field             | Value                         |
+| ----------------- | ----------------------------- |
+| **Host**          | `localhost`                   |
+| **Port**          | `5432`                        |
+| **Database**      | `median_code`                 |
+| **Username**      | `postgres`                    |
+| **Password**      | *(from Coolify dev DB config)* |
+| **SSH Host**      | `median-server` (or droplet IP) |
+| **SSH User**      | `root`                        |
+| **SSH Key**       | `~/.ssh/digitalocean`         |
+| **SSH Tunnel Port** | `5432` → `median-code-dev-db:5432` |
+
+**Production database:**
+
+| Field             | Value                         |
+| ----------------- | ----------------------------- |
+| **Host**          | `localhost`                   |
+| **Port**          | `5433`                        |
+| **Database**      | `median_code`                 |
+| **Username**      | `postgres`                    |
+| **Password**      | *(from Coolify prod DB config)* |
+| **SSH Host**      | `median-server` (or droplet IP) |
+| **SSH User**      | `root`                        |
+| **SSH Key**       | `~/.ssh/digitalocean`         |
+| **SSH Tunnel Port** | `5433` → `median-code-prod-db:5432` |
+
+> Both DB clients and CLI tools support SSH tunnels. In DBeaver: Connection Settings > SSH tab. In TablePlus: right-click connection > Edit > SSH tab.
+
+**CLI alternative** — forward both ports in one command:
+
+```bash
+ssh -L 5432:median-code-dev-db:5432 -L 5433:median-code-prod-db:5432 median-server -N
+```
+
+Then connect your client to `localhost:5432` (dev) or `localhost:5433` (prod).
 
 ### Run Migrations Manually
 
@@ -693,6 +735,7 @@ Consider upgrading to a $12/mo droplet (2GB RAM) if consistently hitting limits.
 - **Updates**: `apt update && apt upgrade` periodically on the droplet
 - **Coolify**: Keep Coolify updated via its built-in auto-update
 - **HTTPS**: Automatic via Let's Encrypt (managed by Coolify/Traefik)
+- **Database**: Ports not publicly exposed — external access via SSH tunnel only
 - **CORS**: Restricted to `FRONTEND_URL` env var per environment
 - **Auth**: Clerk JWT validation on API endpoints
 

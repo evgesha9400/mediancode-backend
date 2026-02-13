@@ -55,8 +55,8 @@ class Namespace(Base):
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    user_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    user_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -212,8 +212,8 @@ class FieldModel(Base):
     namespace_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
-    user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    user_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
     type_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("types.id"), nullable=False, index=True
     )
@@ -276,8 +276,8 @@ class ObjectDefinition(Base):
     namespace_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
-    user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    user_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
