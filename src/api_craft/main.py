@@ -9,7 +9,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import black
 from mako.exceptions import TopLevelLookupException
@@ -20,10 +20,8 @@ from api_craft.extractors import (
     collect_model_imports,
     collect_path_params_imports,
     collect_query_params_imports,
-    extract_models,
     extract_path_parameters,
     extract_query_parameters,
-    extract_views,
 )
 from api_craft.models.input import InputAPI
 from api_craft.models.template import TemplateAPI
@@ -112,8 +110,8 @@ class APIGenerator:
         self.template_dir = template_dir or os.path.join(
             os.path.dirname(__file__), "templates"
         )
-        self.template_lookup: Optional[TemplateLookup] = None
-        self.templates: Dict[str, Template] = {}
+        self.template_lookup: TemplateLookup | None = None
+        self.templates: dict[str, Template] = {}
 
     def load_templates(self) -> None:
         """Load all required Mako templates.
@@ -160,7 +158,7 @@ class APIGenerator:
             logger.error(f"Failed to transform API: {str(e)}")
             raise ValueError("API transformation failed") from e
 
-    def extract_components(self, template_api: TemplateAPI) -> Dict[str, Any]:
+    def extract_components(self, template_api: TemplateAPI) -> dict[str, Any]:
         """Extract all components from the template API.
 
         :param template_api: Transformed template API.
@@ -169,8 +167,8 @@ class APIGenerator:
         """
         try:
             return {
-                "models": extract_models(template_api),
-                "views": extract_views(template_api),
+                "models": template_api.models,
+                "views": template_api.views,
                 "path_params": extract_path_parameters(template_api),
                 "query_params": extract_query_parameters(template_api),
             }
@@ -179,8 +177,8 @@ class APIGenerator:
             raise ValueError("Component extraction failed") from e
 
     def render_components(
-        self, components: Dict[str, Any], template_api: TemplateAPI
-    ) -> Dict[str, str]:
+        self, components: dict[str, Any], template_api: TemplateAPI
+    ) -> dict[str, str]:
         """Render all components using templates.
 
         :param components: Extracted API components.
@@ -229,7 +227,7 @@ class APIGenerator:
             raise ValueError("Component rendering failed") from e
 
     def write_files(
-        self, rendered_components: Dict[str, str], api: InputAPI, path: str
+        self, rendered_components: dict[str, str], api: InputAPI, path: str
     ) -> None:
         """Write rendered components to files.
 

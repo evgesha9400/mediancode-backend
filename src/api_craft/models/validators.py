@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Iterable
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - imports used for type checking only
     from api_craft.models.input import InputEndpoint, InputModel

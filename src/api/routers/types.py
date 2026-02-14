@@ -1,21 +1,17 @@
 # src/api/routers/types.py
 """Router for Type endpoints (read-only)."""
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
-from api.database import get_db
+from api.deps import DbSession
 from api.models.database import FieldModel, TypeModel
 from api.schemas.type import TypeResponse
 from api.settings import get_settings
 
 router = APIRouter(prefix="/types", tags=["Types"])
-
-DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
 async def get_field_counts_by_type(db: AsyncSession) -> dict[str, int]:

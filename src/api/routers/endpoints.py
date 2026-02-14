@@ -1,13 +1,10 @@
 # src/api/routers/endpoints.py
 """Router for Endpoint endpoints."""
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, status
 
 from api.auth import CurrentUser
-from api.database import get_db
+from api.deps import DbSession
 from api.schemas.endpoint import (
     ApiEndpointCreate,
     ApiEndpointResponse,
@@ -18,8 +15,6 @@ from api.services.api import get_api_service
 from api.services.endpoint import EndpointService, get_endpoint_service
 
 router = APIRouter(prefix="/endpoints", tags=["Endpoints"])
-
-DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
 def get_service(db: DbSession) -> EndpointService:

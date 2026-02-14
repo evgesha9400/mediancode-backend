@@ -1,8 +1,6 @@
 # src/api_craft/transformers.py
 """Transformers for input models to template models."""
 
-from typing import List
-
 from api_craft.models.input import (
     InputAPI,
     InputEndpoint,
@@ -76,8 +74,8 @@ def transform_tag(input_tag: InputTag) -> TemplateTag:
 
 
 def transform_query_params(
-    input_query_params: List[InputQueryParam],
-) -> List[TemplateQueryParam]:
+    input_query_params: list[InputQueryParam],
+) -> list[TemplateQueryParam]:
     return (
         [
             TemplateQueryParam(
@@ -96,8 +94,8 @@ def transform_query_params(
 
 
 def transform_path_params(
-    input_path_params: List[InputPathParam],
-) -> List[TemplatePathParam]:
+    input_path_params: list[InputPathParam],
+) -> list[TemplatePathParam]:
     return (
         [
             TemplatePathParam(

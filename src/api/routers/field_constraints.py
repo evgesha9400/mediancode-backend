@@ -1,21 +1,17 @@
 # src/api/routers/field_constraints.py
 """Router for Field Constraint endpoints (read-only)."""
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
-from api.database import get_db
+from api.deps import DbSession
 from api.models.database import FieldConstraintModel, FieldConstraintValueAssociation
 from api.schemas.field_constraint import FieldConstraintResponse
 from api.settings import get_settings
 
 router = APIRouter(prefix="/field-constraints", tags=["Field Constraints"])
-
-DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
 async def get_field_counts_by_constraint(db: AsyncSession) -> dict[str, int]:

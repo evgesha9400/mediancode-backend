@@ -1,13 +1,10 @@
 # src/api/routers/objects.py
 """Router for Object endpoints."""
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, status
 
 from api.auth import CurrentUser
-from api.database import get_db
+from api.deps import DbSession
 from api.schemas.object import (
     ObjectCreate,
     ObjectFieldReferenceSchema,
@@ -17,8 +14,6 @@ from api.schemas.object import (
 from api.services.object import ObjectService, get_object_service
 
 router = APIRouter(prefix="/objects", tags=["Objects"])
-
-DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
 def get_service(db: DbSession) -> ObjectService:

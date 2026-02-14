@@ -1,13 +1,10 @@
 # src/api/routers/fields.py
 """Router for Field endpoints."""
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, status
 
 from api.auth import CurrentUser
-from api.database import get_db
+from api.deps import DbSession
 from api.schemas.field import (
     FieldConstraintValueResponse,
     FieldCreate,
@@ -17,8 +14,6 @@ from api.schemas.field import (
 from api.services.field import FieldService, get_field_service
 
 router = APIRouter(prefix="/fields", tags=["Fields"])
-
-DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
 def get_service(db: DbSession) -> FieldService:

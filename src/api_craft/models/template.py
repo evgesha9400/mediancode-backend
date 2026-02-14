@@ -1,6 +1,6 @@
 """Pydantic models used by the Mako templates that generate the FastAPI code."""
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -9,7 +9,7 @@ class TemplateValidator(BaseModel):
     """Validator definition for template rendering."""
 
     name: str
-    params: Dict[str, Any] | None = None
+    params: dict[str, Any] | None = None
 
 
 class TemplateField(BaseModel):
@@ -20,14 +20,14 @@ class TemplateField(BaseModel):
     required: bool
     description: str | None = None
     default_value: str | None = None
-    validators: List[TemplateValidator] = []
+    validators: list[TemplateValidator] = []
 
 
 class TemplateModel(BaseModel):
     """Generic model definition used by rendered templates."""
 
     name: str
-    fields: List[TemplateField]
+    fields: list[TemplateField]
     description: str | None = None
 
 
@@ -67,10 +67,10 @@ class TemplateView(BaseModel):
     path: str
     method: str
     response_model: str
-    request_model: Optional[str]
-    response_placeholders: Optional[Dict[str, Any]]
-    query_params: List[TemplateQueryParam]
-    path_params: List[TemplatePathParam]
+    request_model: str | None
+    response_placeholders: dict[str, Any] | None
+    query_params: list[TemplateQueryParam]
+    path_params: list[TemplatePathParam]
     tag: str | None = None
     description: str | None = None
     use_envelope: bool = True
@@ -80,7 +80,7 @@ class TemplateView(BaseModel):
 class TemplateAPIConfig(BaseModel):
     """Configuration for template rendering."""
 
-    healthcheck: Optional[str]
+    healthcheck: str | None
     response_placeholders: bool
     format_code: bool = True
     generate_swagger: bool = True
@@ -96,7 +96,7 @@ class TemplateAPI(BaseModel):
     version: str
     author: str
     description: str
-    models: List[TemplateModel]
-    views: List[TemplateView]
-    tags: List[TemplateTag] = []
+    models: list[TemplateModel]
+    views: list[TemplateView]
+    tags: list[TemplateTag] = []
     config: TemplateAPIConfig

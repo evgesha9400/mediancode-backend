@@ -1,5 +1,3 @@
-from typing import Set
-
 from mako.template import Template
 
 from api_craft.models.template import (
@@ -13,7 +11,7 @@ from api_craft.models.template import (
 
 def render_query_params(
     query_params: list[TemplateQueryParam],
-    imports: Set[str],
+    imports: set[str],
     query_template: Template,
 ) -> str:
     rendered_query_params = query_template.render(params=query_params, imports=imports)
@@ -22,7 +20,7 @@ def render_query_params(
 
 def render_path_params(
     path_params: list[TemplatePathParam],
-    imports: Set[str],
+    imports: set[str],
     paths_template: Template,
 ) -> str:
     rendered_paths = paths_template.render(params=path_params, imports=imports)
@@ -31,7 +29,7 @@ def render_path_params(
 
 def render_models(
     models: list[TemplateModel],
-    imports: Set[str],
+    imports: set[str],
     models_template: Template,
 ) -> str:
     rendered_models = models_template.render(

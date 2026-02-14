@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -141,7 +141,7 @@ class InputApiConfig(BaseModel):
     :ivar generate_swagger: Toggle for auto-generating swagger.yaml from the API.
     """
 
-    healthcheck: Optional[str] = None
+    healthcheck: str | None = None
     response_placeholders: bool = True
     format_code: bool = True
     generate_swagger: bool = True

@@ -1,19 +1,14 @@
 # src/api/routers/namespaces.py
 """Router for Namespace endpoints."""
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, status
 
 from api.auth import CurrentUser
-from api.database import get_db
+from api.deps import DbSession
 from api.schemas.namespace import NamespaceCreate, NamespaceResponse, NamespaceUpdate
 from api.services.namespace import NamespaceService, get_namespace_service
 
 router = APIRouter(prefix="/namespaces", tags=["Namespaces"])
-
-DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
 def get_service(db: DbSession) -> NamespaceService:

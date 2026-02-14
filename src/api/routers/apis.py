@@ -2,14 +2,12 @@
 """Router for API endpoints."""
 
 import io
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
-from api.database import get_db
+from api.deps import DbSession
 from api.rate_limit import (
     RATE_LIMIT_DEFAULT,
     RATE_LIMIT_GENERATION,
@@ -19,8 +17,6 @@ from api.schemas.api import ApiCreate, ApiResponse, ApiUpdate
 from api.services.api import ApiService, get_api_service
 
 router = APIRouter(prefix="/apis", tags=["APIs"])
-
-DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
 def get_service(db: DbSession) -> ApiService:

@@ -1,12 +1,10 @@
 import re
-from typing import Set
 
 from api_craft.models.template import (
     TemplateAPI,
     TemplateModel,
     TemplatePathParam,
     TemplateQueryParam,
-    TemplateView,
 )
 
 # Mapping of module.Type patterns to their import statements
@@ -37,7 +35,7 @@ TYPING_GENERICS = {
 }
 
 
-def collect_imports(types: list[str]) -> Set[str]:
+def collect_imports(types: list[str]) -> set[str]:
     """Collect required import statements for a list of type strings.
 
     This function analyzes type strings and determines which imports are needed.
@@ -80,7 +78,7 @@ def collect_imports(types: list[str]) -> Set[str]:
     return imports
 
 
-def collect_model_imports(models: list[TemplateModel]) -> Set[str]:
+def collect_model_imports(models: list[TemplateModel]) -> set[str]:
     """Collect all required imports for the generated models.
 
     :param models: Collection of template-ready models.
@@ -93,7 +91,7 @@ def collect_model_imports(models: list[TemplateModel]) -> Set[str]:
     return collect_imports(types)
 
 
-def collect_path_params_imports(path_params: list[TemplatePathParam]) -> Set[str]:
+def collect_path_params_imports(path_params: list[TemplatePathParam]) -> set[str]:
     """Collect all required imports for path parameters.
 
     :param path_params: Collection of path parameters.
@@ -103,7 +101,7 @@ def collect_path_params_imports(path_params: list[TemplatePathParam]) -> Set[str
     return collect_imports(types)
 
 
-def collect_query_params_imports(query_params: list[TemplateQueryParam]) -> Set[str]:
+def collect_query_params_imports(query_params: list[TemplateQueryParam]) -> set[str]:
     """Collect all required imports for query parameters.
 
     :param query_params: Collection of query parameters.
@@ -111,16 +109,6 @@ def collect_query_params_imports(query_params: list[TemplateQueryParam]) -> Set[
     """
     types = [param.type for param in query_params]
     return collect_imports(types)
-
-
-def extract_views(template_api: TemplateAPI) -> list[TemplateView]:
-    """Extracts and returns a list of views from the TemplateAPI instance."""
-    return template_api.views
-
-
-def extract_models(template_api: TemplateAPI) -> list[TemplateModel]:
-    """Return the list of shared template models defined in the API."""
-    return template_api.models
 
 
 def extract_path_parameters(template_api: TemplateAPI) -> list[TemplatePathParam]:
