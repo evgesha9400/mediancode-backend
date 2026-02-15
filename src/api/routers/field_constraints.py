@@ -2,65 +2,48 @@
 """Router for Field Constraint endpoints (read-only)."""
 
 from fastapi import APIRouter
-from sqlalchemy import func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
 from api.deps import DbSession
-from api.models.database import FieldConstraintModel, FieldConstraintValueAssociation
 from api.schemas.field_constraint import FieldConstraintResponse
-from api.settings import get_settings
+from api.services.field_constraint import (
+    FieldConstraintService,
+    get_field_constraint_service,
+)
 
 router = APIRouter(prefix="/field-constraints", tags=["Field Constraints"])
 
 
-async def get_field_counts_by_constraint(db: AsyncSession) -> dict[str, int]:
-    """Get count of fields for each field constraint.
+def get_service(db: DbSession) -> FieldConstraintService:
+    """Get field constraint service instance.
 
     :param db: Database session.
-    :returns: Dict mapping field constraint ID (as string) to field count.
+    :returns: FieldConstraintService instance.
     """
-    query = select(
-        FieldConstraintValueAssociation.constraint_id,
-        func.count(FieldConstraintValueAssociation.id),
-    ).group_by(FieldConstraintValueAssociation.constraint_id)
-    result = await db.execute(query)
-    return {str(row[0]): row[1] for row in result.fetchall()}
+    return get_field_constraint_service(db)
 
 
 @router.get(
     "",
     response_model=list[FieldConstraintResponse],
     summary="List all field constraints",
-    description="Retrieve all field constraint definitions (Pydantic Field constraints).",
+    description="Retrieve all field constraint definitions accessible to the authenticated user.",
 )
 async def list_field_constraints(
     user_id: CurrentUser,
     db: DbSession,
     namespace_id: str | None = None,
 ) -> list[FieldConstraintResponse]:
-    """List all field constraints.
+    """List all field constraints accessible to the user.
 
     :param user_id: Authenticated user ID.
     :param db: Database session.
-    :param namespace_id: Optional namespace filter. If provided, returns constraints
-        from the specified namespace plus all global constraints.
+    :param namespace_id: Optional namespace filter.
     :returns: List of field constraint responses.
     """
-    query = select(FieldConstraintModel)
-    if namespace_id:
-        settings = get_settings()
-        query = query.where(
-            or_(
-                FieldConstraintModel.namespace_id == namespace_id,
-                FieldConstraintModel.namespace_id == settings.global_namespace_id,
-            )
-        )
-
-    result = await db.execute(query)
-    constraints = result.scalars().all()
-
-    field_counts = await get_field_counts_by_constraint(db)
+    service = get_service(db)
+    constraints = await service.list_for_user(user_id, namespace_id)
+    field_counts = await service.get_field_counts_for_user(user_id)
 
     return [
         FieldConstraintResponse(

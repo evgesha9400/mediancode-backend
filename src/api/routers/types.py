@@ -2,66 +2,45 @@
 """Router for Type endpoints (read-only)."""
 
 from fastapi import APIRouter
-from sqlalchemy import func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import CurrentUser
 from api.deps import DbSession
-from api.models.database import FieldModel, TypeModel
 from api.schemas.type import TypeResponse
-from api.settings import get_settings
+from api.services.type import TypeService, get_type_service
 
 router = APIRouter(prefix="/types", tags=["Types"])
 
 
-async def get_field_counts_by_type(db: AsyncSession) -> dict[str, int]:
-    """Get count of fields for each type.
+def get_service(db: DbSession) -> TypeService:
+    """Get type service instance.
 
     :param db: Database session.
-    :returns: Dict mapping type ID (as string) to field count.
+    :returns: TypeService instance.
     """
-    query = select(FieldModel.type_id, func.count(FieldModel.id)).group_by(
-        FieldModel.type_id
-    )
-    result = await db.execute(query)
-    return {str(row[0]): row[1] for row in result.fetchall()}
+    return get_type_service(db)
 
 
 @router.get(
     "",
     response_model=list[TypeResponse],
     summary="List all types",
-    description="Retrieve all type definitions.",
+    description="Retrieve all type definitions accessible to the authenticated user.",
 )
 async def list_types(
     user_id: CurrentUser,
     db: DbSession,
     namespace_id: str | None = None,
 ) -> list[TypeResponse]:
-    """List all types.
+    """List all types accessible to the user.
 
     :param user_id: Authenticated user ID.
     :param db: Database session.
-    :param namespace_id: Optional namespace filter. If provided, returns types
-        from the specified namespace plus all global built-in types.
+    :param namespace_id: Optional namespace filter.
     :returns: List of type responses.
     """
-    # Query types from database
-    query = select(TypeModel)
-    if namespace_id:
-        settings = get_settings()
-        query = query.where(
-            or_(
-                TypeModel.namespace_id == namespace_id,
-                TypeModel.namespace_id == settings.global_namespace_id,
-            )
-        )
-
-    result = await db.execute(query)
-    types = result.scalars().all()
-
-    # Get field counts
-    field_counts = await get_field_counts_by_type(db)
+    service = get_service(db)
+    types = await service.list_for_user(user_id, namespace_id)
+    field_counts = await service.get_field_counts_for_user(user_id)
 
     return [
         TypeResponse(
