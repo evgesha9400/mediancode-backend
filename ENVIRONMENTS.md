@@ -18,7 +18,7 @@ Quick-reference for the backend's three runtime contexts. See `deploy/railway/RE
 | `ENVIRONMENT` | `development` (default) | `${{RAILWAY_ENVIRONMENT_NAME}}` (reference) | `${{RAILWAY_ENVIRONMENT_NAME}}` (reference) | Controls API docs visibility |
 | `CLERK_FRONTEND_API_URL` | `https://accurate-lion-1.clerk.accounts.dev` | Same (dev Clerk app) | Production Clerk app URL | JWT validation (JWKS endpoint) |
 | `FRONTEND_URL` | `http://localhost:5173` (default) | `https://dev.mediancode.com` | `https://app.mediancode.com` | CORS allowed origin |
-| `GLOBAL_NAMESPACE_ID` | `namespace-global` | `namespace-global` | `namespace-global` | Built-in types/validators namespace |
+| `SYSTEM_NAMESPACE_ID` | `00000000-0000-0000-0000-000000000001` | `00000000-0000-0000-0000-000000000001` | `00000000-0000-0000-0000-000000000001` | System namespace UUID for seed data |
 | `CLERK_JWT_AUDIENCE` | *(empty)* | *(empty)* | *(empty)* | Optional JWT audience claim |
 
 ### Notes
@@ -55,6 +55,6 @@ When setting up or auditing a Railway environment:
 - [ ] `ENVIRONMENT` is set as reference variable `${{RAILWAY_ENVIRONMENT_NAME}}`
 - [ ] `CLERK_FRONTEND_API_URL` points to the correct Clerk app (dev vs prod)
 - [ ] `FRONTEND_URL` matches the frontend domain for that environment
-- [ ] `GLOBAL_NAMESPACE_ID` is set to `namespace-global`
+- [ ] `SYSTEM_NAMESPACE_ID` is set to `00000000-0000-0000-0000-000000000001`
 - [ ] Healthcheck path is `/health`
 - [ ] Branch is set correctly (`develop` for dev, `main` for prod)

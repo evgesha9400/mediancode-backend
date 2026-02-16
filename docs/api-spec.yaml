@@ -48,7 +48,7 @@ info:
     ## Namespace Isolation
 
     Entities belong to namespaces for organization and access control:
-    - **Global namespace** (`namespace-global`) - Read-only, contains built-in types and validators
+    - **System namespace** (`00000000-0000-0000-0000-000000000001`) - Read-only, contains built-in seed types and constraints
     - **User namespaces** - User-created namespaces for custom entities
 
   version: 1.0.0
@@ -1357,7 +1357,7 @@ components:
         id:
           type: string
           description: Unique identifier for the namespace
-          example: "namespace-global"
+          example: "00000000-0000-0000-0000-000000000001"
         name:
           type: string
           description: Namespace name
@@ -1395,7 +1395,7 @@ components:
         namespaceId:
           type: string
           description: Namespace this API belongs to
-          example: "namespace-global"
+          example: "00000000-0000-0000-0000-000000000001"
         title:
           type: string
           description: API title for OpenAPI spec
@@ -1484,7 +1484,7 @@ components:
         namespaceId:
           type: string
           description: Namespace this tag belongs to
-          example: "namespace-global"
+          example: "00000000-0000-0000-0000-000000000001"
         apiId:
           type: string
           description: Reference to the API this tag belongs to
@@ -1522,7 +1522,7 @@ components:
         namespaceId:
           type: string
           description: Namespace this endpoint belongs to
-          example: "namespace-global"
+          example: "00000000-0000-0000-0000-000000000001"
         apiId:
           type: string
           description: Reference to the API this endpoint belongs to
@@ -1633,7 +1633,7 @@ components:
         namespaceId:
           type: string
           description: Namespace this object belongs to
-          example: "namespace-global"
+          example: "00000000-0000-0000-0000-000000000001"
         name:
           type: string
           description: Object name (will become Pydantic model class name)
@@ -1694,7 +1694,7 @@ components:
         namespaceId:
           type: string
           description: Namespace this field belongs to
-          example: "namespace-global"
+          example: "00000000-0000-0000-0000-000000000001"
         name:
           type: string
           description: Field name (will become Pydantic field name)
@@ -1767,7 +1767,7 @@ components:
         namespaceId:
           type: string
           description: Namespace this validator belongs to
-          example: "namespace-global"
+          example: "00000000-0000-0000-0000-000000000001"
         type:
           type: string
           enum: [string, numeric, collection]

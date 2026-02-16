@@ -1,11 +1,12 @@
 # src/api/services/type.py
 """Service layer for Type operations."""
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import FieldModel, Namespace, TypeModel
 from api.services.base import BaseService
+from api.settings import get_settings
 
 
 class TypeService(BaseService[TypeModel]):
@@ -21,13 +22,23 @@ class TypeService(BaseService[TypeModel]):
         user_id: str,
         namespace_id: str | None = None,
     ) -> list[TypeModel]:
-        """List types owned by a user.
+        """List types visible to a user (own namespaces + system namespace).
 
         :param user_id: The authenticated user's ID.
         :param namespace_id: Optional namespace filter.
-        :returns: List of user's types.
+        :returns: List of visible types.
         """
-        query = select(TypeModel).join(Namespace).where(Namespace.user_id == user_id)
+        settings = get_settings()
+        query = (
+            select(TypeModel)
+            .join(Namespace)
+            .where(
+                or_(
+                    Namespace.user_id == user_id,
+                    Namespace.id == settings.system_namespace_id,
+                )
+            )
+        )
         if namespace_id:
             query = query.where(TypeModel.namespace_id == namespace_id)
         result = await self.db.execute(query)

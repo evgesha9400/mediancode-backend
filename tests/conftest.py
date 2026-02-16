@@ -129,8 +129,12 @@ TEST_USER_ID = "test_user_integration"
 
 @pytest_asyncio.fixture
 async def provisioned_namespace(db_session: AsyncSession):
-    """Provision a test user and return their default namespace."""
-    from api.models.database import FieldConstraintModel, Namespace, TypeModel
+    """Provision a test user and return their default namespace.
+
+    The namespace starts empty. Seed data (types, constraints) lives in the
+    system namespace and is shared read-only via OR clauses in service queries.
+    """
+    from api.models.database import Namespace
     from api.services.user_provisioning import UserProvisioningService
 
     service = UserProvisioningService(db_session)
@@ -147,15 +151,7 @@ async def provisioned_namespace(db_session: AsyncSession):
 
     yield namespace
 
-    # Cleanup: delete children first, then namespace
-    await db_session.execute(
-        delete(TypeModel).where(TypeModel.namespace_id == namespace.id)
-    )
-    await db_session.execute(
-        delete(FieldConstraintModel).where(
-            FieldConstraintModel.namespace_id == namespace.id
-        )
-    )
+    # Cleanup: namespace is empty (no copied data), just delete it
     await db_session.execute(delete(Namespace).where(Namespace.id == namespace.id))
     await db_session.commit()
 

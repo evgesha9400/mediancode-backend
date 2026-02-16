@@ -246,7 +246,7 @@ Go to **Environment Variables** tab and add:
 | `ENVIRONMENT`          | `development`                                |                                 |
 | `CLERK_FRONTEND_API_URL` | `https://accurate-lion-1.clerk.accounts.dev` | From Clerk dashboard (dev)    |
 | `FRONTEND_URL`         | `https://dev.mediancode.com`                 | For CORS                        |
-| `GLOBAL_NAMESPACE_ID`  | `00000000-0000-0000-0000-000000000001`       | Global namespace UUID           |
+| `SYSTEM_NAMESPACE_ID`  | `00000000-0000-0000-0000-000000000001`       | System namespace UUID           |
 
 > **Note**: Do NOT add `PORT` — the Dockerfile sets `ENV PORT=8080` as default. Do NOT add `PYTHONPATH` — the Dockerfile handles this.
 
@@ -384,7 +384,7 @@ Go to **Environment Variables** tab and add:
 | `ENVIRONMENT`          | `production`                                 |                                 |
 | `CLERK_FRONTEND_API_URL` | `https://clerk.mediancode.com`             | From Clerk dashboard (prod)     |
 | `FRONTEND_URL`         | `https://mediancode.com`                     | For CORS                        |
-| `GLOBAL_NAMESPACE_ID`  | `00000000-0000-0000-0000-000000000001`       | Global namespace UUID           |
+| `SYSTEM_NAMESPACE_ID`  | `00000000-0000-0000-0000-000000000001`       | System namespace UUID           |
 
 > **Note**: Do NOT add `PORT` — the Dockerfile sets `ENV PORT=8080` as default. Do NOT add `PYTHONPATH` — the Dockerfile handles this.
 

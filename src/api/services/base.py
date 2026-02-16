@@ -99,12 +99,17 @@ class BaseService(Generic[ModelT]):
     async def validate_namespace_for_creation(
         self, namespace_id: Any, user_id: str
     ) -> Namespace:
-        """Validate namespace ownership and mutability for entity creation.
+        """Validate namespace ownership for entity creation.
+
+        The ``Namespace.user_id == user_id`` filter implicitly excludes the
+        system namespace (where ``user_id IS NULL``), so no explicit system
+        namespace check is needed. Locked user namespaces (the Global
+        namespace) allow entity creation.
 
         :param namespace_id: The namespace ID to validate.
         :param user_id: The authenticated user's ID.
         :returns: The validated namespace.
-        :raises HTTPException: If namespace not owned by user or is locked.
+        :raises HTTPException: If namespace not found or not owned by user.
         """
         result = await self.db.execute(
             select(Namespace).where(
@@ -117,11 +122,6 @@ class BaseService(Generic[ModelT]):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Namespace not found or not owned by user",
-            )
-        if namespace.locked:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot create entities in a locked namespace",
             )
         return namespace
 

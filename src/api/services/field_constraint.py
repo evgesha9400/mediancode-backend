@@ -1,7 +1,7 @@
 # src/api/services/field_constraint.py
 """Service layer for Field Constraint operations."""
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import (
@@ -11,6 +11,7 @@ from api.models.database import (
     Namespace,
 )
 from api.services.base import BaseService
+from api.settings import get_settings
 
 
 class FieldConstraintService(BaseService[FieldConstraintModel]):
@@ -26,16 +27,22 @@ class FieldConstraintService(BaseService[FieldConstraintModel]):
         user_id: str,
         namespace_id: str | None = None,
     ) -> list[FieldConstraintModel]:
-        """List field constraints owned by a user.
+        """List field constraints visible to a user (own namespaces + system namespace).
 
         :param user_id: The authenticated user's ID.
         :param namespace_id: Optional namespace filter.
-        :returns: List of user's field constraints.
+        :returns: List of visible field constraints.
         """
+        settings = get_settings()
         query = (
             select(FieldConstraintModel)
             .join(Namespace)
-            .where(Namespace.user_id == user_id)
+            .where(
+                or_(
+                    Namespace.user_id == user_id,
+                    Namespace.id == settings.system_namespace_id,
+                )
+            )
         )
         if namespace_id:
             query = query.where(FieldConstraintModel.namespace_id == namespace_id)

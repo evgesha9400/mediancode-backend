@@ -6,10 +6,11 @@ import pytest
 pytestmark = pytest.mark.integration
 
 import pytest_asyncio
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import Namespace, TypeModel
+from api.settings import get_settings
 from conftest import TEST_USER_ID
 
 
@@ -35,19 +36,25 @@ async def test_type(db_session: AsyncSession, test_namespace: Namespace):
 
 
 @pytest.mark.asyncio
-async def test_provisioning_creates_types(
+async def test_seed_types_visible_via_system_namespace(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
 ):
-    """Test that provisioning creates copies of all global types for the user."""
+    """Test that seed types from the system namespace are visible to provisioned users."""
+    settings = get_settings()
     result = await db_session.execute(
-        select(TypeModel).where(
-            TypeModel.namespace_id == provisioned_namespace.id,
+        select(TypeModel)
+        .join(Namespace)
+        .where(
+            or_(
+                Namespace.user_id == TEST_USER_ID,
+                Namespace.id == settings.system_namespace_id,
+            )
         )
     )
     types = result.scalars().all()
 
-    # Should have all 8 standard types
+    # Should have all 8 standard types from system namespace
     assert len(types) == 8
 
     type_names = {t.name for t in types}
@@ -65,36 +72,40 @@ async def test_provisioning_creates_types(
 
 
 @pytest.mark.asyncio
-async def test_provisioned_types_have_correct_user_id(
+async def test_seed_types_belong_to_system_namespace(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
 ):
-    """Test that provisioned types are owned by the user."""
+    """Test that seed types live in the system namespace, not the user's namespace."""
+    settings = get_settings()
     result = await db_session.execute(
         select(TypeModel).where(
-            TypeModel.namespace_id == provisioned_namespace.id,
+            TypeModel.namespace_id == settings.system_namespace_id,
         )
     )
     types = result.scalars().all()
 
-    assert all(t.user_id == TEST_USER_ID for t in types)
+    assert len(types) == 8
+    # Seed types have user_id=NULL since they belong to the system namespace
+    assert all(t.user_id is None for t in types)
 
 
 @pytest.mark.asyncio
-async def test_provisioned_types_preserve_parent_relationships(
+async def test_seed_types_preserve_parent_relationships(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
 ):
-    """Test that parent_type_id relationships are correctly remapped."""
+    """Test that parent_type_id relationships are correct in seed types."""
+    settings = get_settings()
     result = await db_session.execute(
         select(TypeModel).where(
-            TypeModel.namespace_id == provisioned_namespace.id,
+            TypeModel.namespace_id == settings.system_namespace_id,
         )
     )
     types = result.scalars().all()
     by_name = {t.name: t for t in types}
 
-    # EmailStr and HttpUrl should have parent_type_id pointing to the user's str type
+    # EmailStr and HttpUrl should have parent_type_id pointing to str
     assert by_name["EmailStr"].parent_type_id == by_name["str"].id
     assert by_name["HttpUrl"].parent_type_id == by_name["str"].id
 
@@ -104,19 +115,27 @@ async def test_provisioned_types_preserve_parent_relationships(
 
 
 @pytest.mark.asyncio
-async def test_list_types_includes_custom_and_provisioned(
+async def test_list_types_includes_custom_and_seed(
     db_session: AsyncSession,
     test_namespace: Namespace,
     test_type: TypeModel,
     provisioned_namespace: Namespace,
 ):
-    """Test that user sees both provisioned types and custom types."""
+    """Test that user sees both seed types and custom types via OR clause."""
+    settings = get_settings()
     result = await db_session.execute(
-        select(TypeModel).join(Namespace).where(Namespace.user_id == TEST_USER_ID)
+        select(TypeModel)
+        .join(Namespace)
+        .where(
+            or_(
+                Namespace.user_id == TEST_USER_ID,
+                Namespace.id == settings.system_namespace_id,
+            )
+        )
     )
     types = result.scalars().all()
 
-    # Should have at least 8 provisioned types + 1 custom type
+    # Should have 8 seed types + 1 custom type
     assert len(types) >= 9
 
     type_names = {t.name for t in types}
@@ -125,16 +144,22 @@ async def test_list_types_includes_custom_and_provisioned(
 
 
 @pytest.mark.asyncio
-async def test_provisioned_types_include_primitives(
+async def test_seed_types_include_primitives(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
 ):
-    """Test that primitive types are always available after provisioning."""
+    """Test that primitive types are visible from the system namespace."""
+    settings = get_settings()
     expected_primitives = ["str", "int", "float", "bool", "datetime", "uuid"]
 
     result = await db_session.execute(
-        select(TypeModel).where(
-            TypeModel.namespace_id == provisioned_namespace.id,
+        select(TypeModel)
+        .join(Namespace)
+        .where(
+            or_(
+                Namespace.user_id == TEST_USER_ID,
+                Namespace.id == settings.system_namespace_id,
+            )
         )
     )
     types = result.scalars().all()
@@ -143,4 +168,4 @@ async def test_provisioned_types_include_primitives(
     for expected_name in expected_primitives:
         assert (
             expected_name in type_names
-        ), f"Primitive type '{expected_name}' should be available after provisioning"
+        ), f"Primitive type '{expected_name}' should be visible from system namespace"

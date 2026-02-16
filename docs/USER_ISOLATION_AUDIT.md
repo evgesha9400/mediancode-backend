@@ -12,7 +12,7 @@ The main data entities already filter by user correctly:
 | Objects | via namespace join | Correct |
 | Endpoints | via api -> namespace join | Correct |
 
-Every service layer method (`list_for_user`, `get_by_id_for_user`) joins through `Namespace` and filters by `user_id OR global_namespace_id`. Write operations check ownership.
+Every service layer method (`list_for_user`, `get_by_id_for_user`) joins through `Namespace` and filters by `user_id OR system_namespace_id`. Write operations check ownership.
 
 ## Issues Found
 

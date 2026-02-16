@@ -18,6 +18,7 @@ from api.models.database import (
 )
 from api.schemas.field import FieldCreate, FieldUpdate
 from api.services.field import FieldService
+from api.settings import get_settings
 from conftest import TEST_USER_ID
 
 
@@ -47,10 +48,11 @@ async def user_namespace(db_session: AsyncSession, provisioned_namespace: Namesp
 
 @pytest_asyncio.fixture
 async def str_type(db_session: AsyncSession, provisioned_namespace: Namespace):
-    """Get the user's provisioned 'str' type."""
+    """Get the seed 'str' type from the system namespace."""
+    settings = get_settings()
     result = await db_session.execute(
         select(TypeModel).where(
-            TypeModel.namespace_id == provisioned_namespace.id,
+            TypeModel.namespace_id == settings.system_namespace_id,
             TypeModel.name == "str",
         )
     )
@@ -61,10 +63,11 @@ async def str_type(db_session: AsyncSession, provisioned_namespace: Namespace):
 async def max_length_constraint(
     db_session: AsyncSession, provisioned_namespace: Namespace
 ):
-    """Get the user's provisioned 'max_length' field constraint."""
+    """Get the seed 'max_length' field constraint from the system namespace."""
+    settings = get_settings()
     result = await db_session.execute(
         select(FieldConstraintModel).where(
-            FieldConstraintModel.namespace_id == provisioned_namespace.id,
+            FieldConstraintModel.namespace_id == settings.system_namespace_id,
             FieldConstraintModel.name == "max_length",
         )
     )
@@ -75,10 +78,11 @@ async def max_length_constraint(
 async def min_length_constraint(
     db_session: AsyncSession, provisioned_namespace: Namespace
 ):
-    """Get the user's provisioned 'min_length' field constraint."""
+    """Get the seed 'min_length' field constraint from the system namespace."""
+    settings = get_settings()
     result = await db_session.execute(
         select(FieldConstraintModel).where(
-            FieldConstraintModel.namespace_id == provisioned_namespace.id,
+            FieldConstraintModel.namespace_id == settings.system_namespace_id,
             FieldConstraintModel.name == "min_length",
         )
     )
@@ -89,10 +93,11 @@ async def min_length_constraint(
 async def pattern_constraint(
     db_session: AsyncSession, provisioned_namespace: Namespace
 ):
-    """Get the user's provisioned 'pattern' field constraint."""
+    """Get the seed 'pattern' field constraint from the system namespace."""
+    settings = get_settings()
     result = await db_session.execute(
         select(FieldConstraintModel).where(
-            FieldConstraintModel.namespace_id == provisioned_namespace.id,
+            FieldConstraintModel.namespace_id == settings.system_namespace_id,
             FieldConstraintModel.name == "pattern",
         )
     )

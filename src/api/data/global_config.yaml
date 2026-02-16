@@ -1,4 +1,4 @@
-# Global types and validators configuration
+# System namespace seed data configuration (reference only)
 # These are read-only, built-in definitions available to all users
 
 types:
@@ -45,7 +45,7 @@ types:
 validators:
   # String validators
   - name: max_length
-    namespaceId: namespace-global
+    namespaceId: "00000000-0000-0000-0000-000000000001"
     type: string
     description: Validates that string length does not exceed maximum
     category: inline
@@ -54,7 +54,7 @@ validators:
     docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#string-constraints
 
   - name: min_length
-    namespaceId: namespace-global
+    namespaceId: "00000000-0000-0000-0000-000000000001"
     type: string
     description: Validates that string length is at least minimum
     category: inline
@@ -63,7 +63,7 @@ validators:
     docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#string-constraints
 
   - name: pattern
-    namespaceId: namespace-global
+    namespaceId: "00000000-0000-0000-0000-000000000001"
     type: string
     description: Validates string matches a regular expression pattern
     category: inline
@@ -72,7 +72,7 @@ validators:
     docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#string-constraints
 
   - name: email_format
-    namespaceId: namespace-global
+    namespaceId: "00000000-0000-0000-0000-000000000001"
     type: string
     description: Validates email format using EmailStr type
     category: inline
@@ -81,7 +81,7 @@ validators:
     docsUrl: https://docs.pydantic.dev/latest/api/networks/#pydantic.networks.EmailStr
 
   - name: url_format
-    namespaceId: namespace-global
+    namespaceId: "00000000-0000-0000-0000-000000000001"
     type: string
     description: Validates URL format using HttpUrl type
     category: inline
@@ -91,7 +91,7 @@ validators:
 
   # Numeric validators
   - name: gt
-    namespaceId: namespace-global
+    namespaceId: "00000000-0000-0000-0000-000000000001"
     type: numeric
     description: Validates that number is greater than specified value
     category: inline
@@ -100,7 +100,7 @@ validators:
     docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
 
   - name: ge
-    namespaceId: namespace-global
+    namespaceId: "00000000-0000-0000-0000-000000000001"
     type: numeric
     description: Validates that number is greater than or equal to specified value
     category: inline
@@ -109,7 +109,7 @@ validators:
     docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
 
   - name: lt
-    namespaceId: namespace-global
+    namespaceId: "00000000-0000-0000-0000-000000000001"
     type: numeric
     description: Validates that number is less than specified value
     category: inline
@@ -118,7 +118,7 @@ validators:
     docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
 
   - name: le
-    namespaceId: namespace-global
+    namespaceId: "00000000-0000-0000-0000-000000000001"
     type: numeric
     description: Validates that number is less than or equal to specified value
     category: inline
@@ -127,7 +127,7 @@ validators:
     docsUrl: https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints
 
   - name: multiple_of
-    namespaceId: namespace-global
+    namespaceId: "00000000-0000-0000-0000-000000000001"
     type: numeric
     description: Validates that number is a multiple of specified value
     category: inline

@@ -117,7 +117,7 @@ Railway may suggest variables from your code. Configure these:
 | `ENVIRONMENT` | `${{RAILWAY_ENVIRONMENT_NAME}}` | Reference |
 | `CLERK_FRONTEND_API_URL` | `https://your-dev-clerk.clerk.accounts.dev` | Manual |
 | `FRONTEND_URL` | `https://dev.mediancode.com` | Manual |
-| `GLOBAL_NAMESPACE_ID` | `namespace-global` | Manual |
+| `SYSTEM_NAMESPACE_ID` | `00000000-0000-0000-0000-000000000001` | Manual |
 
 **Important:**
 - `DATABASE_URL` must be added as a reference variable — Railway does **not** auto-inject it
@@ -136,7 +136,7 @@ Switch to **"production"** environment (use dropdown), then repeat Step 3 with t
 | `ENVIRONMENT` | `${{RAILWAY_ENVIRONMENT_NAME}}` | Reference |
 | `CLERK_FRONTEND_API_URL` | `https://your-prod-clerk.clerk.accounts.dev` | Manual |
 | `FRONTEND_URL` | `https://app.mediancode.com` | Manual |
-| `GLOBAL_NAMESPACE_ID` | `namespace-global` | Manual |
+| `SYSTEM_NAMESPACE_ID` | `00000000-0000-0000-0000-000000000001` | Manual |
 
 ### Step 5: Configure Custom Domains
 

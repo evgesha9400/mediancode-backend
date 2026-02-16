@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     :ivar database_url: PostgreSQL connection string for async SQLAlchemy.
     :ivar clerk_frontend_api_url: Clerk Frontend API URL for JWT validation (from Clerk dashboard).
     :ivar clerk_jwt_audience: Expected audience claim in Clerk JWTs (optional).
-    :ivar global_namespace_id: ID of the global namespace containing built-in types/validators.
+    :ivar system_namespace_id: ID of the system namespace containing built-in seed types/constraints.
     :ivar frontend_url: Frontend URL for CORS configuration.
     """
 
@@ -58,11 +58,11 @@ class Settings(BaseSettings):
 
     clerk_frontend_api_url: str = "https://clerk.example.com"
     clerk_jwt_audience: str | None = None
-    global_namespace_id: UUID = UUID("00000000-0000-0000-0000-000000000001")
+    system_namespace_id: UUID = UUID("00000000-0000-0000-0000-000000000001")
     frontend_url: str = "http://localhost:5173"
     environment: str = "development"  # "development" or "production"
 
-    @field_validator("global_namespace_id", mode="before")
+    @field_validator("system_namespace_id", mode="before")
     @classmethod
     def parse_uuid(cls, v: str | UUID) -> UUID:
         """Parse UUID from string if needed.

@@ -35,10 +35,10 @@ class Namespace(Base):
     """Namespace for organizing API entities.
 
     :ivar id: Unique identifier for the namespace.
-    :ivar user_id: Owner user ID from Clerk (null for global namespace).
+    :ivar user_id: Owner user ID from Clerk (null for system namespace).
     :ivar name: Namespace display name.
     :ivar description: Optional description.
-    :ivar locked: Whether this namespace is immutable (e.g., global).
+    :ivar locked: Whether namespace metadata is immutable (system ns and user's Global ns).
     :ivar is_default: Whether this is the user's default namespace.
     """
 
@@ -90,7 +90,7 @@ class TypeModel(Base):
 
     :ivar id: Unique identifier for the type.
     :ivar namespace_id: Reference to the containing namespace.
-    :ivar user_id: Owner user ID (null for global/system types).
+    :ivar user_id: Owner user ID (null for system seed types).
     :ivar name: Type name (str, int, float, bool, datetime, uuid).
     :ivar python_type: Python type representation.
     :ivar description: Type description.
@@ -243,7 +243,7 @@ class FieldValidatorModel(Base):
 
     :ivar id: Unique identifier for the validator.
     :ivar namespace_id: Reference to the containing namespace.
-    :ivar user_id: Owner user ID (null for global validators).
+    :ivar user_id: Owner user ID (null for system validators).
     :ivar function_name: Name of the validation function.
     :ivar mode: Validator mode ("before", "after", "wrap", "plain").
     :ivar function_body: Python source code of the validator function.
@@ -374,7 +374,7 @@ class ModelValidatorModel(Base):
 
     :ivar id: Unique identifier for the validator.
     :ivar namespace_id: Reference to the containing namespace.
-    :ivar user_id: Owner user ID (null for global validators).
+    :ivar user_id: Owner user ID (null for system validators).
     :ivar function_name: Name of the validation function.
     :ivar mode: Validator mode ("before", "after", "wrap").
     :ivar function_body: Python source code of the validator function.

@@ -1,4 +1,4 @@
-"""Seed global namespace, types, and field constraints
+"""Seed system namespace, types, and field constraints
 
 Revision ID: b1a2c3d4e5f6
 Revises: 4141ad7f2255
@@ -19,7 +19,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 # Fixed UUIDs for seed data
-GLOBAL_NAMESPACE_ID = UUID("00000000-0000-0000-0000-000000000001")
+SYSTEM_NAMESPACE_ID = UUID("00000000-0000-0000-0000-000000000001")
 TYPE_STR_ID = UUID("00000000-0000-0000-0001-000000000001")
 TYPE_INT_ID = UUID("00000000-0000-0000-0001-000000000002")
 TYPE_FLOAT_ID = UUID("00000000-0000-0000-0001-000000000003")
@@ -33,7 +33,7 @@ TYPE_HTTP_URL_ID = UUID("00000000-0000-0000-0001-000000000008")
 TYPES_DATA = [
     {
         "id": TYPE_STR_ID,
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "str",
         "python_type": "str",
         "description": "String type for text data",
@@ -43,7 +43,7 @@ TYPES_DATA = [
     },
     {
         "id": TYPE_INT_ID,
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "int",
         "python_type": "int",
         "description": "Integer type for whole numbers",
@@ -53,7 +53,7 @@ TYPES_DATA = [
     },
     {
         "id": TYPE_FLOAT_ID,
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "float",
         "python_type": "float",
         "description": "Floating point type for decimal numbers",
@@ -63,7 +63,7 @@ TYPES_DATA = [
     },
     {
         "id": TYPE_BOOL_ID,
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "bool",
         "python_type": "bool",
         "description": "Boolean type for true/false values",
@@ -73,7 +73,7 @@ TYPES_DATA = [
     },
     {
         "id": TYPE_DATETIME_ID,
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "datetime",
         "python_type": "datetime.datetime",
         "description": "Date and time type",
@@ -83,7 +83,7 @@ TYPES_DATA = [
     },
     {
         "id": TYPE_UUID_ID,
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "uuid",
         "python_type": "uuid.UUID",
         "description": "Universally unique identifier",
@@ -93,7 +93,7 @@ TYPES_DATA = [
     },
     {
         "id": TYPE_EMAIL_STR_ID,
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "EmailStr",
         "python_type": "EmailStr",
         "description": "Email address validated using Pydantic EmailStr",
@@ -103,7 +103,7 @@ TYPES_DATA = [
     },
     {
         "id": TYPE_HTTP_URL_ID,
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "HttpUrl",
         "python_type": "HttpUrl",
         "description": "HTTP URL validated using Pydantic HttpUrl",
@@ -118,7 +118,7 @@ CONSTRAINTS_DATA = [
     # String constraints
     {
         "id": UUID("00000000-0000-0000-0002-000000000001"),
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "max_length",
         "description": "Validates that string length does not exceed maximum",
         "parameter_type": "int",
@@ -127,7 +127,7 @@ CONSTRAINTS_DATA = [
     },
     {
         "id": UUID("00000000-0000-0000-0002-000000000002"),
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "min_length",
         "description": "Validates that string length is at least minimum",
         "parameter_type": "int",
@@ -136,7 +136,7 @@ CONSTRAINTS_DATA = [
     },
     {
         "id": UUID("00000000-0000-0000-0002-000000000003"),
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "pattern",
         "description": "Validates string matches a regular expression pattern",
         "parameter_type": "str",
@@ -146,7 +146,7 @@ CONSTRAINTS_DATA = [
     # Numeric constraints
     {
         "id": UUID("00000000-0000-0000-0002-000000000006"),
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "gt",
         "description": "Validates that number is greater than specified value",
         "parameter_type": "number",
@@ -155,7 +155,7 @@ CONSTRAINTS_DATA = [
     },
     {
         "id": UUID("00000000-0000-0000-0002-000000000007"),
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "ge",
         "description": "Validates that number is greater than or equal to specified value",
         "parameter_type": "number",
@@ -164,7 +164,7 @@ CONSTRAINTS_DATA = [
     },
     {
         "id": UUID("00000000-0000-0000-0002-000000000008"),
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "lt",
         "description": "Validates that number is less than specified value",
         "parameter_type": "number",
@@ -173,7 +173,7 @@ CONSTRAINTS_DATA = [
     },
     {
         "id": UUID("00000000-0000-0000-0002-000000000009"),
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "le",
         "description": "Validates that number is less than or equal to specified value",
         "parameter_type": "number",
@@ -182,7 +182,7 @@ CONSTRAINTS_DATA = [
     },
     {
         "id": UUID("00000000-0000-0000-0002-000000000010"),
-        "namespace_id": GLOBAL_NAMESPACE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "multiple_of",
         "description": "Validates that number is a multiple of specified value",
         "parameter_type": "number",
@@ -193,11 +193,11 @@ CONSTRAINTS_DATA = [
 
 
 def upgrade() -> None:
-    # Seed global namespace (required for FK constraints on types/constraints)
+    # Seed system namespace (required for FK constraints on types/constraints)
     op.execute(
         f"""
         INSERT INTO namespaces (id, user_id, name, description, locked, is_default)
-        VALUES ('{GLOBAL_NAMESPACE_ID}'::uuid, NULL, 'Global', 'Built-in types and field constraints', true, false)
+        VALUES ('{SYSTEM_NAMESPACE_ID}'::uuid, NULL, 'Global', 'Built-in types and field constraints', true, false)
         """
     )
 
@@ -232,7 +232,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Delete seed data in reverse order (field_constraints, types, namespace)
     op.execute(
-        f"DELETE FROM field_constraints WHERE namespace_id = '{GLOBAL_NAMESPACE_ID}'::uuid"
+        f"DELETE FROM field_constraints WHERE namespace_id = '{SYSTEM_NAMESPACE_ID}'::uuid"
     )
-    op.execute(f"DELETE FROM types WHERE namespace_id = '{GLOBAL_NAMESPACE_ID}'::uuid")
-    op.execute(f"DELETE FROM namespaces WHERE id = '{GLOBAL_NAMESPACE_ID}'::uuid")
+    op.execute(f"DELETE FROM types WHERE namespace_id = '{SYSTEM_NAMESPACE_ID}'::uuid")
+    op.execute(f"DELETE FROM namespaces WHERE id = '{SYSTEM_NAMESPACE_ID}'::uuid")
