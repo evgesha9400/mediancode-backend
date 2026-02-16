@@ -141,7 +141,6 @@ class NamespaceService(BaseService[Namespace]):
         for model, name in [
             (FieldModel, "fields"),
             (ObjectDefinition, "objects"),
-            (ApiEndpoint, "endpoints"),
             (ApiModel, "apis"),
         ]:
             query = (
@@ -151,6 +150,16 @@ class NamespaceService(BaseService[Namespace]):
             )
             result = await self.db.execute(query)
             counts[name] = result.scalar() or 0
+
+        # ApiEndpoint has no namespace_id; count via join through ApiModel
+        endpoint_query = (
+            select(func.count())
+            .select_from(ApiEndpoint)
+            .join(ApiModel, ApiEndpoint.api_id == ApiModel.id)
+            .where(ApiModel.namespace_id == namespace_id)
+        )
+        result = await self.db.execute(endpoint_query)
+        counts["endpoints"] = result.scalar() or 0
 
         return counts
 
