@@ -1,4 +1,4 @@
-# tests/test_placeholders.py
+# tests/test_api_craft/test_placeholders.py
 """Unit tests for the placeholder generation module."""
 
 import pytest

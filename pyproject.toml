@@ -54,5 +54,6 @@ markers = [
     "manual: generate output to tests/output/ for manual verification",
     "unit: pure logic tests with no external dependencies",
     "integration: tests requiring database or external services",
-    "e2e: end-to-end tests that generate and boot full applications",
+    "codegen: code generation pipeline tests that generate and boot full applications",
+    "api: HTTP endpoint tests using TestClient against the api service",
 ]

@@ -1,5 +1,5 @@
-# tests/test_e2e.py
-"""E2E integration tests for api_craft code generation.
+# tests/test_api_craft/test_codegen.py
+"""Codegen tests for api_craft code generation.
 
 These tests generate APIs, launch them, and make real HTTP requests.
 A successful request proves:
@@ -17,10 +17,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-pytestmark = pytest.mark.e2e
+pytestmark = pytest.mark.codegen
 
 from api_craft.main import APIGenerator
-from conftest import SPECS_PATH, load_input
+from .conftest import SPECS_PATH, load_input
 
 logger = logging.getLogger(__name__)
 
@@ -74,14 +74,14 @@ def assert_validation_error(response, expected_field: str | None = None):
 @pytest.mark.manual
 def test_generate_to_output():
     """Generate all APIs from tests/data/*.yaml to tests/output/."""
-    output_path = Path(__file__).parent / "output"
+    output_path = Path(__file__).parent.parent / "output"
     for yaml_file in SPECS_PATH.glob("*.yaml"):
         api_input = load_input(yaml_file.name)
         APIGenerator().generate(api_input, path=str(output_path))
 
 
 class TestItemsApi:
-    """E2E tests for the Items API."""
+    """Codegen tests for the Items API."""
 
     def test_healthcheck(self, items_api_client: TestClient):
         """Healthcheck endpoint returns OK."""

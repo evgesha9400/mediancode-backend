@@ -51,8 +51,8 @@ test: ## Run tests
 	@$(POETRY) run pytest tests/ -v
 
 .PHONY: test-quick
-test-quick: ## Run tests (fast, less verbose)
-	@$(POETRY) run pytest tests/test_e2e.py
+test-quick: ## Run codegen tests (fast, no DB needed)
+	@$(POETRY) run pytest -m codegen
 
 # =============================================================================
 #  DEPLOY TO RAILWAY

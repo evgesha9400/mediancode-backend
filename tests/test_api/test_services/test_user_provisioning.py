@@ -1,4 +1,4 @@
-# tests/test_user_provisioning.py
+# tests/test_api/test_services/test_user_provisioning.py
 """Integration tests for user provisioning service."""
 
 import pytest

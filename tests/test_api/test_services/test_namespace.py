@@ -1,5 +1,5 @@
-# tests/test_api_namespaces.py
-"""Integration tests for namespace CRUD endpoints."""
+# tests/test_api/test_services/test_namespace.py
+"""Integration tests for namespace CRUD."""
 
 import pytest
 

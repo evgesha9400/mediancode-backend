@@ -1,5 +1,5 @@
-# tests/test_api_types.py
-"""Integration tests for types endpoint."""
+# tests/test_api/test_services/test_type.py
+"""Integration tests for types."""
 
 import pytest
 

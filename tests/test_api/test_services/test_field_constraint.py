@@ -1,5 +1,5 @@
-# tests/test_api_constraints.py
-"""Integration tests for field constraints endpoint."""
+# tests/test_api/test_services/test_field_constraint.py
+"""Integration tests for field constraints."""
 
 import pytest
 
