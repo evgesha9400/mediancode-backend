@@ -50,8 +50,8 @@ db-reset: ## Reset database: delete all data, restart, re-migrate
 test: ## Run tests
 	@$(POETRY) run pytest tests/ -v
 
-.PHONY: test-quick
-test-quick: ## Run codegen tests (fast, no DB needed)
+.PHONY: test-codegen
+test-codegen: ## Run codegen tests (fast, no DB needed)
 	@$(POETRY) run pytest -m codegen
 
 # =============================================================================
