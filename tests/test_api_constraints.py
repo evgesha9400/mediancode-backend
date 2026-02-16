@@ -9,8 +9,8 @@ import pytest_asyncio
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.database import FieldConstraintModel, Namespace
-from api.settings import get_settings
+from api.models.database import FieldConstraintModel, Namespace, TypeModel
+from conftest import TEST_USER_ID
 
 
 @pytest_asyncio.fixture
@@ -38,125 +38,92 @@ async def test_constraint(db_session: AsyncSession, test_namespace: Namespace):
 
 
 @pytest.mark.asyncio
-async def test_list_constraints_no_namespace_filter(
+async def test_provisioning_creates_constraints(
     db_session: AsyncSession,
-    test_constraint: FieldConstraintModel,
+    provisioned_namespace: Namespace,
 ):
-    """Test that all constraints are returned when no namespace filter is provided."""
-    query = select(FieldConstraintModel)
-    result = await db_session.execute(query)
-    all_constraints = result.scalars().all()
+    """Test that provisioning creates copies of all global constraints for the user."""
+    result = await db_session.execute(
+        select(FieldConstraintModel).where(
+            FieldConstraintModel.namespace_id == provisioned_namespace.id,
+        )
+    )
+    constraints = result.scalars().all()
 
-    # Should have global constraints + test constraint
-    assert len(all_constraints) > 0
+    # Should have all 8 standard constraints
+    assert len(constraints) == 8
 
-    # Verify global constraints exist
-    settings = get_settings()
-    global_constraints = [
-        c for c in all_constraints if c.namespace_id == settings.global_namespace_id
-    ]
-    assert len(global_constraints) > 0
-
-    # Verify test constraint exists
-    test_constraints = [c for c in all_constraints if c.id == test_constraint.id]
-    assert len(test_constraints) == 1
+    constraint_names = {c.name for c in constraints}
+    expected = {
+        "max_length",
+        "min_length",
+        "pattern",
+        "gt",
+        "ge",
+        "lt",
+        "le",
+        "multiple_of",
+    }
+    assert constraint_names == expected
 
 
 @pytest.mark.asyncio
-async def test_list_constraints_with_user_namespace(
+async def test_list_constraints_includes_custom_and_provisioned(
     db_session: AsyncSession,
     test_namespace: Namespace,
     test_constraint: FieldConstraintModel,
+    provisioned_namespace: Namespace,
 ):
-    """Test that global + user namespace constraints are returned when filtering by user namespace."""
-    settings = get_settings()
-
-    from sqlalchemy import or_, select
-
-    query = select(FieldConstraintModel).where(
-        or_(
-            FieldConstraintModel.namespace_id == test_namespace.id,
-            FieldConstraintModel.namespace_id == settings.global_namespace_id,
-        )
+    """Test that user sees both provisioned and custom constraints."""
+    result = await db_session.execute(
+        select(FieldConstraintModel)
+        .join(Namespace)
+        .where(Namespace.user_id == TEST_USER_ID)
     )
-    result = await db_session.execute(query)
     constraints = result.scalars().all()
 
-    # Should have global constraints + test constraint
-    assert len(constraints) > 0
+    # Should have at least 8 provisioned constraints + 1 custom constraint
+    assert len(constraints) >= 9
 
-    # Verify global constraints are included
-    global_constraints = [
-        c for c in constraints if c.namespace_id == settings.global_namespace_id
-    ]
-    assert len(global_constraints) > 0
-
-    # Verify test constraint is included
-    test_constraints = [c for c in constraints if c.id == test_constraint.id]
-    assert len(test_constraints) == 1
-
-    # Verify no constraints from other namespaces
-    other_constraints = [
-        c
-        for c in constraints
-        if c.namespace_id != test_namespace.id
-        and c.namespace_id != settings.global_namespace_id
-    ]
-    assert len(other_constraints) == 0
+    constraint_names = {c.name for c in constraints}
+    assert "custom_test" in constraint_names
+    assert "max_length" in constraint_names
 
 
 @pytest.mark.asyncio
-async def test_list_constraints_global_namespace_only(db_session: AsyncSession):
-    """Test that only global constraints are returned when filtering by global namespace."""
-    settings = get_settings()
-
-    from sqlalchemy import or_, select
-
-    query = select(FieldConstraintModel).where(
-        or_(
-            FieldConstraintModel.namespace_id == settings.global_namespace_id,
-            FieldConstraintModel.namespace_id == settings.global_namespace_id,
-        )
-    )
-    result = await db_session.execute(query)
-    constraints = result.scalars().all()
-
-    # All constraints should be from global namespace
-    assert all(c.namespace_id == settings.global_namespace_id for c in constraints)
-    assert len(constraints) > 0
-
-
-@pytest.mark.asyncio
-async def test_list_constraints_includes_standard_constraints(
+async def test_provisioned_constraints_include_standard_set(
     db_session: AsyncSession,
-    test_namespace: Namespace,
+    provisioned_namespace: Namespace,
 ):
-    """Test that standard constraints are always included regardless of namespace filter."""
-    settings = get_settings()
-
+    """Test that standard constraints are available after provisioning."""
     expected_constraints = ["max_length", "min_length", "pattern", "gt"]
 
-    from sqlalchemy import or_, select
-
-    query = select(FieldConstraintModel).where(
-        or_(
-            FieldConstraintModel.namespace_id == test_namespace.id,
-            FieldConstraintModel.namespace_id == settings.global_namespace_id,
+    result = await db_session.execute(
+        select(FieldConstraintModel).where(
+            FieldConstraintModel.namespace_id == provisioned_namespace.id,
         )
     )
-    result = await db_session.execute(query)
     constraints = result.scalars().all()
 
-    # Verify all expected constraints are present
     constraint_names = {c.name for c in constraints}
     for expected_name in expected_constraints:
         assert (
             expected_name in constraint_names
-        ), f"Constraint '{expected_name}' should be available in filtered results"
+        ), f"Constraint '{expected_name}' should be available after provisioning"
 
-    # Verify global constraints have compatible_types set
-    global_constraints = [
-        c for c in constraints if c.namespace_id == settings.global_namespace_id
-    ]
-    assert len(global_constraints) > 0
-    assert all(len(c.compatible_types) > 0 for c in global_constraints)
+
+@pytest.mark.asyncio
+async def test_provisioned_constraints_have_compatible_types(
+    db_session: AsyncSession,
+    provisioned_namespace: Namespace,
+):
+    """Test that provisioned constraints have compatible_types set."""
+    result = await db_session.execute(
+        select(FieldConstraintModel).where(
+            FieldConstraintModel.namespace_id == provisioned_namespace.id,
+        )
+    )
+    constraints = result.scalars().all()
+
+    assert len(constraints) > 0
+    assert all(len(c.compatible_types) > 0 for c in constraints)

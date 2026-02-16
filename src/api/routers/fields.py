@@ -3,8 +3,7 @@
 
 from fastapi import APIRouter, HTTPException, status
 
-from api.auth import CurrentUser
-from api.deps import DbSession
+from api.deps import DbSession, ProvisionedUser
 from api.schemas.field import (
     FieldConstraintValueResponse,
     FieldCreate,
@@ -60,7 +59,7 @@ async def _to_response(field, service: FieldService) -> FieldResponse:
     description="Retrieve all field definitions accessible to the authenticated user.",
 )
 async def list_fields(
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
     namespace_id: str | None = None,
 ) -> list[FieldResponse]:
@@ -85,7 +84,7 @@ async def list_fields(
 )
 async def create_field(
     data: FieldCreate,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> FieldResponse:
     """Create a new field.
@@ -110,7 +109,7 @@ async def create_field(
 )
 async def get_field(
     field_id: str,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> FieldResponse:
     """Get a field by ID.
@@ -140,7 +139,7 @@ async def get_field(
 async def update_field(
     field_id: str,
     data: FieldUpdate,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> FieldResponse:
     """Update a field.
@@ -181,7 +180,7 @@ async def update_field(
 )
 async def delete_field(
     field_id: str,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> None:
     """Delete a field.

@@ -10,7 +10,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import Namespace, TypeModel
-from api.settings import get_settings
+from conftest import TEST_USER_ID
 
 
 @pytest_asyncio.fixture
@@ -18,6 +18,7 @@ async def test_type(db_session: AsyncSession, test_namespace: Namespace):
     """Create a test type in the user namespace."""
     type_model = TypeModel(
         namespace_id=test_namespace.id,
+        user_id=TEST_USER_ID,
         name="CustomType",
         python_type="CustomType",
         description="Custom test type",
@@ -34,122 +35,112 @@ async def test_type(db_session: AsyncSession, test_namespace: Namespace):
 
 
 @pytest.mark.asyncio
-async def test_list_types_no_namespace_filter(
+async def test_provisioning_creates_types(
     db_session: AsyncSession,
-    test_type: TypeModel,
+    provisioned_namespace: Namespace,
 ):
-    """Test that all types are returned when no namespace filter is provided."""
-    query = select(TypeModel)
-    result = await db_session.execute(query)
-    all_types = result.scalars().all()
+    """Test that provisioning creates copies of all global types for the user."""
+    result = await db_session.execute(
+        select(TypeModel).where(
+            TypeModel.namespace_id == provisioned_namespace.id,
+        )
+    )
+    types = result.scalars().all()
 
-    # Should have global types + test type
-    assert len(all_types) > 0
+    # Should have all 8 standard types
+    assert len(types) == 8
 
-    # Verify global types exist
-    global_types = [
-        t for t in all_types if t.namespace_id == get_settings().global_namespace_id
-    ]
-    assert len(global_types) > 0
-
-    # Verify test type exists
-    test_types = [t for t in all_types if t.id == test_type.id]
-    assert len(test_types) == 1
+    type_names = {t.name for t in types}
+    expected = {
+        "str",
+        "int",
+        "float",
+        "bool",
+        "datetime",
+        "uuid",
+        "EmailStr",
+        "HttpUrl",
+    }
+    assert type_names == expected
 
 
 @pytest.mark.asyncio
-async def test_list_types_with_user_namespace(
+async def test_provisioned_types_have_correct_user_id(
+    db_session: AsyncSession,
+    provisioned_namespace: Namespace,
+):
+    """Test that provisioned types are owned by the user."""
+    result = await db_session.execute(
+        select(TypeModel).where(
+            TypeModel.namespace_id == provisioned_namespace.id,
+        )
+    )
+    types = result.scalars().all()
+
+    assert all(t.user_id == TEST_USER_ID for t in types)
+
+
+@pytest.mark.asyncio
+async def test_provisioned_types_preserve_parent_relationships(
+    db_session: AsyncSession,
+    provisioned_namespace: Namespace,
+):
+    """Test that parent_type_id relationships are correctly remapped."""
+    result = await db_session.execute(
+        select(TypeModel).where(
+            TypeModel.namespace_id == provisioned_namespace.id,
+        )
+    )
+    types = result.scalars().all()
+    by_name = {t.name: t for t in types}
+
+    # EmailStr and HttpUrl should have parent_type_id pointing to the user's str type
+    assert by_name["EmailStr"].parent_type_id == by_name["str"].id
+    assert by_name["HttpUrl"].parent_type_id == by_name["str"].id
+
+    # Primitive types should have no parent
+    for name in ["str", "int", "float", "bool", "datetime", "uuid"]:
+        assert by_name[name].parent_type_id is None
+
+
+@pytest.mark.asyncio
+async def test_list_types_includes_custom_and_provisioned(
     db_session: AsyncSession,
     test_namespace: Namespace,
     test_type: TypeModel,
+    provisioned_namespace: Namespace,
 ):
-    """Test that global + user namespace types are returned when filtering by user namespace."""
-    settings = get_settings()
-
-    from sqlalchemy import or_, select
-
-    query = select(TypeModel).where(
-        or_(
-            TypeModel.namespace_id == test_namespace.id,
-            TypeModel.namespace_id == settings.global_namespace_id,
-        )
+    """Test that user sees both provisioned types and custom types."""
+    result = await db_session.execute(
+        select(TypeModel).join(Namespace).where(Namespace.user_id == TEST_USER_ID)
     )
-    result = await db_session.execute(query)
     types = result.scalars().all()
 
-    # Should have global types + test type
-    assert len(types) > 0
+    # Should have at least 8 provisioned types + 1 custom type
+    assert len(types) >= 9
 
-    # Verify global types are included
-    global_types = [
-        t for t in types if t.namespace_id == get_settings().global_namespace_id
-    ]
-    assert len(global_types) > 0
-
-    # Verify test type is included
-    test_types = [t for t in types if t.id == test_type.id]
-    assert len(test_types) == 1
-
-    # Verify no types from other namespaces
-    other_types = [
-        t
-        for t in types
-        if t.namespace_id != test_namespace.id
-        and t.namespace_id != settings.global_namespace_id
-    ]
-    assert len(other_types) == 0
+    type_names = {t.name for t in types}
+    assert "CustomType" in type_names
+    assert "str" in type_names
 
 
 @pytest.mark.asyncio
-async def test_list_types_global_namespace_only(db_session: AsyncSession):
-    """Test that only global types are returned when filtering by global namespace."""
-    settings = get_settings()
-
-    from sqlalchemy import or_, select
-
-    query = select(TypeModel).where(
-        or_(
-            TypeModel.namespace_id == settings.global_namespace_id,
-            TypeModel.namespace_id == settings.global_namespace_id,
-        )
-    )
-    result = await db_session.execute(query)
-    types = result.scalars().all()
-
-    # All types should be from global namespace
-    assert all(t.namespace_id == settings.global_namespace_id for t in types)
-    assert len(types) > 0
-
-
-@pytest.mark.asyncio
-async def test_list_types_includes_primitives(
+async def test_provisioned_types_include_primitives(
     db_session: AsyncSession,
-    test_namespace: Namespace,
+    provisioned_namespace: Namespace,
 ):
-    """Test that primitive types are always included regardless of namespace filter."""
-    settings = get_settings()
-
-    # Critical primitive types that should always be available
+    """Test that primitive types are always available after provisioning."""
     expected_primitives = ["str", "int", "float", "bool", "datetime", "uuid"]
 
-    from sqlalchemy import or_, select
-
-    query = select(TypeModel).where(
-        or_(
-            TypeModel.namespace_id == test_namespace.id,
-            TypeModel.namespace_id == settings.global_namespace_id,
+    result = await db_session.execute(
+        select(TypeModel).where(
+            TypeModel.namespace_id == provisioned_namespace.id,
         )
     )
-    result = await db_session.execute(query)
     types = result.scalars().all()
 
-    # Verify all expected primitive types are present
     type_names = {t.name for t in types}
     for expected_name in expected_primitives:
         assert (
             expected_name in type_names
-        ), f"Primitive type '{expected_name}' should be available in filtered results"
-
-    # Verify global types are from global namespace
-    global_types = [t for t in types if t.namespace_id == settings.global_namespace_id]
-    assert len(global_types) > 0
+        ), f"Primitive type '{expected_name}' should be available after provisioning"

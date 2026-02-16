@@ -3,7 +3,6 @@
 
 from uuid import UUID
 
-from fastapi import HTTPException, status
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -17,7 +16,6 @@ from api.models.database import (
 )
 from api.schemas.field import FieldConstraintValueInput, FieldCreate, FieldUpdate
 from api.services.base import BaseService
-from api.settings import get_settings
 
 
 class FieldService(BaseService[FieldModel]):
@@ -33,13 +31,12 @@ class FieldService(BaseService[FieldModel]):
         user_id: str,
         namespace_id: str | None = None,
     ) -> list[FieldModel]:
-        """List fields accessible to a user.
+        """List fields owned by a user.
 
         :param user_id: The authenticated user's ID.
         :param namespace_id: Optional namespace filter.
-        :returns: List of accessible fields with validators loaded.
+        :returns: List of user's fields with validators loaded.
         """
-        settings = get_settings()
         query = (
             select(FieldModel)
             .join(Namespace)
@@ -49,12 +46,7 @@ class FieldService(BaseService[FieldModel]):
                     FieldConstraintValueAssociation.constraint
                 ),
             )
-            .where(
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                )
-            )
+            .where(Namespace.user_id == user_id)
         )
         if namespace_id:
             query = query.where(FieldModel.namespace_id == namespace_id)
@@ -64,13 +56,12 @@ class FieldService(BaseService[FieldModel]):
     async def get_by_id_for_user(
         self, field_id: str, user_id: str
     ) -> FieldModel | None:
-        """Get a field if accessible to the user.
+        """Get a field if owned by the user.
 
         :param field_id: The field's unique identifier.
         :param user_id: The authenticated user's ID.
-        :returns: The field if accessible, None otherwise.
+        :returns: The field if owned by user, None otherwise.
         """
-        settings = get_settings()
         query = (
             select(FieldModel)
             .join(Namespace)
@@ -82,10 +73,7 @@ class FieldService(BaseService[FieldModel]):
             )
             .where(
                 FieldModel.id == field_id,
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                ),
+                Namespace.user_id == user_id,
             )
         )
         result = await self.db.execute(query)
@@ -97,7 +85,10 @@ class FieldService(BaseService[FieldModel]):
         :param user_id: The authenticated user's ID.
         :param data: Field creation data.
         :returns: The created field.
+        :raises HTTPException: If namespace not owned by user or is locked.
         """
+        await self.validate_namespace_for_creation(data.namespace_id, user_id)
+
         field = FieldModel(
             namespace_id=data.namespace_id,
             user_id=user_id,

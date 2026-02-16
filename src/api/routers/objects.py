@@ -3,8 +3,7 @@
 
 from fastapi import APIRouter, HTTPException, status
 
-from api.auth import CurrentUser
-from api.deps import DbSession
+from api.deps import DbSession, ProvisionedUser
 from api.schemas.object import (
     ObjectCreate,
     ObjectFieldReferenceSchema,
@@ -54,7 +53,7 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
     description="Retrieve all object definitions accessible to the authenticated user.",
 )
 async def list_objects(
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
     namespace_id: str | None = None,
 ) -> list[ObjectResponse]:
@@ -79,7 +78,7 @@ async def list_objects(
 )
 async def create_object(
     data: ObjectCreate,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> ObjectResponse:
     """Create a new object.
@@ -104,7 +103,7 @@ async def create_object(
 )
 async def get_object(
     object_id: str,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> ObjectResponse:
     """Get an object by ID.
@@ -134,7 +133,7 @@ async def get_object(
 async def update_object(
     object_id: str,
     data: ObjectUpdate,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> ObjectResponse:
     """Update an object.
@@ -175,7 +174,7 @@ async def update_object(
 )
 async def delete_object(
     object_id: str,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> None:
     """Delete an object.

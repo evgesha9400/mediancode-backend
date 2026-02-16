@@ -1,12 +1,11 @@
 # src/api/services/type.py
 """Service layer for Type operations."""
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import FieldModel, Namespace, TypeModel
 from api.services.base import BaseService
-from api.settings import get_settings
 
 
 class TypeService(BaseService[TypeModel]):
@@ -22,23 +21,13 @@ class TypeService(BaseService[TypeModel]):
         user_id: str,
         namespace_id: str | None = None,
     ) -> list[TypeModel]:
-        """List types accessible to a user (their own + global).
+        """List types owned by a user.
 
         :param user_id: The authenticated user's ID.
         :param namespace_id: Optional namespace filter.
-        :returns: List of accessible types.
+        :returns: List of user's types.
         """
-        settings = get_settings()
-        query = (
-            select(TypeModel)
-            .join(Namespace)
-            .where(
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                )
-            )
-        )
+        query = select(TypeModel).join(Namespace).where(Namespace.user_id == user_id)
         if namespace_id:
             query = query.where(TypeModel.namespace_id == namespace_id)
         result = await self.db.execute(query)
@@ -50,16 +39,10 @@ class TypeService(BaseService[TypeModel]):
         :param user_id: The authenticated user's ID.
         :returns: Dict mapping type ID (as string) to field count.
         """
-        settings = get_settings()
         query = (
             select(FieldModel.type_id, func.count(FieldModel.id))
             .join(Namespace)
-            .where(
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                )
-            )
+            .where(Namespace.user_id == user_id)
             .group_by(FieldModel.type_id)
         )
         result = await self.db.execute(query)

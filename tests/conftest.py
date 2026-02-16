@@ -10,7 +10,7 @@ import pytest
 import pytest_asyncio
 import yaml
 from fastapi.testclient import TestClient
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from api_craft.main import APIGenerator
@@ -124,6 +124,42 @@ async def db_session(test_session_factory):
         await session.rollback()
 
 
+TEST_USER_ID = "test_user_integration"
+
+
+@pytest_asyncio.fixture
+async def provisioned_namespace(db_session: AsyncSession):
+    """Provision a test user and return their default namespace."""
+    from api.models.database import FieldConstraintModel, Namespace, TypeModel
+    from api.services.user_provisioning import UserProvisioningService
+
+    service = UserProvisioningService(db_session)
+    await service.ensure_provisioned(TEST_USER_ID)
+    await db_session.commit()
+
+    result = await db_session.execute(
+        select(Namespace).where(
+            Namespace.user_id == TEST_USER_ID,
+            Namespace.is_default.is_(True),
+        )
+    )
+    namespace = result.scalar_one()
+
+    yield namespace
+
+    # Cleanup: delete children first, then namespace
+    await db_session.execute(
+        delete(TypeModel).where(TypeModel.namespace_id == namespace.id)
+    )
+    await db_session.execute(
+        delete(FieldConstraintModel).where(
+            FieldConstraintModel.namespace_id == namespace.id
+        )
+    )
+    await db_session.execute(delete(Namespace).where(Namespace.id == namespace.id))
+    await db_session.commit()
+
+
 @pytest_asyncio.fixture
 async def test_namespace(db_session: AsyncSession):
     """Create a test namespace, cleaned up after the test."""
@@ -132,6 +168,7 @@ async def test_namespace(db_session: AsyncSession):
     namespace = Namespace(
         name="Test Namespace",
         description="Test namespace for integration tests",
+        user_id=TEST_USER_ID,
     )
     db_session.add(namespace)
     await db_session.commit()

@@ -3,10 +3,12 @@
 
 from typing import Any, Generic, TypeVar
 
+from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import Base
+from api.models.database import Namespace
 
 ModelT = TypeVar("ModelT", bound=Base)
 
@@ -93,6 +95,35 @@ class BaseService(Generic[ModelT]):
         """
         await self.db.delete(entity)
         await self.db.flush()
+
+    async def validate_namespace_for_creation(
+        self, namespace_id: Any, user_id: str
+    ) -> Namespace:
+        """Validate namespace ownership and mutability for entity creation.
+
+        :param namespace_id: The namespace ID to validate.
+        :param user_id: The authenticated user's ID.
+        :returns: The validated namespace.
+        :raises HTTPException: If namespace not owned by user or is locked.
+        """
+        result = await self.db.execute(
+            select(Namespace).where(
+                Namespace.id == namespace_id,
+                Namespace.user_id == user_id,
+            )
+        )
+        namespace = result.scalar_one_or_none()
+        if namespace is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Namespace not found or not owned by user",
+            )
+        if namespace.locked:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot create entities in a locked namespace",
+            )
+        return namespace
 
     async def count_by_field(self, field_name: str, field_value: Any) -> int:
         """Count entities matching a field value.

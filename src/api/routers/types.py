@@ -3,8 +3,7 @@
 
 from fastapi import APIRouter
 
-from api.auth import CurrentUser
-from api.deps import DbSession
+from api.deps import DbSession, ProvisionedUser
 from api.schemas.type import TypeResponse
 from api.services.type import TypeService, get_type_service
 
@@ -27,7 +26,7 @@ def get_service(db: DbSession) -> TypeService:
     description="Retrieve all type definitions accessible to the authenticated user.",
 )
 async def list_types(
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
     namespace_id: str | None = None,
 ) -> list[TypeResponse]:

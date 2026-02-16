@@ -18,17 +18,15 @@ from api.models.database import (
 )
 from api.schemas.field import FieldCreate, FieldUpdate
 from api.services.field import FieldService
-from api.settings import get_settings
-
-TEST_USER_ID = "test_user_fields"
+from conftest import TEST_USER_ID
 
 
 # --- Fixtures ---
 
 
 @pytest_asyncio.fixture
-async def user_namespace(db_session: AsyncSession):
-    """Create a user-owned namespace for field tests."""
+async def user_namespace(db_session: AsyncSession, provisioned_namespace: Namespace):
+    """Create a user-owned (unlocked) namespace for field tests."""
     namespace = Namespace(
         name="Field Test Namespace",
         description="Namespace for field constraint value tests",
@@ -48,12 +46,11 @@ async def user_namespace(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def str_type(db_session: AsyncSession):
-    """Get the global 'str' type."""
-    settings = get_settings()
+async def str_type(db_session: AsyncSession, provisioned_namespace: Namespace):
+    """Get the user's provisioned 'str' type."""
     result = await db_session.execute(
         select(TypeModel).where(
-            TypeModel.namespace_id == settings.global_namespace_id,
+            TypeModel.namespace_id == provisioned_namespace.id,
             TypeModel.name == "str",
         )
     )
@@ -61,12 +58,13 @@ async def str_type(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def max_length_constraint(db_session: AsyncSession):
-    """Get the global 'max_length' field constraint."""
-    settings = get_settings()
+async def max_length_constraint(
+    db_session: AsyncSession, provisioned_namespace: Namespace
+):
+    """Get the user's provisioned 'max_length' field constraint."""
     result = await db_session.execute(
         select(FieldConstraintModel).where(
-            FieldConstraintModel.namespace_id == settings.global_namespace_id,
+            FieldConstraintModel.namespace_id == provisioned_namespace.id,
             FieldConstraintModel.name == "max_length",
         )
     )
@@ -74,12 +72,13 @@ async def max_length_constraint(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def min_length_constraint(db_session: AsyncSession):
-    """Get the global 'min_length' field constraint."""
-    settings = get_settings()
+async def min_length_constraint(
+    db_session: AsyncSession, provisioned_namespace: Namespace
+):
+    """Get the user's provisioned 'min_length' field constraint."""
     result = await db_session.execute(
         select(FieldConstraintModel).where(
-            FieldConstraintModel.namespace_id == settings.global_namespace_id,
+            FieldConstraintModel.namespace_id == provisioned_namespace.id,
             FieldConstraintModel.name == "min_length",
         )
     )
@@ -87,12 +86,13 @@ async def min_length_constraint(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def pattern_constraint(db_session: AsyncSession):
-    """Get the global 'pattern' field constraint."""
-    settings = get_settings()
+async def pattern_constraint(
+    db_session: AsyncSession, provisioned_namespace: Namespace
+):
+    """Get the user's provisioned 'pattern' field constraint."""
     result = await db_session.execute(
         select(FieldConstraintModel).where(
-            FieldConstraintModel.namespace_id == settings.global_namespace_id,
+            FieldConstraintModel.namespace_id == provisioned_namespace.id,
             FieldConstraintModel.name == "pattern",
         )
     )

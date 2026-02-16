@@ -3,8 +3,7 @@
 
 from fastapi import APIRouter, HTTPException, status
 
-from api.auth import CurrentUser
-from api.deps import DbSession
+from api.deps import DbSession, ProvisionedUser
 from api.schemas.endpoint import (
     ApiEndpointCreate,
     ApiEndpointResponse,
@@ -55,7 +54,7 @@ def _to_response(endpoint) -> ApiEndpointResponse:
     description="Retrieve all API endpoint definitions accessible to the authenticated user.",
 )
 async def list_endpoints(
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
     namespace_id: str | None = None,
 ) -> list[ApiEndpointResponse]:
@@ -80,7 +79,7 @@ async def list_endpoints(
 )
 async def create_endpoint(
     data: ApiEndpointCreate,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> ApiEndpointResponse:
     """Create a new endpoint.
@@ -103,7 +102,7 @@ async def create_endpoint(
 )
 async def get_endpoint(
     endpoint_id: str,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> ApiEndpointResponse:
     """Get an endpoint by ID.
@@ -133,7 +132,7 @@ async def get_endpoint(
 async def update_endpoint(
     endpoint_id: str,
     data: ApiEndpointUpdate,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> ApiEndpointResponse:
     """Update an endpoint.
@@ -174,7 +173,7 @@ async def update_endpoint(
 )
 async def delete_endpoint(
     endpoint_id: str,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> None:
     """Delete an endpoint.

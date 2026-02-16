@@ -3,7 +3,6 @@
 
 from uuid import UUID
 
-from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -16,7 +15,6 @@ from api.models.database import (
 )
 from api.schemas.object import ObjectCreate, ObjectFieldReferenceSchema, ObjectUpdate
 from api.services.base import BaseService
-from api.settings import get_settings
 
 
 class ObjectService(BaseService[ObjectDefinition]):
@@ -32,23 +30,17 @@ class ObjectService(BaseService[ObjectDefinition]):
         user_id: str,
         namespace_id: str | None = None,
     ) -> list[ObjectDefinition]:
-        """List objects accessible to a user.
+        """List objects owned by a user.
 
         :param user_id: The authenticated user's ID.
         :param namespace_id: Optional namespace filter.
-        :returns: List of accessible objects with field associations loaded.
+        :returns: List of user's objects with field associations loaded.
         """
-        settings = get_settings()
         query = (
             select(ObjectDefinition)
             .join(Namespace)
             .options(selectinload(ObjectDefinition.field_associations))
-            .where(
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                )
-            )
+            .where(Namespace.user_id == user_id)
         )
         if namespace_id:
             query = query.where(ObjectDefinition.namespace_id == namespace_id)
@@ -58,23 +50,19 @@ class ObjectService(BaseService[ObjectDefinition]):
     async def get_by_id_for_user(
         self, object_id: str, user_id: str
     ) -> ObjectDefinition | None:
-        """Get an object if accessible to the user.
+        """Get an object if owned by the user.
 
         :param object_id: The object's unique identifier.
         :param user_id: The authenticated user's ID.
-        :returns: The object if accessible, None otherwise.
+        :returns: The object if owned by user, None otherwise.
         """
-        settings = get_settings()
         query = (
             select(ObjectDefinition)
             .join(Namespace)
             .options(selectinload(ObjectDefinition.field_associations))
             .where(
                 ObjectDefinition.id == object_id,
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                ),
+                Namespace.user_id == user_id,
             )
         )
         result = await self.db.execute(query)
@@ -88,7 +76,10 @@ class ObjectService(BaseService[ObjectDefinition]):
         :param user_id: The authenticated user's ID.
         :param data: Object creation data.
         :returns: The created object.
+        :raises HTTPException: If namespace not owned by user or is locked.
         """
+        await self.validate_namespace_for_creation(data.namespace_id, user_id)
+
         obj = ObjectDefinition(
             namespace_id=data.namespace_id,
             user_id=user_id,

@@ -2,7 +2,7 @@
 """Service layer for Namespace operations."""
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import (
@@ -14,7 +14,6 @@ from api.models.database import (
 )
 from api.schemas.namespace import NamespaceCreate, NamespaceUpdate
 from api.services.base import BaseService
-from api.settings import get_settings
 
 
 class NamespaceService(BaseService[Namespace]):
@@ -26,37 +25,27 @@ class NamespaceService(BaseService[Namespace]):
     model_class = Namespace
 
     async def list_for_user(self, user_id: str) -> list[Namespace]:
-        """List namespaces accessible to a user (their own + global).
+        """List namespaces owned by a user.
 
         :param user_id: The authenticated user's ID.
-        :returns: List of accessible namespaces.
+        :returns: List of user's namespaces.
         """
-        settings = get_settings()
-        query = select(Namespace).where(
-            or_(
-                Namespace.user_id == user_id,
-                Namespace.id == settings.global_namespace_id,
-            )
-        )
+        query = select(Namespace).where(Namespace.user_id == user_id)
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
     async def get_by_id_for_user(
         self, namespace_id: str, user_id: str
     ) -> Namespace | None:
-        """Get a namespace if accessible to the user.
+        """Get a namespace if owned by the user.
 
         :param namespace_id: The namespace's unique identifier.
         :param user_id: The authenticated user's ID.
-        :returns: The namespace if accessible, None otherwise.
+        :returns: The namespace if owned by user, None otherwise.
         """
-        settings = get_settings()
         query = select(Namespace).where(
             Namespace.id == namespace_id,
-            or_(
-                Namespace.user_id == user_id,
-                Namespace.id == settings.global_namespace_id,
-            ),
+            Namespace.user_id == user_id,
         )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()

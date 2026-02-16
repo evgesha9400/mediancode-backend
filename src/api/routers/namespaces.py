@@ -3,8 +3,7 @@
 
 from fastapi import APIRouter, HTTPException, status
 
-from api.auth import CurrentUser
-from api.deps import DbSession
+from api.deps import DbSession, ProvisionedUser
 from api.schemas.namespace import NamespaceCreate, NamespaceResponse, NamespaceUpdate
 from api.services.namespace import NamespaceService, get_namespace_service
 
@@ -27,7 +26,7 @@ def get_service(db: DbSession) -> NamespaceService:
     description="Retrieve all namespaces accessible to the authenticated user.",
 )
 async def list_namespaces(
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> list[NamespaceResponse]:
     """List all namespaces accessible to the user.
@@ -50,7 +49,7 @@ async def list_namespaces(
 )
 async def create_namespace(
     data: NamespaceCreate,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> NamespaceResponse:
     """Create a new namespace.
@@ -73,7 +72,7 @@ async def create_namespace(
 )
 async def get_namespace(
     namespace_id: str,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> NamespaceResponse:
     """Get a namespace by ID.
@@ -103,7 +102,7 @@ async def get_namespace(
 async def update_namespace(
     namespace_id: str,
     data: NamespaceUpdate,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> NamespaceResponse:
     """Update a namespace.
@@ -142,7 +141,7 @@ async def update_namespace(
 )
 async def delete_namespace(
     namespace_id: str,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> None:
     """Delete a namespace.

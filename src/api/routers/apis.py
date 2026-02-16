@@ -6,8 +6,7 @@ import io
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
-from api.auth import CurrentUser
-from api.deps import DbSession
+from api.deps import DbSession, ProvisionedUser
 from api.rate_limit import (
     RATE_LIMIT_DEFAULT,
     RATE_LIMIT_GENERATION,
@@ -37,7 +36,7 @@ def get_service(db: DbSession) -> ApiService:
 @limiter.limit(RATE_LIMIT_DEFAULT)
 async def list_apis(
     request: Request,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
     namespace_id: str | None = None,
 ) -> list[ApiResponse]:
@@ -64,7 +63,7 @@ async def list_apis(
 async def create_api(
     request: Request,
     data: ApiCreate,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> ApiResponse:
     """Create a new API.
@@ -87,7 +86,7 @@ async def create_api(
 )
 async def get_api(
     api_id: str,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> ApiResponse:
     """Get an API by ID.
@@ -117,7 +116,7 @@ async def get_api(
 async def update_api(
     api_id: str,
     data: ApiUpdate,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> ApiResponse:
     """Update an API.
@@ -156,7 +155,7 @@ async def update_api(
 )
 async def delete_api(
     api_id: str,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> None:
     """Delete an API.
@@ -201,7 +200,7 @@ async def delete_api(
 async def generate_api_code(
     request: Request,
     api_id: str,
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
 ) -> StreamingResponse:
     """Generate FastAPI application code for an API.

@@ -3,8 +3,7 @@
 
 from fastapi import APIRouter
 
-from api.auth import CurrentUser
-from api.deps import DbSession
+from api.deps import DbSession, ProvisionedUser
 from api.schemas.field_constraint import FieldConstraintResponse
 from api.services.field_constraint import (
     FieldConstraintService,
@@ -30,7 +29,7 @@ def get_service(db: DbSession) -> FieldConstraintService:
     description="Retrieve all field constraint definitions accessible to the authenticated user.",
 )
 async def list_field_constraints(
-    user_id: CurrentUser,
+    user_id: ProvisionedUser,
     db: DbSession,
     namespace_id: str | None = None,
 ) -> list[FieldConstraintResponse]:

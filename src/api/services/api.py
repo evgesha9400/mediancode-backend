@@ -1,14 +1,13 @@
 # src/api/services/api.py
 """Service layer for Api operations."""
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from api.models.database import ApiModel, Namespace
 from api.schemas.api import ApiCreate, ApiUpdate
 from api.services.base import BaseService
-from api.settings import get_settings
 
 
 class ApiService(BaseService[ApiModel]):
@@ -24,45 +23,31 @@ class ApiService(BaseService[ApiModel]):
         user_id: str,
         namespace_id: str | None = None,
     ) -> list[ApiModel]:
-        """List APIs accessible to a user.
+        """List APIs owned by a user.
 
         :param user_id: The authenticated user's ID.
         :param namespace_id: Optional namespace filter.
-        :returns: List of accessible APIs.
+        :returns: List of user's APIs.
         """
-        settings = get_settings()
-        query = (
-            select(ApiModel)
-            .join(Namespace)
-            .where(
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                )
-            )
-        )
+        query = select(ApiModel).join(Namespace).where(Namespace.user_id == user_id)
         if namespace_id:
             query = query.where(ApiModel.namespace_id == namespace_id)
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
     async def get_by_id_for_user(self, api_id: str, user_id: str) -> ApiModel | None:
-        """Get an API if accessible to the user.
+        """Get an API if owned by the user.
 
         :param api_id: The API's unique identifier.
         :param user_id: The authenticated user's ID.
-        :returns: The API if accessible, None otherwise.
+        :returns: The API if owned by user, None otherwise.
         """
-        settings = get_settings()
         query = (
             select(ApiModel)
             .join(Namespace)
             .where(
                 ApiModel.id == api_id,
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                ),
+                Namespace.user_id == user_id,
             )
         )
         result = await self.db.execute(query)
@@ -73,9 +58,8 @@ class ApiService(BaseService[ApiModel]):
 
         :param api_id: The API's unique identifier.
         :param user_id: The authenticated user's ID.
-        :returns: The API with loaded relations if accessible, None otherwise.
+        :returns: The API with loaded relations if owned by user, None otherwise.
         """
-        settings = get_settings()
         query = (
             select(ApiModel)
             .join(Namespace)
@@ -84,10 +68,7 @@ class ApiService(BaseService[ApiModel]):
             )
             .where(
                 ApiModel.id == api_id,
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                ),
+                Namespace.user_id == user_id,
             )
         )
         result = await self.db.execute(query)
@@ -99,7 +80,10 @@ class ApiService(BaseService[ApiModel]):
         :param user_id: The authenticated user's ID.
         :param data: API creation data.
         :returns: The created API.
+        :raises HTTPException: If namespace not owned by user or is locked.
         """
+        await self.validate_namespace_for_creation(data.namespace_id, user_id)
+
         api = ApiModel(
             namespace_id=data.namespace_id,
             user_id=user_id,

@@ -1,7 +1,7 @@
 # src/api/services/field_constraint.py
 """Service layer for Field Constraint operations."""
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import (
@@ -11,7 +11,6 @@ from api.models.database import (
     Namespace,
 )
 from api.services.base import BaseService
-from api.settings import get_settings
 
 
 class FieldConstraintService(BaseService[FieldConstraintModel]):
@@ -27,22 +26,16 @@ class FieldConstraintService(BaseService[FieldConstraintModel]):
         user_id: str,
         namespace_id: str | None = None,
     ) -> list[FieldConstraintModel]:
-        """List field constraints accessible to a user (their own + global).
+        """List field constraints owned by a user.
 
         :param user_id: The authenticated user's ID.
         :param namespace_id: Optional namespace filter.
-        :returns: List of accessible field constraints.
+        :returns: List of user's field constraints.
         """
-        settings = get_settings()
         query = (
             select(FieldConstraintModel)
             .join(Namespace)
-            .where(
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                )
-            )
+            .where(Namespace.user_id == user_id)
         )
         if namespace_id:
             query = query.where(FieldConstraintModel.namespace_id == namespace_id)
@@ -55,7 +48,6 @@ class FieldConstraintService(BaseService[FieldConstraintModel]):
         :param user_id: The authenticated user's ID.
         :returns: Dict mapping constraint ID (as string) to field count.
         """
-        settings = get_settings()
         query = (
             select(
                 FieldConstraintValueAssociation.constraint_id,
@@ -63,12 +55,7 @@ class FieldConstraintService(BaseService[FieldConstraintModel]):
             )
             .join(FieldModel)
             .join(Namespace)
-            .where(
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                )
-            )
+            .where(Namespace.user_id == user_id)
             .group_by(FieldConstraintValueAssociation.constraint_id)
         )
         result = await self.db.execute(query)

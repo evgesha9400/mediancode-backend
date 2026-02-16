@@ -1,13 +1,12 @@
 # src/api/services/endpoint.py
 """Service layer for ApiEndpoint operations."""
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import ApiEndpoint, ApiModel, Namespace
 from api.schemas.endpoint import ApiEndpointCreate, ApiEndpointUpdate
 from api.services.base import BaseService
-from api.settings import get_settings
 
 
 class EndpointService(BaseService[ApiEndpoint]):
@@ -23,23 +22,17 @@ class EndpointService(BaseService[ApiEndpoint]):
         user_id: str,
         namespace_id: str | None = None,
     ) -> list[ApiEndpoint]:
-        """List endpoints accessible to a user.
+        """List endpoints owned by a user.
 
         :param user_id: The authenticated user's ID.
         :param namespace_id: Optional namespace filter.
-        :returns: List of accessible endpoints.
+        :returns: List of user's endpoints.
         """
-        settings = get_settings()
         query = (
             select(ApiEndpoint)
             .join(ApiModel)
             .join(Namespace)
-            .where(
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                )
-            )
+            .where(Namespace.user_id == user_id)
         )
         if namespace_id:
             query = query.where(ApiModel.namespace_id == namespace_id)
@@ -49,23 +42,19 @@ class EndpointService(BaseService[ApiEndpoint]):
     async def get_by_id_for_user(
         self, endpoint_id: str, user_id: str
     ) -> ApiEndpoint | None:
-        """Get an endpoint if accessible to the user.
+        """Get an endpoint if owned by the user.
 
         :param endpoint_id: The endpoint's unique identifier.
         :param user_id: The authenticated user's ID.
-        :returns: The endpoint if accessible, None otherwise.
+        :returns: The endpoint if owned by user, None otherwise.
         """
-        settings = get_settings()
         query = (
             select(ApiEndpoint)
             .join(ApiModel)
             .join(Namespace)
             .where(
                 ApiEndpoint.id == endpoint_id,
-                or_(
-                    Namespace.user_id == user_id,
-                    Namespace.id == settings.global_namespace_id,
-                ),
+                Namespace.user_id == user_id,
             )
         )
         result = await self.db.execute(query)
