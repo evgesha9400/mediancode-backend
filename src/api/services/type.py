@@ -44,6 +44,28 @@ class TypeService(BaseService[TypeModel]):
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
+    async def get_by_id_for_user(self, type_id: str, user_id: str) -> TypeModel | None:
+        """Get a type if owned by the user.
+
+        System namespace types (``user_id IS NULL``) are excluded, so this
+        method returns ``None`` for them — making it safe to use as a gate
+        before mutation operations.
+
+        :param type_id: The type's unique identifier.
+        :param user_id: The authenticated user's ID.
+        :returns: The type if owned by user, None otherwise.
+        """
+        query = (
+            select(TypeModel)
+            .join(Namespace)
+            .where(
+                TypeModel.id == type_id,
+                Namespace.user_id == user_id,
+            )
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
     async def get_field_counts_for_user(self, user_id: str) -> dict[str, int]:
         """Get count of fields per type, scoped to the current user's fields.
 

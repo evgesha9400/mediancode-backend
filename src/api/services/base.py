@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import Base
 from api.models.database import Namespace
+from api.settings import get_settings
 
 ModelT = TypeVar("ModelT", bound=Base)
 
@@ -62,6 +63,24 @@ class BaseService(Generic[ModelT]):
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
+    def _assert_mutable(self, entity: ModelT) -> None:
+        """Raise 403 if the entity belongs to the system namespace.
+
+        Entities without a ``namespace_id`` attribute (e.g. association rows)
+        are always considered mutable.
+
+        :param entity: The entity to check.
+        :raises HTTPException: If entity belongs to the system namespace.
+        """
+        if not hasattr(entity, "namespace_id"):
+            return
+        settings = get_settings()
+        if str(entity.namespace_id) == str(settings.system_namespace_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="System namespace entities are immutable",
+            )
+
     async def create(self, data: dict[str, Any]) -> ModelT:
         """Create a new entity.
 
@@ -69,6 +88,7 @@ class BaseService(Generic[ModelT]):
         :returns: The created entity.
         """
         entity = self.model_class(**data)
+        self._assert_mutable(entity)
         self.db.add(entity)
         await self.db.flush()
         await self.db.refresh(entity)
@@ -81,6 +101,7 @@ class BaseService(Generic[ModelT]):
         :param data: Dictionary of field values to update.
         :returns: The updated entity.
         """
+        self._assert_mutable(entity)
         for key, value in data.items():
             if value is not None:
                 setattr(entity, key, value)
@@ -93,6 +114,7 @@ class BaseService(Generic[ModelT]):
 
         :param entity: The entity to delete.
         """
+        self._assert_mutable(entity)
         await self.db.delete(entity)
         await self.db.flush()
 

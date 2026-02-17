@@ -10,8 +10,11 @@ from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import FieldConstraintModel, Namespace
+from api.services.field_constraint import FieldConstraintService
 from api.settings import get_settings
 from conftest import TEST_USER_ID
+
+OTHER_USER_ID = "test_user_other"
 
 
 @pytest_asyncio.fixture
@@ -147,3 +150,51 @@ async def test_seed_constraints_have_compatible_types(
 
     assert len(constraints) > 0
     assert all(len(c.compatible_types) > 0 for c in constraints)
+
+
+# --- Tests: get_by_id_for_user ---
+
+
+@pytest.mark.asyncio
+async def test_get_constraint_by_id_for_user_returns_user_constraint(
+    db_session: AsyncSession,
+    test_namespace: Namespace,
+    test_constraint: FieldConstraintModel,
+):
+    """get_by_id_for_user returns a constraint owned by the requesting user."""
+    service = FieldConstraintService(db_session)
+    result = await service.get_by_id_for_user(str(test_constraint.id), TEST_USER_ID)
+    assert result is not None
+    assert result.id == test_constraint.id
+
+
+@pytest.mark.asyncio
+async def test_get_constraint_by_id_for_user_excludes_system_constraints(
+    db_session: AsyncSession,
+    provisioned_namespace: Namespace,
+):
+    """get_by_id_for_user returns None for system namespace constraints."""
+    settings = get_settings()
+    result = await db_session.execute(
+        select(FieldConstraintModel).where(
+            FieldConstraintModel.namespace_id == settings.system_namespace_id,
+        )
+    )
+    system_constraint = result.scalars().first()
+    assert system_constraint is not None
+
+    service = FieldConstraintService(db_session)
+    result = await service.get_by_id_for_user(str(system_constraint.id), TEST_USER_ID)
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_constraint_by_id_for_user_excludes_other_users(
+    db_session: AsyncSession,
+    test_namespace: Namespace,
+    test_constraint: FieldConstraintModel,
+):
+    """get_by_id_for_user returns None when a different user requests the constraint."""
+    service = FieldConstraintService(db_session)
+    result = await service.get_by_id_for_user(str(test_constraint.id), OTHER_USER_ID)
+    assert result is None

@@ -10,8 +10,11 @@ from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import Namespace, TypeModel
+from api.services.type import TypeService
 from api.settings import get_settings
 from conftest import TEST_USER_ID
+
+OTHER_USER_ID = "test_user_other"
 
 
 @pytest_asyncio.fixture
@@ -169,3 +172,51 @@ async def test_seed_types_include_primitives(
         assert (
             expected_name in type_names
         ), f"Primitive type '{expected_name}' should be visible from system namespace"
+
+
+# --- Tests: get_by_id_for_user ---
+
+
+@pytest.mark.asyncio
+async def test_get_type_by_id_for_user_returns_user_type(
+    db_session: AsyncSession,
+    test_namespace: Namespace,
+    test_type: TypeModel,
+):
+    """get_by_id_for_user returns a type owned by the requesting user."""
+    service = TypeService(db_session)
+    result = await service.get_by_id_for_user(str(test_type.id), TEST_USER_ID)
+    assert result is not None
+    assert result.id == test_type.id
+
+
+@pytest.mark.asyncio
+async def test_get_type_by_id_for_user_excludes_system_types(
+    db_session: AsyncSession,
+    provisioned_namespace: Namespace,
+):
+    """get_by_id_for_user returns None for system namespace types."""
+    settings = get_settings()
+    result = await db_session.execute(
+        select(TypeModel).where(
+            TypeModel.namespace_id == settings.system_namespace_id,
+        )
+    )
+    system_type = result.scalars().first()
+    assert system_type is not None
+
+    service = TypeService(db_session)
+    result = await service.get_by_id_for_user(str(system_type.id), TEST_USER_ID)
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_type_by_id_for_user_excludes_other_users(
+    db_session: AsyncSession,
+    test_namespace: Namespace,
+    test_type: TypeModel,
+):
+    """get_by_id_for_user returns None when a different user requests the type."""
+    service = TypeService(db_session)
+    result = await service.get_by_id_for_user(str(test_type.id), OTHER_USER_ID)
+    assert result is None
