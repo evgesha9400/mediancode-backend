@@ -5,7 +5,7 @@ import pytest_asyncio
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from api.models.database import Namespace
+from api.models.database import Namespace, UserModel
 
 
 # --- Integration test (database) fixtures ---
@@ -69,8 +69,11 @@ async def provisioned_namespace(db_session: AsyncSession):
 
     yield namespace
 
-    # Cleanup: namespace is empty (no copied data), just delete it
+    # Cleanup: delete namespace and user created during provisioning
     await db_session.execute(delete(Namespace).where(Namespace.id == namespace.id))
+    await db_session.execute(
+        delete(UserModel).where(UserModel.clerk_id == TEST_USER_ID)
+    )
     await db_session.commit()
 
 

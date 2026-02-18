@@ -24,6 +24,39 @@ def upgrade() -> None:
     # Enable pgcrypto extension for gen_random_uuid()
     op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
 
+    # Create users table
+    op.create_table(
+        "users",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
+        sa.Column("clerk_id", sa.Text(), nullable=False),
+        sa.Column("email", sa.Text(), nullable=True),
+        sa.Column("first_name", sa.Text(), nullable=True),
+        sa.Column("last_name", sa.Text(), nullable=True),
+        sa.Column("username", sa.Text(), nullable=True),
+        sa.Column("image_url", sa.Text(), nullable=True),
+        sa.Column(
+            "credits_remaining",
+            sa.Integer(),
+            nullable=False,
+            server_default=sa.text("0"),
+        ),
+        sa.Column(
+            "credits_used",
+            sa.Integer(),
+            nullable=False,
+            server_default=sa.text("0"),
+        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_users_clerk_id"), "users", ["clerk_id"], unique=True)
+
     # Create namespaces table
     op.create_table(
         "namespaces",
@@ -91,7 +124,7 @@ def upgrade() -> None:
         sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=False, server_default=""),
-        sa.Column("parameter_type", sa.Text(), nullable=False),
+        sa.Column("parameter_types", postgresql.ARRAY(sa.Text()), nullable=False),
         sa.Column("docs_url", sa.Text(), nullable=True),
         sa.Column("compatible_types", postgresql.ARRAY(sa.Text()), nullable=False),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
@@ -478,6 +511,8 @@ def downgrade() -> None:
     op.drop_index("ix_namespaces_one_default_per_user", table_name="namespaces")
     op.drop_index(op.f("ix_namespaces_user_id"), table_name="namespaces")
     op.drop_table("namespaces")
+    op.drop_index(op.f("ix_users_clerk_id"), table_name="users")
+    op.drop_table("users")
 
     # Drop enums
     op.execute("DROP TYPE IF EXISTS http_method")

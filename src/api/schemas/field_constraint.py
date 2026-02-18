@@ -13,7 +13,7 @@ class FieldConstraintResponse(BaseModel):
     :ivar namespace_id: Namespace this field constraint belongs to.
     :ivar name: Constraint name.
     :ivar description: Constraint description.
-    :ivar parameter_type: Type of parameter this constraint accepts.
+    :ivar parameter_types: List of types this constraint's parameter accepts.
     :ivar docs_url: URL to documentation.
     :ivar compatible_types: List of type names this constraint applies to.
     """
@@ -26,7 +26,7 @@ class FieldConstraintResponse(BaseModel):
     description: str = Field(
         ..., examples=["Validates string length does not exceed maximum"]
     )
-    parameter_type: str = Field(..., alias="parameterType", examples=["int"])
+    parameter_types: list[str] = Field(..., alias="parameterTypes", examples=[["int"]])
     docs_url: str | None = Field(
         default=None, alias="docsUrl", examples=["https://docs.pydantic.dev/"]
     )

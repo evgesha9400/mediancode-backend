@@ -168,7 +168,7 @@ class FieldConstraintModel(Base):
     :ivar namespace_id: Reference to the containing namespace.
     :ivar name: Constraint name (max_length, min_length, gt, ge, etc.).
     :ivar description: Constraint description.
-    :ivar parameter_type: Type of parameter this constraint accepts.
+    :ivar parameter_types: List of types this constraint's parameter accepts.
     :ivar docs_url: URL to documentation.
     :ivar compatible_types: List of type names this constraint applies to.
     """
@@ -183,7 +183,7 @@ class FieldConstraintModel(Base):
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    parameter_type: Mapped[str] = mapped_column(Text, nullable=False)
+    parameter_types: Mapped[list] = mapped_column(ARRAY(Text), nullable=False)
     docs_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     compatible_types: Mapped[list] = mapped_column(ARRAY(Text), nullable=False)
 

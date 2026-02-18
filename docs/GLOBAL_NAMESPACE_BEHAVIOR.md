@@ -63,16 +63,16 @@ Fixed UUIDs: `00000000-0000-0000-0001-000000000001` through `...0008`.
 
 ### 8 Field Constraints
 
-| Name | `parameter_type` | `compatible_types` |
-|------|------------------|--------------------|
-| `max_length` | `int` | `["str", "uuid"]` |
-| `min_length` | `int` | `["str", "uuid"]` |
-| `pattern` | `str` | `["str", "uuid"]` |
-| `gt` | `number` | `["int", "float"]` |
-| `ge` | `number` | `["int", "float"]` |
-| `lt` | `number` | `["int", "float"]` |
-| `le` | `number` | `["int", "float"]` |
-| `multiple_of` | `number` | `["int", "float"]` |
+| Name | `parameter_types` | `compatible_types` |
+|------|-------------------|--------------------|
+| `max_length` | `["int"]` | `["str", "uuid"]` |
+| `min_length` | `["int"]` | `["str", "uuid"]` |
+| `pattern` | `["str"]` | `["str", "uuid"]` |
+| `gt` | `["int", "float"]` | `["int", "float"]` |
+| `ge` | `["int", "float"]` | `["int", "float"]` |
+| `lt` | `["int", "float"]` | `["int", "float"]` |
+| `le` | `["int", "float"]` | `["int", "float"]` |
+| `multiple_of` | `["int", "float"]` | `["int", "float"]` |
 
 Fixed UUIDs: `00000000-0000-0000-0002-000000000001` through `...0010`.
 

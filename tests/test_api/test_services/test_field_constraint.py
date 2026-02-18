@@ -24,7 +24,7 @@ async def test_constraint(db_session: AsyncSession, test_namespace: Namespace):
         namespace_id=test_namespace.id,
         name="custom_test",
         description="Custom test constraint",
-        parameter_type="str",
+        parameter_types=["str"],
         docs_url="",
         compatible_types=["str"],
     )

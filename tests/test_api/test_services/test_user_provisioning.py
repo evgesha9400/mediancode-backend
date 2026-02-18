@@ -9,7 +9,7 @@ import pytest_asyncio
 from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.database import FieldConstraintModel, Namespace, TypeModel
+from api.models.database import FieldConstraintModel, Namespace, TypeModel, UserModel
 from api.services.user import UserService
 from api.settings import get_settings
 
@@ -24,6 +24,7 @@ async def cleanup_users(db_session: AsyncSession):
 
     for user_id in [PROVISION_USER_A, PROVISION_USER_B]:
         await db_session.execute(delete(Namespace).where(Namespace.user_id == user_id))
+        await db_session.execute(delete(UserModel).where(UserModel.clerk_id == user_id))
     await db_session.commit()
 
 

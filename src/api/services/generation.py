@@ -350,23 +350,29 @@ def _build_validators(field: FieldModel) -> list[InputValidator]:
     """
     validators = []
     for cv in field.constraint_values:
-        parsed = _parse_constraint_value(cv.value, cv.constraint.parameter_type)
+        parsed = _parse_constraint_value(cv.value, cv.constraint.parameter_types)
         params = {"value": parsed} if parsed is not None else None
         validators.append(InputValidator(name=cv.constraint.name, params=params))
     return validators
 
 
-def _parse_constraint_value(value: str | None, parameter_type: str) -> object:
+def _parse_constraint_value(value: str | None, parameter_types: list[str]) -> object:
     """Parse a string constraint value to its typed Python representation.
 
     :param value: Raw string value from the database (may be None).
-    :param parameter_type: The constraint's declared parameter type.
+    :param parameter_types: The constraint's declared parameter types.
     :returns: Typed Python value, or None if value is None.
     """
     if value is None:
         return None
-    if parameter_type == "int":
-        return int(value)
-    if parameter_type == "float":
-        return float(value)
+    if "int" in parameter_types:
+        try:
+            return int(value)
+        except ValueError:
+            pass
+    if "float" in parameter_types:
+        try:
+            return float(value)
+        except ValueError:
+            pass
     return value

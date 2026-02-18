@@ -93,7 +93,7 @@ Response shape (array of):
   "namespaceId": "uuid",
   "name": "max_length",
   "description": "Validates that string length does not exceed maximum",
-  "parameterType": "int",
+  "parameterTypes": ["int"],
   "docsUrl": "https://docs.pydantic.dev/..." | null,
   "compatibleTypes": ["str", "uuid"],
   "usedInFields": 3
@@ -104,7 +104,7 @@ TABLE COLUMNS (list view):
 |-----------------|------------------|--------------------------------------------------|
 | Name            | name             | Text/code, primary column                        |
 | Description     | description      | Text, truncated if long                          |
-| Parameter Type  | parameterType    | Code/badge (int, number, str, None)              |
+| Parameter Types | parameterTypes   | Chips/tags (e.g., "int", "float" as small badges)|
 | Applies To      | compatibleTypes  | Chips/tags (e.g., "str", "uuid" as small badges) |
 | Docs            | docsUrl          | Icon link if non-null, hidden if null            |
 | Used in Fields  | usedInFields     | Numeric badge/count                              |

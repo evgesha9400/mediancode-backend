@@ -50,7 +50,7 @@ async def list_field_constraints(
             namespace_id=c.namespace_id,
             name=c.name,
             description=c.description,
-            parameter_type=c.parameter_type,
+            parameter_types=c.parameter_types,
             docs_url=c.docs_url,
             compatible_types=c.compatible_types,
             used_in_fields=field_counts.get(str(c.id), 0),
