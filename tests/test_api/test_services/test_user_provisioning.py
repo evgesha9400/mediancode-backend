@@ -10,7 +10,7 @@ from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import FieldConstraintModel, Namespace, TypeModel
-from api.services.user_provisioning import UserProvisioningService
+from api.services.user import UserService
 from api.settings import get_settings
 
 PROVISION_USER_A = "test_provision_user_a"
@@ -33,7 +33,7 @@ async def test_provisioning_creates_default_namespace(
     cleanup_users,
 ):
     """Test that provisioning creates a locked default namespace."""
-    service = UserProvisioningService(db_session)
+    service = UserService(db_session)
     await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
 
@@ -57,7 +57,7 @@ async def test_provisioned_namespace_is_empty(
     cleanup_users,
 ):
     """Test that provisioning does not copy types or constraints."""
-    service = UserProvisioningService(db_session)
+    service = UserService(db_session)
     await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
 
@@ -90,7 +90,7 @@ async def test_provisioning_is_idempotent(
     cleanup_users,
 ):
     """Test that calling ensure_provisioned twice doesn't duplicate data."""
-    service = UserProvisioningService(db_session)
+    service = UserService(db_session)
     await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
 
@@ -115,7 +115,7 @@ async def test_users_get_independent_namespaces(
     cleanup_users,
 ):
     """Test that two users get independent namespaces."""
-    service = UserProvisioningService(db_session)
+    service = UserService(db_session)
     await service.ensure_provisioned(PROVISION_USER_A)
     await service.ensure_provisioned(PROVISION_USER_B)
     await db_session.commit()
@@ -146,7 +146,7 @@ async def test_system_namespace_types_visible_to_provisioned_user(
 ):
     """Test that seed types from the system namespace are visible via OR clause."""
     settings = get_settings()
-    service = UserProvisioningService(db_session)
+    service = UserService(db_session)
     await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
 
@@ -184,7 +184,7 @@ async def test_system_namespace_constraints_visible_to_provisioned_user(
 ):
     """Test that seed constraints from the system namespace are visible via OR clause."""
     settings = get_settings()
-    service = UserProvisioningService(db_session)
+    service = UserService(db_session)
     await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
 

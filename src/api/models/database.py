@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Text, text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,6 +29,43 @@ def utc_now() -> datetime:
     :returns: Current datetime in UTC.
     """
     return datetime.now(timezone.utc)
+
+
+class UserModel(Base):
+    """Application user synced from Clerk.
+
+    :ivar id: Unique identifier for the user.
+    :ivar clerk_id: Clerk user ID (unique external identifier).
+    :ivar email: User email address.
+    :ivar first_name: User first name.
+    :ivar last_name: User last name.
+    :ivar username: User username.
+    :ivar image_url: URL to user profile image.
+    :ivar credits_remaining: Number of credits available.
+    :ivar credits_used: Number of credits consumed.
+    :ivar created_at: Creation timestamp.
+    :ivar updated_at: Last update timestamp.
+    """
+
+    __tablename__ = "users"
+
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
+    )
+    clerk_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    first_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    username: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    credits_remaining: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    credits_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
+    )
 
 
 class Namespace(Base):

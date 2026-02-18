@@ -53,9 +53,9 @@ async def provisioned_namespace(db_session: AsyncSession):
     The namespace starts empty. Seed data (types, constraints) lives in the
     system namespace and is shared read-only via OR clauses in service queries.
     """
-    from api.services.user_provisioning import UserProvisioningService
+    from api.services.user import UserService
 
-    service = UserProvisioningService(db_session)
+    service = UserService(db_session)
     await service.ensure_provisioned(TEST_USER_ID)
     await db_session.commit()
 

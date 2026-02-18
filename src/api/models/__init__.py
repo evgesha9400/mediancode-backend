@@ -12,6 +12,7 @@ from api.models.database import (
     ObjectDefinition,
     ObjectFieldAssociation,
     TypeModel,
+    UserModel,
 )
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "ObjectDefinition",
     "ObjectFieldAssociation",
     "TypeModel",
+    "UserModel",
 ]
