@@ -59,19 +59,19 @@ async def _to_response(field, service: FieldService) -> FieldResponse:
     description="Retrieve all field definitions accessible to the authenticated user.",
 )
 async def list_fields(
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
     namespace_id: str | None = None,
 ) -> list[FieldResponse]:
     """List all fields accessible to the user.
 
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :param namespace_id: Optional namespace filter.
     :returns: List of field responses.
     """
     service = get_service(db)
-    fields = await service.list_for_user(user_id, namespace_id)
+    fields = await service.list_for_user(user.clerk_id, namespace_id)
     return [await _to_response(f, service) for f in fields]
 
 
@@ -84,20 +84,20 @@ async def list_fields(
 )
 async def create_field(
     data: FieldCreate,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> FieldResponse:
     """Create a new field.
 
     :param data: Field creation data.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: Created field response.
     """
     service = get_service(db)
-    field = await service.create_for_user(user_id, data)
+    field = await service.create_for_user(user.clerk_id, data)
     # Reload with relationships
-    field = await service.get_by_id_for_user(field.id, user_id)
+    field = await service.get_by_id_for_user(field.id, user.clerk_id)
     return await _to_response(field, service)
 
 
@@ -109,19 +109,19 @@ async def create_field(
 )
 async def get_field(
     field_id: str,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> FieldResponse:
     """Get a field by ID.
 
     :param field_id: Field unique identifier.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: Field response.
     :raises HTTPException: If field not found.
     """
     service = get_service(db)
-    field = await service.get_by_id_for_user(field_id, user_id)
+    field = await service.get_by_id_for_user(field_id, user.clerk_id)
     if not field:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -139,20 +139,20 @@ async def get_field(
 async def update_field(
     field_id: str,
     data: FieldUpdate,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> FieldResponse:
     """Update a field.
 
     :param field_id: Field unique identifier.
     :param data: Field update data.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: Updated field response.
     :raises HTTPException: If field not found.
     """
     service = get_service(db)
-    field = await service.get_by_id_for_user(field_id, user_id)
+    field = await service.get_by_id_for_user(field_id, user.clerk_id)
     if not field:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -160,7 +160,7 @@ async def update_field(
         )
 
     # Verify ownership
-    if field.user_id != user_id:
+    if field.user_id != user.clerk_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot modify field in locked namespace",
@@ -168,7 +168,7 @@ async def update_field(
 
     updated = await service.update_field(field, data)
     # Reload with relationships
-    updated = await service.get_by_id_for_user(updated.id, user_id)
+    updated = await service.get_by_id_for_user(updated.id, user.clerk_id)
     return await _to_response(updated, service)
 
 
@@ -180,18 +180,18 @@ async def update_field(
 )
 async def delete_field(
     field_id: str,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> None:
     """Delete a field.
 
     :param field_id: Field unique identifier.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :raises HTTPException: If field not found or in use.
     """
     service = get_service(db)
-    field = await service.get_by_id_for_user(field_id, user_id)
+    field = await service.get_by_id_for_user(field_id, user.clerk_id)
     if not field:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -199,7 +199,7 @@ async def delete_field(
         )
 
     # Verify ownership
-    if field.user_id != user_id:
+    if field.user_id != user.clerk_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete field in locked namespace",

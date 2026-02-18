@@ -18,11 +18,11 @@
 - [x] Phase 1: Users Table & Model
 - [x] Phase 2: Settings Update
 - [x] Phase 3: UserService
-- [ ] Phase 4: deps.py + Router Updates
-- [ ] Phase 5: Credit Check on Generation
-- [ ] Phase 6: Webhook Endpoint + svix dependency
-- [ ] Phase 7: Tests
-- [ ] Phase 8: Format & Verify
+- [x] Phase 4: deps.py + Router Updates
+- [x] Phase 5: Credit Check on Generation
+- [x] Phase 6: Webhook Endpoint + svix dependency
+- [x] Phase 7: Tests
+- [x] Phase 8: Format & Verify
 
 ---
 
@@ -30,12 +30,18 @@
 
 **Status:** `DONE`
 
+> **Verification notes (2026-02-18):**
+> - `Integer` present in SQLAlchemy imports at `database.py:8`.
+> - `UserModel` class at `database.py:34-68` with all specified columns (id, clerk_id, email, first_name, last_name, username, image_url, credits_remaining, credits_used, created_at, updated_at). Placed before `Namespace` class as specified.
+> - `UserModel` exported in `models/__init__.py` (import line 15, `__all__` line 30).
+> - Users table included in initial schema migration `4141ad7f2255` (lines 28-58) with unique index on `clerk_id`.
+
 ### Steps
 
 - [x] 1.1 Add `Integer` to SQLAlchemy imports in `src/api/models/database.py`
 - [x] 1.2 Add `UserModel` class to `src/api/models/database.py`
 - [x] 1.3 Export `UserModel` from `src/api/models/__init__.py`
-- [x] 1.4 Create Alembic migration (revises `b1a2c3d4e5f6`)
+- [x] 1.4 Create Alembic migration *(folded into initial schema migration `4141ad7f2255` — no separate migration needed)*
 - [x] 1.5 Reset local DB and run migration
 
 ### Agent Prompt
@@ -118,6 +124,10 @@ updated_at         TIMESTAMPTZ NOT NULL
 
 **Status:** `DONE`
 
+> **Verification notes (2026-02-18):**
+> - `settings.py:67-69` has all three fields: `beta_mode: bool = True`, `default_credits: int = 0`, `clerk_webhook_secret: str = ""`.
+> - Docstring updated with descriptions for all three fields.
+
 ### Steps
 
 - [x] 2.1 Add `beta_mode`, `default_credits`, `clerk_webhook_secret` to `src/api/settings.py`
@@ -152,11 +162,17 @@ After completing, update docs/USERS_IMPLEMENTATION_PLAN.md:
 
 **Status:** `DONE`
 
+> **Verification notes (2026-02-18):**
+> - `user_provisioning.py` no longer exists; `user.py` is present with complete `UserService` class.
+> - All 6 methods implemented: `ensure_provisioned`, `_provision_user`, `get_by_clerk_id`, `upsert_from_clerk`, `deduct_credit`, `has_credits`.
+> - `services/__init__.py` does not export `UserService` (it never exported `UserProvisioningService` either, so no change was needed).
+> - `deps.py` import was updated as a side effect (required to avoid broken import after rename).
+
 ### Steps
 
 - [x] 3.1 Rename `src/api/services/user_provisioning.py` → `src/api/services/user.py`
 - [x] 3.2 Rewrite as `UserService` with all new methods
-- [x] 3.3 Update `src/api/services/__init__.py` export (if applicable)
+- [x] 3.3 Update `src/api/services/__init__.py` export (if applicable) *(not applicable — was never exported)*
 - [x] 3.4 Format with black
 
 ### Agent Prompt
@@ -231,19 +247,23 @@ After completing, update docs/USERS_IMPLEMENTATION_PLAN.md:
 
 ## Phase 4: deps.py + Router Updates
 
-**Status:** `NOT STARTED`
+**Status:** `DONE`
+
+> **Verification notes (2026-02-18):**
+> - `deps.py` now imports `UserModel` from `api.models.database`, returns `UserModel` from `get_provisioned_user`, and `ProvisionedUser` is `Annotated[UserModel, ...]`.
+> - All 7 routers updated: parameter renamed from `user_id: ProvisionedUser` to `user: ProvisionedUser`, all service calls pass `user.clerk_id`, all ownership checks compare against `user.clerk_id`.
 
 ### Steps
 
-- [ ] 4.1 Update `src/api/deps.py` — return `UserModel`, import `UserService`
-- [ ] 4.2 Update `src/api/routers/apis.py` — `user_id` → `user`, pass `user.clerk_id`
-- [ ] 4.3 Update `src/api/routers/namespaces.py` — same pattern
-- [ ] 4.4 Update `src/api/routers/types.py` — same pattern
-- [ ] 4.5 Update `src/api/routers/field_constraints.py` — same pattern
-- [ ] 4.6 Update `src/api/routers/objects.py` — same pattern + ownership checks
-- [ ] 4.7 Update `src/api/routers/fields.py` — same pattern + ownership checks
-- [ ] 4.8 Update `src/api/routers/endpoints.py` — same pattern + ownership checks via parent API
-- [ ] 4.9 Format with black
+- [x] 4.1 Update `src/api/deps.py` — return `UserModel`, import `UserService`
+- [x] 4.2 Update `src/api/routers/apis.py` — `user_id` → `user`, pass `user.clerk_id`
+- [x] 4.3 Update `src/api/routers/namespaces.py` — same pattern
+- [x] 4.4 Update `src/api/routers/types.py` — same pattern
+- [x] 4.5 Update `src/api/routers/field_constraints.py` — same pattern
+- [x] 4.6 Update `src/api/routers/objects.py` — same pattern + ownership checks
+- [x] 4.7 Update `src/api/routers/fields.py` — same pattern + ownership checks
+- [x] 4.8 Update `src/api/routers/endpoints.py` — same pattern + ownership checks via parent API
+- [x] 4.9 Format with black
 
 ### Agent Prompt
 
@@ -292,12 +312,17 @@ After completing, update docs/USERS_IMPLEMENTATION_PLAN.md:
 
 ## Phase 5: Credit Check on Generation
 
-**Status:** `NOT STARTED`
+**Status:** `DONE`
+
+> **Verification notes (2026-02-18):**
+> - `generate_api_code` in `apis.py` now imports `UserService` and `get_settings`.
+> - Credit check (`has_credits`) runs before generation; raises 402 if insufficient.
+> - Credit deduction (`deduct_credit`) runs after successful ZIP generation, before returning `StreamingResponse`.
 
 ### Steps
 
-- [ ] 5.1 Add credit gate + deduction to `generate_api_code` in `src/api/routers/apis.py`
-- [ ] 5.2 Format with black
+- [x] 5.1 Add credit gate + deduction to `generate_api_code` in `src/api/routers/apis.py`
+- [x] 5.2 Format with black
 
 ### Agent Prompt
 
@@ -336,16 +361,21 @@ Deduct **after** successful generation, not before. If generation fails, the use
 
 ## Phase 6: Webhook Endpoint + svix dependency
 
-**Status:** `NOT STARTED`
+**Status:** `DONE`
+
+> **Verification notes (2026-02-18):**
+> - `svix (>=1.0.0,<2.0.0)` added to `pyproject.toml` dependencies; `poetry.lock` updated and installed.
+> - `src/api/routers/webhooks.py` created with `POST /clerk` endpoint: Svix signature verification, handles `user.created`/`user.updated`, extracts user data, calls `UserService.upsert_from_clerk`.
+> - `webhooks_router` exported from `routers/__init__.py` and registered in `main.py` with `prefix=f"{api_v1_prefix}/webhooks"`.
 
 ### Steps
 
-- [ ] 6.1 Add `svix` dependency to `pyproject.toml`
-- [ ] 6.2 Run `poetry lock && poetry install`
-- [ ] 6.3 Create `src/api/routers/webhooks.py`
-- [ ] 6.4 Add `webhooks_router` export to `src/api/routers/__init__.py`
-- [ ] 6.5 Register webhook router in `src/api/main.py`
-- [ ] 6.6 Format with black
+- [x] 6.1 Add `svix` dependency to `pyproject.toml`
+- [x] 6.2 Run `poetry lock && poetry install`
+- [x] 6.3 Create `src/api/routers/webhooks.py`
+- [x] 6.4 Add `webhooks_router` export to `src/api/routers/__init__.py`
+- [x] 6.5 Register webhook router in `src/api/main.py`
+- [x] 6.6 Format with black
 
 ### Agent Prompt
 
@@ -409,16 +439,24 @@ Clerk event → POST /v1/webhooks/clerk
 
 ## Phase 7: Tests
 
-**Status:** `NOT STARTED`
+**Status:** `DONE`
+
+> **Verification notes (2026-02-18):**
+> - `test_user_provisioning.py` renamed to `test_user.py` via `git mv`.
+> - All existing tests updated to capture `ensure_provisioned()` return value and assert `isinstance(user, UserModel)` and `user.clerk_id` matches input.
+> - `test_credits.py` created with 6 integration tests covering `has_credits` and `deduct_credit` (beta mode, with credits, no credits, deduction success/failure).
+> - `test_webhooks.py` created with 3 integration tests covering `upsert_from_clerk` (create, update, idempotent).
+> - No other test files reference `UserProvisioningService` or `user_provisioning`.
+> - All 142 tests pass.
 
 ### Steps
 
-- [ ] 7.1 Rename `tests/test_api/test_services/test_user_provisioning.py` → `test_user.py`, update imports
-- [ ] 7.2 Update existing tests in `test_user.py` for `UserModel` return type
-- [ ] 7.3 Create `tests/test_api/test_services/test_credits.py`
-- [ ] 7.4 Create `tests/test_api/test_services/test_webhooks.py`
-- [ ] 7.5 Update any other test files affected by `ProvisionedUser` type change
-- [ ] 7.6 Format with black
+- [x] 7.1 Rename `tests/test_api/test_services/test_user_provisioning.py` → `test_user.py`, update imports
+- [x] 7.2 Update existing tests in `test_user.py` for `UserModel` return type
+- [x] 7.3 Create `tests/test_api/test_services/test_credits.py`
+- [x] 7.4 Create `tests/test_api/test_services/test_webhooks.py`
+- [x] 7.5 Update any other test files affected by `ProvisionedUser` type change
+- [x] 7.6 Format with black
 
 ### Agent Prompt
 
@@ -472,13 +510,18 @@ After completing, update docs/USERS_IMPLEMENTATION_PLAN.md:
 
 ## Phase 8: Format & Verify
 
-**Status:** `NOT STARTED`
+**Status:** `DONE`
+
+> **Verification notes (2026-02-18):**
+> - `poetry run black src/ tests/` reports all 72 files unchanged.
+> - `make test` passes with 142 tests (1 deselected).
+> - Fresh migration (`docker compose down -v && docker compose up -d && alembic upgrade head`) runs clean with no errors.
 
 ### Steps
 
-- [ ] 8.1 Run `poetry run black src/ tests/`
-- [ ] 8.2 Run `make test` — all tests pass
-- [ ] 8.3 Manual smoke test: verify migration runs clean on fresh DB
+- [x] 8.1 Run `poetry run black src/ tests/`
+- [x] 8.2 Run `make test` — all tests pass
+- [x] 8.3 Manual smoke test: verify migration runs clean on fresh DB
 
 ### Agent Prompt
 

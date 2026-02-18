@@ -29,20 +29,20 @@ def get_service(db: DbSession) -> FieldConstraintService:
     description="Retrieve all field constraint definitions accessible to the authenticated user.",
 )
 async def list_field_constraints(
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
     namespace_id: str | None = None,
 ) -> list[FieldConstraintResponse]:
     """List all field constraints accessible to the user.
 
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :param namespace_id: Optional namespace filter.
     :returns: List of field constraint responses.
     """
     service = get_service(db)
-    constraints = await service.list_for_user(user_id, namespace_id)
-    field_counts = await service.get_field_counts_for_user(user_id)
+    constraints = await service.list_for_user(user.clerk_id, namespace_id)
+    field_counts = await service.get_field_counts_for_user(user.clerk_id)
 
     return [
         FieldConstraintResponse(

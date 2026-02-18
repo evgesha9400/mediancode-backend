@@ -26,17 +26,17 @@ def get_service(db: DbSession) -> NamespaceService:
     description="Retrieve all namespaces accessible to the authenticated user.",
 )
 async def list_namespaces(
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> list[NamespaceResponse]:
     """List all namespaces accessible to the user.
 
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: List of namespace responses.
     """
     service = get_service(db)
-    namespaces = await service.list_for_user(user_id)
+    namespaces = await service.list_for_user(user.clerk_id)
     return [NamespaceResponse.model_validate(ns) for ns in namespaces]
 
 
@@ -49,18 +49,18 @@ async def list_namespaces(
 )
 async def create_namespace(
     data: NamespaceCreate,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> NamespaceResponse:
     """Create a new namespace.
 
     :param data: Namespace creation data.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: Created namespace response.
     """
     service = get_service(db)
-    namespace = await service.create_for_user(user_id, data)
+    namespace = await service.create_for_user(user.clerk_id, data)
     return NamespaceResponse.model_validate(namespace)
 
 
@@ -72,19 +72,19 @@ async def create_namespace(
 )
 async def get_namespace(
     namespace_id: str,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> NamespaceResponse:
     """Get a namespace by ID.
 
     :param namespace_id: Namespace unique identifier.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: Namespace response.
     :raises HTTPException: If namespace not found.
     """
     service = get_service(db)
-    namespace = await service.get_by_id_for_user(namespace_id, user_id)
+    namespace = await service.get_by_id_for_user(namespace_id, user.clerk_id)
     if not namespace:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -102,20 +102,20 @@ async def get_namespace(
 async def update_namespace(
     namespace_id: str,
     data: NamespaceUpdate,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> NamespaceResponse:
     """Update a namespace.
 
     :param namespace_id: Namespace unique identifier.
     :param data: Namespace update data.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: Updated namespace response.
     :raises HTTPException: If namespace not found or locked.
     """
     service = get_service(db)
-    namespace = await service.get_by_id_for_user(namespace_id, user_id)
+    namespace = await service.get_by_id_for_user(namespace_id, user.clerk_id)
     if not namespace:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -123,7 +123,7 @@ async def update_namespace(
         )
 
     # Verify ownership (not global namespace)
-    if namespace.user_id != user_id:
+    if namespace.user_id != user.clerk_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot modify locked namespace",
@@ -141,18 +141,18 @@ async def update_namespace(
 )
 async def delete_namespace(
     namespace_id: str,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> None:
     """Delete a namespace.
 
     :param namespace_id: Namespace unique identifier.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :raises HTTPException: If namespace not found, locked, or has entities.
     """
     service = get_service(db)
-    namespace = await service.get_by_id_for_user(namespace_id, user_id)
+    namespace = await service.get_by_id_for_user(namespace_id, user.clerk_id)
     if not namespace:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -160,7 +160,7 @@ async def delete_namespace(
         )
 
     # Verify ownership (not global namespace)
-    if namespace.user_id != user_id:
+    if namespace.user_id != user.clerk_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete locked namespace",

@@ -14,6 +14,8 @@ from api.rate_limit import (
 )
 from api.schemas.api import ApiCreate, ApiResponse, ApiUpdate
 from api.services.api import ApiService, get_api_service
+from api.services.user import UserService
+from api.settings import get_settings
 
 router = APIRouter(prefix="/apis", tags=["APIs"])
 
@@ -36,19 +38,19 @@ def get_service(db: DbSession) -> ApiService:
 @limiter.limit(RATE_LIMIT_DEFAULT)
 async def list_apis(
     request: Request,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
     namespace_id: str | None = None,
 ) -> list[ApiResponse]:
     """List all APIs accessible to the user.
 
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :param namespace_id: Optional namespace filter.
     :returns: List of API responses.
     """
     service = get_service(db)
-    apis = await service.list_for_user(user_id, namespace_id)
+    apis = await service.list_for_user(user.clerk_id, namespace_id)
     return [ApiResponse.model_validate(api) for api in apis]
 
 
@@ -63,18 +65,18 @@ async def list_apis(
 async def create_api(
     request: Request,
     data: ApiCreate,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> ApiResponse:
     """Create a new API.
 
     :param data: API creation data.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: Created API response.
     """
     service = get_service(db)
-    api = await service.create_for_user(user_id, data)
+    api = await service.create_for_user(user.clerk_id, data)
     return ApiResponse.model_validate(api)
 
 
@@ -86,19 +88,19 @@ async def create_api(
 )
 async def get_api(
     api_id: str,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> ApiResponse:
     """Get an API by ID.
 
     :param api_id: API unique identifier.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: API response.
     :raises HTTPException: If API not found.
     """
     service = get_service(db)
-    api = await service.get_by_id_for_user(api_id, user_id)
+    api = await service.get_by_id_for_user(api_id, user.clerk_id)
     if not api:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -116,20 +118,20 @@ async def get_api(
 async def update_api(
     api_id: str,
     data: ApiUpdate,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> ApiResponse:
     """Update an API.
 
     :param api_id: API unique identifier.
     :param data: API update data.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: Updated API response.
     :raises HTTPException: If API not found.
     """
     service = get_service(db)
-    api = await service.get_by_id_for_user(api_id, user_id)
+    api = await service.get_by_id_for_user(api_id, user.clerk_id)
     if not api:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -137,7 +139,7 @@ async def update_api(
         )
 
     # Verify ownership
-    if api.user_id != user_id:
+    if api.user_id != user.clerk_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot modify API in locked namespace",
@@ -155,18 +157,18 @@ async def update_api(
 )
 async def delete_api(
     api_id: str,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> None:
     """Delete an API.
 
     :param api_id: API unique identifier.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :raises HTTPException: If API not found.
     """
     service = get_service(db)
-    api = await service.get_by_id_for_user(api_id, user_id)
+    api = await service.get_by_id_for_user(api_id, user.clerk_id)
     if not api:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -174,7 +176,7 @@ async def delete_api(
         )
 
     # Verify ownership
-    if api.user_id != user_id:
+    if api.user_id != user.clerk_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete API in locked namespace",
@@ -200,13 +202,13 @@ async def delete_api(
 async def generate_api_code(
     request: Request,
     api_id: str,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> StreamingResponse:
     """Generate FastAPI application code for an API.
 
     :param api_id: API unique identifier.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: Streaming response with ZIP file.
     :raises HTTPException: If API not found.
@@ -214,8 +216,13 @@ async def generate_api_code(
     # Import here to avoid circular imports
     from api.services.generation import generate_api_zip
 
+    # Credit check
+    settings = get_settings()
+    if not await UserService(db).has_credits(user, settings):
+        raise HTTPException(status_code=402, detail="Insufficient credits")
+
     service = get_service(db)
-    api = await service.get_with_relations(api_id, user_id)
+    api = await service.get_with_relations(api_id, user.clerk_id)
     if not api:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -224,6 +231,9 @@ async def generate_api_code(
 
     # Generate the ZIP file
     zip_buffer = await generate_api_zip(api, db)
+
+    # Deduct credit after successful generation
+    await UserService(db).deduct_credit(user)
 
     # Return as streaming response
     return StreamingResponse(

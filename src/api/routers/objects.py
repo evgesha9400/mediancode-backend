@@ -53,19 +53,19 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
     description="Retrieve all object definitions accessible to the authenticated user.",
 )
 async def list_objects(
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
     namespace_id: str | None = None,
 ) -> list[ObjectResponse]:
     """List all objects accessible to the user.
 
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :param namespace_id: Optional namespace filter.
     :returns: List of object responses.
     """
     service = get_service(db)
-    objects = await service.list_for_user(user_id, namespace_id)
+    objects = await service.list_for_user(user.clerk_id, namespace_id)
     return [await _to_response(obj, service) for obj in objects]
 
 
@@ -78,20 +78,20 @@ async def list_objects(
 )
 async def create_object(
     data: ObjectCreate,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> ObjectResponse:
     """Create a new object.
 
     :param data: Object creation data.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: Created object response.
     """
     service = get_service(db)
-    obj = await service.create_for_user(user_id, data)
+    obj = await service.create_for_user(user.clerk_id, data)
     # Reload with field associations
-    obj = await service.get_by_id_for_user(obj.id, user_id)
+    obj = await service.get_by_id_for_user(obj.id, user.clerk_id)
     return await _to_response(obj, service)
 
 
@@ -103,19 +103,19 @@ async def create_object(
 )
 async def get_object(
     object_id: str,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> ObjectResponse:
     """Get an object by ID.
 
     :param object_id: Object unique identifier.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: Object response.
     :raises HTTPException: If object not found.
     """
     service = get_service(db)
-    obj = await service.get_by_id_for_user(object_id, user_id)
+    obj = await service.get_by_id_for_user(object_id, user.clerk_id)
     if not obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -133,20 +133,20 @@ async def get_object(
 async def update_object(
     object_id: str,
     data: ObjectUpdate,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> ObjectResponse:
     """Update an object.
 
     :param object_id: Object unique identifier.
     :param data: Object update data.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :returns: Updated object response.
     :raises HTTPException: If object not found.
     """
     service = get_service(db)
-    obj = await service.get_by_id_for_user(object_id, user_id)
+    obj = await service.get_by_id_for_user(object_id, user.clerk_id)
     if not obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -154,7 +154,7 @@ async def update_object(
         )
 
     # Verify ownership
-    if obj.user_id != user_id:
+    if obj.user_id != user.clerk_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot modify object in locked namespace",
@@ -162,7 +162,7 @@ async def update_object(
 
     updated = await service.update_object(obj, data)
     # Reload with field associations
-    updated = await service.get_by_id_for_user(updated.id, user_id)
+    updated = await service.get_by_id_for_user(updated.id, user.clerk_id)
     return await _to_response(updated, service)
 
 
@@ -174,18 +174,18 @@ async def update_object(
 )
 async def delete_object(
     object_id: str,
-    user_id: ProvisionedUser,
+    user: ProvisionedUser,
     db: DbSession,
 ) -> None:
     """Delete an object.
 
     :param object_id: Object unique identifier.
-    :param user_id: Authenticated user ID.
+    :param user: Authenticated user.
     :param db: Database session.
     :raises HTTPException: If object not found or in use.
     """
     service = get_service(db)
-    obj = await service.get_by_id_for_user(object_id, user_id)
+    obj = await service.get_by_id_for_user(object_id, user.clerk_id)
     if not obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -193,7 +193,7 @@ async def delete_object(
         )
 
     # Verify ownership
-    if obj.user_id != user_id:
+    if obj.user_id != user.clerk_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete object in locked namespace",

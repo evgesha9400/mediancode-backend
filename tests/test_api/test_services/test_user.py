@@ -1,5 +1,5 @@
-# tests/test_api/test_services/test_user_provisioning.py
-"""Integration tests for user provisioning service."""
+# tests/test_api/test_services/test_user.py
+"""Integration tests for user service."""
 
 import pytest
 
@@ -35,8 +35,11 @@ async def test_provisioning_creates_default_namespace(
 ):
     """Test that provisioning creates a locked default namespace."""
     service = UserService(db_session)
-    await service.ensure_provisioned(PROVISION_USER_A)
+    user = await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
+
+    assert isinstance(user, UserModel)
+    assert user.clerk_id == PROVISION_USER_A
 
     result = await db_session.execute(
         select(Namespace).where(
@@ -59,8 +62,11 @@ async def test_provisioned_namespace_is_empty(
 ):
     """Test that provisioning does not copy types or constraints."""
     service = UserService(db_session)
-    await service.ensure_provisioned(PROVISION_USER_A)
+    user = await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
+
+    assert isinstance(user, UserModel)
+    assert user.clerk_id == PROVISION_USER_A
 
     result = await db_session.execute(
         select(Namespace).where(
@@ -92,12 +98,18 @@ async def test_provisioning_is_idempotent(
 ):
     """Test that calling ensure_provisioned twice doesn't duplicate data."""
     service = UserService(db_session)
-    await service.ensure_provisioned(PROVISION_USER_A)
+    user_first = await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
 
     # Call again
-    await service.ensure_provisioned(PROVISION_USER_A)
+    user_second = await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
+
+    assert isinstance(user_first, UserModel)
+    assert isinstance(user_second, UserModel)
+    assert user_first.clerk_id == PROVISION_USER_A
+    assert user_second.clerk_id == PROVISION_USER_A
+    assert user_first.id == user_second.id
 
     # Should still have exactly one default namespace
     result = await db_session.execute(
@@ -117,9 +129,15 @@ async def test_users_get_independent_namespaces(
 ):
     """Test that two users get independent namespaces."""
     service = UserService(db_session)
-    await service.ensure_provisioned(PROVISION_USER_A)
-    await service.ensure_provisioned(PROVISION_USER_B)
+    user_a = await service.ensure_provisioned(PROVISION_USER_A)
+    user_b = await service.ensure_provisioned(PROVISION_USER_B)
     await db_session.commit()
+
+    assert isinstance(user_a, UserModel)
+    assert isinstance(user_b, UserModel)
+    assert user_a.clerk_id == PROVISION_USER_A
+    assert user_b.clerk_id == PROVISION_USER_B
+    assert user_a.id != user_b.id
 
     result_a = await db_session.execute(
         select(Namespace).where(
@@ -148,8 +166,11 @@ async def test_system_namespace_types_visible_to_provisioned_user(
     """Test that seed types from the system namespace are visible via OR clause."""
     settings = get_settings()
     service = UserService(db_session)
-    await service.ensure_provisioned(PROVISION_USER_A)
+    user = await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
+
+    assert isinstance(user, UserModel)
+    assert user.clerk_id == PROVISION_USER_A
 
     # Query types using the same OR pattern as TypeService.list_for_user()
     result = await db_session.execute(
@@ -186,8 +207,11 @@ async def test_system_namespace_constraints_visible_to_provisioned_user(
     """Test that seed constraints from the system namespace are visible via OR clause."""
     settings = get_settings()
     service = UserService(db_session)
-    await service.ensure_provisioned(PROVISION_USER_A)
+    user = await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
+
+    assert isinstance(user, UserModel)
+    assert user.clerk_id == PROVISION_USER_A
 
     # Query constraints using the same OR pattern as FieldConstraintService.list_for_user()
     result = await db_session.execute(
