@@ -8,7 +8,6 @@ from api.routers.fields import router as fields_router
 from api.routers.namespaces import router as namespaces_router
 from api.routers.objects import router as objects_router
 from api.routers.types import router as types_router
-from api.routers.webhooks import router as webhooks_router
 
 __all__ = [
     "apis_router",
@@ -18,5 +17,4 @@ __all__ = [
     "namespaces_router",
     "objects_router",
     "types_router",
-    "webhooks_router",
 ]

@@ -27,9 +27,8 @@ class Settings(BaseSettings):
     :ivar clerk_jwt_audience: Expected audience claim in Clerk JWTs (optional).
     :ivar system_namespace_id: ID of the system namespace containing built-in seed types/constraints.
     :ivar frontend_url: Frontend URL for CORS configuration.
-    :ivar beta_mode: Skip credit checks when True.
-    :ivar default_credits: Credits granted to new users (0 during beta).
-    :ivar clerk_webhook_secret: Svix signing secret for Clerk webhooks.
+    :ivar beta_mode: Skip generation limit checks when True.
+    :ivar free_generation_limit: Monthly generation cap when beta_mode is False.
     """
 
     model_config = SettingsConfigDict(
@@ -65,9 +64,8 @@ class Settings(BaseSettings):
     system_namespace_id: UUID = UUID("00000000-0000-0000-0000-000000000001")
     frontend_url: str = "http://localhost:5173"
     environment: str = "development"  # "development" or "production"
-    beta_mode: bool = True  # Skip credit checks when True
-    default_credits: int = 0  # Credits granted to new users (0 during beta)
-    clerk_webhook_secret: str = ""  # Svix signing secret for Clerk webhooks
+    beta_mode: bool = True  # Skip generation limit checks when True
+    free_generation_limit: int = 3  # Monthly cap when beta_mode is False
 
     @field_validator("system_namespace_id", mode="before")
     @classmethod

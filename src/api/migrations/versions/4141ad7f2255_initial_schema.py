@@ -34,23 +34,6 @@ def upgrade() -> None:
             server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("clerk_id", sa.Text(), nullable=False),
-        sa.Column("email", sa.Text(), nullable=True),
-        sa.Column("first_name", sa.Text(), nullable=True),
-        sa.Column("last_name", sa.Text(), nullable=True),
-        sa.Column("username", sa.Text(), nullable=True),
-        sa.Column("image_url", sa.Text(), nullable=True),
-        sa.Column(
-            "credits_remaining",
-            sa.Integer(),
-            nullable=False,
-            server_default=sa.text("0"),
-        ),
-        sa.Column(
-            "credits_used",
-            sa.Integer(),
-            nullable=False,
-            server_default=sa.text("0"),
-        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
@@ -165,6 +148,29 @@ def upgrade() -> None:
         op.f("ix_apis_namespace_id"), "apis", ["namespace_id"], unique=False
     )
     op.create_index(op.f("ix_apis_user_id"), "apis", ["user_id"], unique=False)
+
+    # Create generations table
+    op.create_table(
+        "generations",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("api_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["api_id"], ["apis.id"]),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_generations_user_id"), "generations", ["user_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_generations_api_id"), "generations", ["api_id"], unique=False
+    )
 
     # Create fields table
     op.create_table(
@@ -505,6 +511,9 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_fields_user_id"), table_name="fields")
     op.drop_index(op.f("ix_fields_namespace_id"), table_name="fields")
     op.drop_table("fields")
+    op.drop_index(op.f("ix_generations_api_id"), table_name="generations")
+    op.drop_index(op.f("ix_generations_user_id"), table_name="generations")
+    op.drop_table("generations")
     op.drop_index(op.f("ix_apis_user_id"), table_name="apis")
     op.drop_index(op.f("ix_apis_namespace_id"), table_name="apis")
     op.drop_table("apis")

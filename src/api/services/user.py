@@ -1,25 +1,26 @@
 # src/api/services/user.py
-"""Service for user management, provisioning, and credit operations."""
+"""Service for user management, provisioning, and generation tracking."""
 
 import logging
+from datetime import datetime, timezone
+from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.database import Namespace, UserModel
-from api.settings import Settings, get_settings
+from api.models.database import GenerationModel, Namespace, UserModel
+from api.settings import Settings
 
 logger = logging.getLogger(__name__)
 
 
 class UserService:
-    """Manages user lifecycle: provisioning, profile sync, and credits.
+    """Manages user lifecycle: provisioning and generation tracking.
 
     On first authenticated request, creates a user row and a locked default
-    namespace. Profile fields are populated later when the Clerk webhook fires.
-    Seed data (types and constraints) lives in the system namespace and is
-    shared read-only across all users via OR clauses in service queries.
+    namespace. Seed data (types and constraints) lives in the system namespace
+    and is shared read-only across all users via OR clauses in service queries.
 
     :ivar db: Async database session.
     """
@@ -56,13 +57,9 @@ class UserService:
         :param clerk_id: The Clerk user ID to provision.
         :returns: The created (or existing) user.
         """
-        settings = get_settings()
         try:
             async with self.db.begin_nested():
-                user = UserModel(
-                    clerk_id=clerk_id,
-                    credits_remaining=settings.default_credits,
-                )
+                user = UserModel(clerk_id=clerk_id)
                 self.db.add(user)
                 await self.db.flush()
 
@@ -94,76 +91,41 @@ class UserService:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def upsert_from_clerk(self, clerk_data: dict) -> UserModel:
-        """Create or update user from Clerk webhook payload.
+    async def can_generate(self, user: UserModel, settings: Settings) -> bool:
+        """Check whether the user can generate an API.
 
-        If the user exists (by clerk_id), updates profile fields.
-        If not, creates a new user with profile fields and default credits.
-
-        :param clerk_data: Clerk webhook payload with keys: id, email,
-            first_name, last_name, username, image_url.
-        :returns: The created or updated user.
-        """
-        settings = get_settings()
-        clerk_id = clerk_data["id"]
-
-        user = await self.get_by_clerk_id(clerk_id)
-        if user is not None:
-            user.email = clerk_data.get("email")
-            user.first_name = clerk_data.get("first_name")
-            user.last_name = clerk_data.get("last_name")
-            user.username = clerk_data.get("username")
-            user.image_url = clerk_data.get("image_url")
-            await self.db.flush()
-            await self.db.refresh(user)
-            return user
-
-        user = UserModel(
-            clerk_id=clerk_id,
-            email=clerk_data.get("email"),
-            first_name=clerk_data.get("first_name"),
-            last_name=clerk_data.get("last_name"),
-            username=clerk_data.get("username"),
-            image_url=clerk_data.get("image_url"),
-            credits_remaining=settings.default_credits,
-        )
-        self.db.add(user)
-        await self.db.flush()
-        await self.db.refresh(user)
-        return user
-
-    async def deduct_credit(self, user: UserModel) -> bool:
-        """Atomically decrement credits_remaining, increment credits_used.
-
-        When ``settings.beta_mode`` is True, returns True without deducting.
-        Otherwise performs an atomic UPDATE with a credits_remaining > 0 guard.
-
-        :param user: The user to deduct credit from.
-        :returns: True if credit was deducted (or beta_mode), False if
-            insufficient credits.
-        """
-        settings = get_settings()
-        if settings.beta_mode:
-            return True
-
-        stmt = (
-            update(UserModel)
-            .where(UserModel.id == user.id, UserModel.credits_remaining > 0)
-            .values(
-                credits_remaining=UserModel.credits_remaining - 1,
-                credits_used=UserModel.credits_used + 1,
-            )
-        )
-        result = await self.db.execute(stmt)
-        return result.rowcount > 0
-
-    async def has_credits(self, user: UserModel, settings: Settings) -> bool:
-        """Check whether the user has credits available.
+        In beta mode, always returns True. Otherwise counts generations in
+        the current calendar month against ``free_generation_limit``.
 
         :param user: The user to check.
         :param settings: Application settings.
-        :returns: True if beta_mode is enabled or user has remaining credits.
+        :returns: True if the user is allowed to generate.
         """
         if settings.beta_mode:
             return True
-        return user.credits_remaining > 0
+
+        now = datetime.now(timezone.utc)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        result = await self.db.execute(
+            select(func.count())
+            .select_from(GenerationModel)
+            .where(
+                GenerationModel.user_id == user.id,
+                GenerationModel.created_at >= month_start,
+            )
+        )
+        count = result.scalar_one()
+        return count < settings.free_generation_limit
+
+    async def record_generation(self, user: UserModel, api_id: UUID) -> None:
+        """Record a generation event.
+
+        Always records, even in beta mode, for analytics purposes.
+
+        :param user: The user who triggered the generation.
+        :param api_id: The API that was generated.
+        """
+        generation = GenerationModel(user_id=user.id, api_id=api_id)
+        self.db.add(generation)
+        await self.db.flush()

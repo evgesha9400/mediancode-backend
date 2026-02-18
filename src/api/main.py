@@ -20,7 +20,6 @@ from api.routers import (
     namespaces_router,
     objects_router,
     types_router,
-    webhooks_router,
 )
 from api.settings import get_settings
 
@@ -112,7 +111,6 @@ app.include_router(field_constraints_router, prefix=api_v1_prefix)
 app.include_router(fields_router, prefix=api_v1_prefix)
 app.include_router(objects_router, prefix=api_v1_prefix)
 app.include_router(endpoints_router, prefix=api_v1_prefix)
-app.include_router(webhooks_router, prefix=f"{api_v1_prefix}/webhooks")
 
 
 @app.get("/health", tags=["Health"])

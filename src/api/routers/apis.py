@@ -216,10 +216,11 @@ async def generate_api_code(
     # Import here to avoid circular imports
     from api.services.generation import generate_api_zip
 
-    # Credit check
+    # Generation limit check
     settings = get_settings()
-    if not await UserService(db).has_credits(user, settings):
-        raise HTTPException(status_code=402, detail="Insufficient credits")
+    user_service = UserService(db)
+    if not await user_service.can_generate(user, settings):
+        raise HTTPException(status_code=402, detail="Monthly generation limit reached")
 
     service = get_service(db)
     api = await service.get_with_relations(api_id, user.id)
@@ -232,8 +233,8 @@ async def generate_api_code(
     # Generate the ZIP file
     zip_buffer = await generate_api_zip(api, db)
 
-    # Deduct credit after successful generation
-    await UserService(db).deduct_credit(user)
+    # Record generation event (always, even in beta)
+    await user_service.record_generation(user, api.id)
 
     # Return as streaming response
     return StreamingResponse(

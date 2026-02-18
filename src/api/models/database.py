@@ -32,17 +32,10 @@ def utc_now() -> datetime:
 
 
 class UserModel(Base):
-    """Application user synced from Clerk.
+    """Application user linked to Clerk for authentication.
 
     :ivar id: Unique identifier for the user.
     :ivar clerk_id: Clerk user ID (unique external identifier).
-    :ivar email: User email address.
-    :ivar first_name: User first name.
-    :ivar last_name: User last name.
-    :ivar username: User username.
-    :ivar image_url: URL to user profile image.
-    :ivar credits_remaining: Number of credits available.
-    :ivar credits_used: Number of credits consumed.
     :ivar created_at: Creation timestamp.
     :ivar updated_at: Last update timestamp.
     """
@@ -53,13 +46,6 @@ class UserModel(Base):
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
     clerk_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
-    email: Mapped[str | None] = mapped_column(Text, nullable=True)
-    first_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    last_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    username: Mapped[str | None] = mapped_column(Text, nullable=True)
-    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    credits_remaining: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    credits_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, nullable=False
     )
@@ -79,6 +65,36 @@ class UserModel(Base):
     model_validators: Mapped[list["ModelValidatorModel"]] = relationship(
         back_populates="user"
     )
+    generations: Mapped[list["GenerationModel"]] = relationship(back_populates="user")
+
+
+class GenerationModel(Base):
+    """Log entry for each API code generation event.
+
+    :ivar id: Unique identifier for the generation.
+    :ivar user_id: Reference to the user who triggered the generation.
+    :ivar api_id: Reference to the API that was generated.
+    :ivar created_at: Timestamp of the generation event.
+    """
+
+    __tablename__ = "generations"
+
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
+    api_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("apis.id"), nullable=False, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+
+    # Relationships
+    user: Mapped["UserModel"] = relationship(back_populates="generations")
+    api: Mapped["ApiModel"] = relationship()
 
 
 class Namespace(Base):

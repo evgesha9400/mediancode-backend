@@ -5,7 +5,7 @@ import pytest_asyncio
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from api.models.database import Namespace, UserModel
+from api.models.database import GenerationModel, Namespace, UserModel
 
 
 # --- Integration test (database) fixtures ---
@@ -57,7 +57,10 @@ async def test_user(db_session: AsyncSession) -> UserModel:
 
     yield user
 
-    # Cleanup: delete namespace and user created during provisioning
+    # Cleanup: delete generations, namespace, and user created during provisioning
+    await db_session.execute(
+        delete(GenerationModel).where(GenerationModel.user_id == user.id)
+    )
     await db_session.execute(delete(Namespace).where(Namespace.user_id == user.id))
     await db_session.execute(delete(UserModel).where(UserModel.id == user.id))
     await db_session.commit()
