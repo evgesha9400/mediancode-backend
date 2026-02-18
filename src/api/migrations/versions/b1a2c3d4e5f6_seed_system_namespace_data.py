@@ -206,7 +206,7 @@ def upgrade() -> None:
         "types",
         sa.column("id", postgresql.UUID),
         sa.column("namespace_id", postgresql.UUID),
-        sa.column("user_id", sa.Text),
+        sa.column("user_id", postgresql.UUID),
         sa.column("name", sa.Text),
         sa.column("python_type", sa.Text),
         sa.column("description", sa.Text),

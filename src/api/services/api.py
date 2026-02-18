@@ -1,6 +1,8 @@
 # src/api/services/api.py
 """Service layer for Api operations."""
 
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -20,7 +22,7 @@ class ApiService(BaseService[ApiModel]):
 
     async def list_for_user(
         self,
-        user_id: str,
+        user_id: UUID,
         namespace_id: str | None = None,
     ) -> list[ApiModel]:
         """List APIs owned by a user.
@@ -35,7 +37,7 @@ class ApiService(BaseService[ApiModel]):
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
-    async def get_by_id_for_user(self, api_id: str, user_id: str) -> ApiModel | None:
+    async def get_by_id_for_user(self, api_id: str, user_id: UUID) -> ApiModel | None:
         """Get an API if owned by the user.
 
         :param api_id: The API's unique identifier.
@@ -53,7 +55,7 @@ class ApiService(BaseService[ApiModel]):
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_with_relations(self, api_id: str, user_id: str) -> ApiModel | None:
+    async def get_with_relations(self, api_id: str, user_id: UUID) -> ApiModel | None:
         """Get an API with all its related entities loaded.
 
         :param api_id: The API's unique identifier.
@@ -74,7 +76,7 @@ class ApiService(BaseService[ApiModel]):
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def create_for_user(self, user_id: str, data: ApiCreate) -> ApiModel:
+    async def create_for_user(self, user_id: UUID, data: ApiCreate) -> ApiModel:
         """Create a new API for a user.
 
         :param user_id: The authenticated user's ID.

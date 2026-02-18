@@ -22,9 +22,16 @@ async def cleanup_users(db_session: AsyncSession):
     """Clean up provisioned data after tests."""
     yield
 
-    for user_id in [PROVISION_USER_A, PROVISION_USER_B]:
-        await db_session.execute(delete(Namespace).where(Namespace.user_id == user_id))
-        await db_session.execute(delete(UserModel).where(UserModel.clerk_id == user_id))
+    for clerk_id in [PROVISION_USER_A, PROVISION_USER_B]:
+        user_result = await db_session.execute(
+            select(UserModel).where(UserModel.clerk_id == clerk_id)
+        )
+        user = user_result.scalar_one_or_none()
+        if user:
+            await db_session.execute(
+                delete(Namespace).where(Namespace.user_id == user.id)
+            )
+            await db_session.execute(delete(UserModel).where(UserModel.id == user.id))
     await db_session.commit()
 
 
@@ -43,7 +50,7 @@ async def test_provisioning_creates_default_namespace(
 
     result = await db_session.execute(
         select(Namespace).where(
-            Namespace.user_id == PROVISION_USER_A,
+            Namespace.user_id == user.id,
             Namespace.is_default.is_(True),
         )
     )
@@ -52,7 +59,7 @@ async def test_provisioning_creates_default_namespace(
     assert namespace.name == "Global"
     assert namespace.locked is True
     assert namespace.is_default is True
-    assert namespace.user_id == PROVISION_USER_A
+    assert namespace.user_id == user.id
 
 
 @pytest.mark.asyncio
@@ -70,7 +77,7 @@ async def test_provisioned_namespace_is_empty(
 
     result = await db_session.execute(
         select(Namespace).where(
-            Namespace.user_id == PROVISION_USER_A,
+            Namespace.user_id == user.id,
             Namespace.is_default.is_(True),
         )
     )
@@ -114,7 +121,7 @@ async def test_provisioning_is_idempotent(
     # Should still have exactly one default namespace
     result = await db_session.execute(
         select(Namespace).where(
-            Namespace.user_id == PROVISION_USER_A,
+            Namespace.user_id == user_first.id,
             Namespace.is_default.is_(True),
         )
     )
@@ -141,7 +148,7 @@ async def test_users_get_independent_namespaces(
 
     result_a = await db_session.execute(
         select(Namespace).where(
-            Namespace.user_id == PROVISION_USER_A,
+            Namespace.user_id == user_a.id,
             Namespace.is_default.is_(True),
         )
     )
@@ -149,7 +156,7 @@ async def test_users_get_independent_namespaces(
 
     result_b = await db_session.execute(
         select(Namespace).where(
-            Namespace.user_id == PROVISION_USER_B,
+            Namespace.user_id == user_b.id,
             Namespace.is_default.is_(True),
         )
     )
@@ -178,7 +185,7 @@ async def test_system_namespace_types_visible_to_provisioned_user(
         .join(Namespace)
         .where(
             or_(
-                Namespace.user_id == PROVISION_USER_A,
+                Namespace.user_id == user.id,
                 Namespace.id == settings.system_namespace_id,
             )
         )
@@ -219,7 +226,7 @@ async def test_system_namespace_constraints_visible_to_provisioned_user(
         .join(Namespace)
         .where(
             or_(
-                Namespace.user_id == PROVISION_USER_A,
+                Namespace.user_id == user.id,
                 Namespace.id == settings.system_namespace_id,
             )
         )

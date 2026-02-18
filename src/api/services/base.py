@@ -2,6 +2,7 @@
 """Base service class with common functionality."""
 
 from typing import Any, Generic, TypeVar
+from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -30,7 +31,7 @@ class BaseService(Generic[ModelT]):
         self.db = db
 
     async def get_by_id(
-        self, entity_id: str, user_id: str | None = None
+        self, entity_id: str, user_id: UUID | None = None
     ) -> ModelT | None:
         """Get an entity by ID, optionally filtering by user.
 
@@ -46,7 +47,7 @@ class BaseService(Generic[ModelT]):
 
     async def list_all(
         self,
-        user_id: str | None = None,
+        user_id: UUID | None = None,
         namespace_id: str | None = None,
     ) -> list[ModelT]:
         """List all entities, optionally filtering by user and namespace.
@@ -119,7 +120,7 @@ class BaseService(Generic[ModelT]):
         await self.db.flush()
 
     async def validate_namespace_for_creation(
-        self, namespace_id: Any, user_id: str
+        self, namespace_id: Any, user_id: UUID
     ) -> Namespace:
         """Validate namespace ownership for entity creation.
 

@@ -66,7 +66,7 @@ async def list_endpoints(
     :returns: List of endpoint responses.
     """
     service = get_service(db)
-    endpoints = await service.list_for_user(user.clerk_id, namespace_id)
+    endpoints = await service.list_for_user(user.id, namespace_id)
     return [_to_response(ep) for ep in endpoints]
 
 
@@ -90,7 +90,7 @@ async def create_endpoint(
     :returns: Created endpoint response.
     """
     service = get_service(db)
-    endpoint = await service.create_for_user(user.clerk_id, data)
+    endpoint = await service.create_for_user(user.id, data)
     return _to_response(endpoint)
 
 
@@ -114,7 +114,7 @@ async def get_endpoint(
     :raises HTTPException: If endpoint not found.
     """
     service = get_service(db)
-    endpoint = await service.get_by_id_for_user(endpoint_id, user.clerk_id)
+    endpoint = await service.get_by_id_for_user(endpoint_id, user.id)
     if not endpoint:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -145,7 +145,7 @@ async def update_endpoint(
     :raises HTTPException: If endpoint not found.
     """
     service = get_service(db)
-    endpoint = await service.get_by_id_for_user(endpoint_id, user.clerk_id)
+    endpoint = await service.get_by_id_for_user(endpoint_id, user.id)
     if not endpoint:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -154,8 +154,8 @@ async def update_endpoint(
 
     # Verify ownership through parent API
     api_service = get_api_service(db)
-    api = await api_service.get_by_id_for_user(str(endpoint.api_id), user.clerk_id)
-    if not api or api.user_id != user.clerk_id:
+    api = await api_service.get_by_id_for_user(str(endpoint.api_id), user.id)
+    if not api or api.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot modify endpoint in locked namespace",
@@ -184,7 +184,7 @@ async def delete_endpoint(
     :raises HTTPException: If endpoint not found.
     """
     service = get_service(db)
-    endpoint = await service.get_by_id_for_user(endpoint_id, user.clerk_id)
+    endpoint = await service.get_by_id_for_user(endpoint_id, user.id)
     if not endpoint:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -193,8 +193,8 @@ async def delete_endpoint(
 
     # Verify ownership through parent API
     api_service = get_api_service(db)
-    api = await api_service.get_by_id_for_user(str(endpoint.api_id), user.clerk_id)
-    if not api or api.user_id != user.clerk_id:
+    api = await api_service.get_by_id_for_user(str(endpoint.api_id), user.id)
+    if not api or api.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete endpoint in locked namespace",

@@ -23,12 +23,13 @@ async def cleanup_credit_users(db_session: AsyncSession):
     """Clean up credit test data after tests."""
     yield
 
-    await db_session.execute(
-        delete(Namespace).where(Namespace.user_id == CREDIT_USER_A)
+    user_result = await db_session.execute(
+        select(UserModel).where(UserModel.clerk_id == CREDIT_USER_A)
     )
-    await db_session.execute(
-        delete(UserModel).where(UserModel.clerk_id == CREDIT_USER_A)
-    )
+    user = user_result.scalar_one_or_none()
+    if user:
+        await db_session.execute(delete(Namespace).where(Namespace.user_id == user.id))
+        await db_session.execute(delete(UserModel).where(UserModel.id == user.id))
     await db_session.commit()
 
 

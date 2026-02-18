@@ -1,6 +1,8 @@
 # src/api/services/namespace.py
 """Service layer for Namespace operations."""
 
+from uuid import UUID
+
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +26,7 @@ class NamespaceService(BaseService[Namespace]):
 
     model_class = Namespace
 
-    async def list_for_user(self, user_id: str) -> list[Namespace]:
+    async def list_for_user(self, user_id: UUID) -> list[Namespace]:
         """List namespaces owned by a user.
 
         :param user_id: The authenticated user's ID.
@@ -35,7 +37,7 @@ class NamespaceService(BaseService[Namespace]):
         return list(result.scalars().all())
 
     async def get_by_id_for_user(
-        self, namespace_id: str, user_id: str
+        self, namespace_id: str, user_id: UUID
     ) -> Namespace | None:
         """Get a namespace if owned by the user.
 
@@ -50,7 +52,7 @@ class NamespaceService(BaseService[Namespace]):
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def create_for_user(self, user_id: str, data: NamespaceCreate) -> Namespace:
+    async def create_for_user(self, user_id: UUID, data: NamespaceCreate) -> Namespace:
         """Create a new namespace for a user.
 
         :param user_id: The authenticated user's ID.

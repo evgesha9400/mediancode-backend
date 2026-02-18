@@ -27,7 +27,7 @@ class ObjectService(BaseService[ObjectDefinition]):
 
     async def list_for_user(
         self,
-        user_id: str,
+        user_id: UUID,
         namespace_id: str | None = None,
     ) -> list[ObjectDefinition]:
         """List objects owned by a user.
@@ -48,7 +48,7 @@ class ObjectService(BaseService[ObjectDefinition]):
         return list(result.scalars().all())
 
     async def get_by_id_for_user(
-        self, object_id: str, user_id: str
+        self, object_id: str, user_id: UUID
     ) -> ObjectDefinition | None:
         """Get an object if owned by the user.
 
@@ -69,7 +69,7 @@ class ObjectService(BaseService[ObjectDefinition]):
         return result.scalar_one_or_none()
 
     async def create_for_user(
-        self, user_id: str, data: ObjectCreate
+        self, user_id: UUID, data: ObjectCreate
     ) -> ObjectDefinition:
         """Create a new object for a user.
 

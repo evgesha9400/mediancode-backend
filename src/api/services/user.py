@@ -67,7 +67,7 @@ class UserService:
                 await self.db.flush()
 
                 namespace = Namespace(
-                    user_id=clerk_id,
+                    user_id=user.id,
                     name="Global",
                     locked=True,
                     is_default=True,

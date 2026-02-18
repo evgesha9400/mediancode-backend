@@ -9,29 +9,33 @@ import pytest_asyncio
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from uuid import UUID
+
 from api.models.database import (
     FieldConstraintModel,
     FieldConstraintValueAssociation,
     FieldModel,
     Namespace,
     TypeModel,
+    UserModel,
 )
 from api.schemas.field import FieldCreate, FieldUpdate
 from api.services.field import FieldService
 from api.settings import get_settings
-from conftest import TEST_USER_ID
 
 
 # --- Fixtures ---
 
 
 @pytest_asyncio.fixture
-async def user_namespace(db_session: AsyncSession, provisioned_namespace: Namespace):
+async def user_namespace(
+    db_session: AsyncSession, provisioned_namespace: Namespace, test_user: UserModel
+):
     """Create a user-owned (unlocked) namespace for field tests."""
     namespace = Namespace(
         name="Field Test Namespace",
         description="Namespace for field constraint value tests",
-        user_id=TEST_USER_ID,
+        user_id=test_user.id,
     )
     db_session.add(namespace)
     await db_session.commit()
@@ -117,6 +121,7 @@ async def _create_field(
     service: FieldService,
     namespace: Namespace,
     type_model: TypeModel,
+    user_id: UUID,
     name: str = "test_field",
     constraints: list | None = None,
 ) -> FieldModel:
@@ -129,12 +134,14 @@ async def _create_field(
             "constraints": constraints or [],
         }
     )
-    return await service.create_for_user(TEST_USER_ID, data)
+    return await service.create_for_user(user_id, data)
 
 
-async def _reload_field(service: FieldService, field: FieldModel) -> FieldModel:
+async def _reload_field(
+    service: FieldService, field: FieldModel, user_id: UUID
+) -> FieldModel:
     """Reload a field with all relationships via the service."""
-    loaded = await service.get_by_id_for_user(str(field.id), TEST_USER_ID)
+    loaded = await service.get_by_id_for_user(str(field.id), user_id)
     assert loaded is not None, f"Field {field.id} not found after reload"
     return loaded
 
@@ -148,16 +155,18 @@ async def test_create_field_with_constraint_value(
     str_type: TypeModel,
     max_length_constraint: FieldConstraintModel,
     field_service: FieldService,
+    test_user: UserModel,
 ):
     """Creating a field with a constraint stores the parameter value."""
     field = await _create_field(
         field_service,
         user_namespace,
         str_type,
+        user_id=test_user.id,
         name="username",
         constraints=[{"constraintId": str(max_length_constraint.id), "value": "255"}],
     )
-    loaded = await _reload_field(field_service, field)
+    loaded = await _reload_field(field_service, field, test_user.id)
 
     assert len(loaded.constraint_values) == 1
     cv = loaded.constraint_values[0]
@@ -172,16 +181,18 @@ async def test_create_field_with_constraint_no_value(
     str_type: TypeModel,
     pattern_constraint: FieldConstraintModel,
     field_service: FieldService,
+    test_user: UserModel,
 ):
     """A constraint can be attached without a value (null parameter)."""
     field = await _create_field(
         field_service,
         user_namespace,
         str_type,
+        user_id=test_user.id,
         name="tag",
         constraints=[{"constraintId": str(pattern_constraint.id)}],
     )
-    loaded = await _reload_field(field_service, field)
+    loaded = await _reload_field(field_service, field, test_user.id)
 
     assert len(loaded.constraint_values) == 1
     cv = loaded.constraint_values[0]
@@ -198,12 +209,14 @@ async def test_create_field_with_multiple_constraints(
     min_length_constraint: FieldConstraintModel,
     pattern_constraint: FieldConstraintModel,
     field_service: FieldService,
+    test_user: UserModel,
 ):
     """Multiple constraints with values can be attached to a single field."""
     field = await _create_field(
         field_service,
         user_namespace,
         str_type,
+        user_id=test_user.id,
         name="email",
         constraints=[
             {"constraintId": str(max_length_constraint.id), "value": "320"},
@@ -214,7 +227,7 @@ async def test_create_field_with_multiple_constraints(
             },
         ],
     )
-    loaded = await _reload_field(field_service, field)
+    loaded = await _reload_field(field_service, field, test_user.id)
 
     assert len(loaded.constraint_values) == 3
     by_name = {cv.constraint.name: cv for cv in loaded.constraint_values}
@@ -228,15 +241,17 @@ async def test_create_field_without_constraints(
     user_namespace: Namespace,
     str_type: TypeModel,
     field_service: FieldService,
+    test_user: UserModel,
 ):
     """A field can be created with no constraints."""
     field = await _create_field(
         field_service,
         user_namespace,
         str_type,
+        user_id=test_user.id,
         name="plain_field",
     )
-    loaded = await _reload_field(field_service, field)
+    loaded = await _reload_field(field_service, field, test_user.id)
 
     assert len(loaded.constraint_values) == 0
 
@@ -250,15 +265,17 @@ async def test_update_field_add_constraints(
     str_type: TypeModel,
     max_length_constraint: FieldConstraintModel,
     field_service: FieldService,
+    test_user: UserModel,
 ):
     """Constraints can be added to a field that previously had none."""
     field = await _create_field(
         field_service,
         user_namespace,
         str_type,
+        user_id=test_user.id,
         name="bio",
     )
-    loaded = await _reload_field(field_service, field)
+    loaded = await _reload_field(field_service, field, test_user.id)
     assert len(loaded.constraint_values) == 0
 
     update = FieldUpdate.model_validate(
@@ -269,7 +286,7 @@ async def test_update_field_add_constraints(
         }
     )
     await field_service.update_field(loaded, update)
-    reloaded = await _reload_field(field_service, loaded)
+    reloaded = await _reload_field(field_service, loaded, test_user.id)
 
     assert len(reloaded.constraint_values) == 1
     assert reloaded.constraint_values[0].value == "500"
@@ -283,16 +300,18 @@ async def test_update_field_replace_constraints(
     max_length_constraint: FieldConstraintModel,
     min_length_constraint: FieldConstraintModel,
     field_service: FieldService,
+    test_user: UserModel,
 ):
     """Updating constraints replaces all existing ones."""
     field = await _create_field(
         field_service,
         user_namespace,
         str_type,
+        user_id=test_user.id,
         name="title",
         constraints=[{"constraintId": str(max_length_constraint.id), "value": "100"}],
     )
-    loaded = await _reload_field(field_service, field)
+    loaded = await _reload_field(field_service, field, test_user.id)
     assert len(loaded.constraint_values) == 1
     assert loaded.constraint_values[0].constraint.name == "max_length"
 
@@ -300,7 +319,7 @@ async def test_update_field_replace_constraints(
         {"constraints": [{"constraintId": str(min_length_constraint.id), "value": "1"}]}
     )
     await field_service.update_field(loaded, update)
-    reloaded = await _reload_field(field_service, loaded)
+    reloaded = await _reload_field(field_service, loaded, test_user.id)
 
     assert len(reloaded.constraint_values) == 1
     assert reloaded.constraint_values[0].constraint.name == "min_length"
@@ -313,21 +332,23 @@ async def test_update_field_clear_constraints(
     str_type: TypeModel,
     max_length_constraint: FieldConstraintModel,
     field_service: FieldService,
+    test_user: UserModel,
 ):
     """Passing an empty constraints list clears all constraints."""
     field = await _create_field(
         field_service,
         user_namespace,
         str_type,
+        user_id=test_user.id,
         name="slug",
         constraints=[{"constraintId": str(max_length_constraint.id), "value": "200"}],
     )
-    loaded = await _reload_field(field_service, field)
+    loaded = await _reload_field(field_service, field, test_user.id)
     assert len(loaded.constraint_values) == 1
 
     update = FieldUpdate.model_validate({"constraints": []})
     await field_service.update_field(loaded, update)
-    reloaded = await _reload_field(field_service, loaded)
+    reloaded = await _reload_field(field_service, loaded, test_user.id)
 
     assert len(reloaded.constraint_values) == 0
 
@@ -338,21 +359,23 @@ async def test_update_field_constraints_unchanged_when_omitted(
     str_type: TypeModel,
     max_length_constraint: FieldConstraintModel,
     field_service: FieldService,
+    test_user: UserModel,
 ):
     """Omitting constraints from update (None) preserves existing ones."""
     field = await _create_field(
         field_service,
         user_namespace,
         str_type,
+        user_id=test_user.id,
         name="code",
         constraints=[{"constraintId": str(max_length_constraint.id), "value": "50"}],
     )
-    loaded = await _reload_field(field_service, field)
+    loaded = await _reload_field(field_service, field, test_user.id)
     assert len(loaded.constraint_values) == 1
 
     update = FieldUpdate.model_validate({"name": "code_v2"})
     await field_service.update_field(loaded, update)
-    reloaded = await _reload_field(field_service, loaded)
+    reloaded = await _reload_field(field_service, loaded, test_user.id)
 
     assert reloaded.name == "code_v2"
     assert len(reloaded.constraint_values) == 1
@@ -369,12 +392,14 @@ async def test_delete_field_cascades_constraint_associations(
     str_type: TypeModel,
     max_length_constraint: FieldConstraintModel,
     field_service: FieldService,
+    test_user: UserModel,
 ):
     """Deleting a field removes its constraint value associations."""
     field = await _create_field(
         field_service,
         user_namespace,
         str_type,
+        user_id=test_user.id,
         name="temp_field",
         constraints=[{"constraintId": str(max_length_constraint.id), "value": "10"}],
     )
@@ -390,7 +415,7 @@ async def test_delete_field_cascades_constraint_associations(
     assert len(result.scalars().all()) == 1
 
     # Delete the field
-    loaded = await _reload_field(field_service, field)
+    loaded = await _reload_field(field_service, field, test_user.id)
     await field_service.delete_field(loaded)
     await db_session.flush()
 

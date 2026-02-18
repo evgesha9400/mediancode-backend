@@ -66,13 +66,14 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("gen_random_uuid()"),
         ),
-        sa.Column("user_id", sa.Text(), nullable=True),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("locked", sa.Boolean(), nullable=False),
         sa.Column(
             "is_default", sa.Boolean(), nullable=False, server_default=sa.text("false")
         ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -97,7 +98,7 @@ def upgrade() -> None:
             server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("user_id", sa.Text(), nullable=True),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("python_type", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=False, server_default=""),
@@ -105,6 +106,7 @@ def upgrade() -> None:
         sa.Column("parent_type_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
         sa.ForeignKeyConstraint(["parent_type_id"], ["types.id"]),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -147,7 +149,7 @@ def upgrade() -> None:
             server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("user_id", sa.Text(), nullable=False),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("title", sa.Text(), nullable=False),
         sa.Column("version", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=False),
@@ -156,6 +158,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -173,13 +176,14 @@ def upgrade() -> None:
             server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("user_id", sa.Text(), nullable=False),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("type_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("default_value", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
         sa.ForeignKeyConstraint(["type_id"], ["types.id"]),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -198,10 +202,11 @@ def upgrade() -> None:
             server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("user_id", sa.Text(), nullable=False),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -219,12 +224,13 @@ def upgrade() -> None:
             server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("user_id", sa.Text(), nullable=True),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("function_name", sa.Text(), nullable=False),
         sa.Column("mode", sa.Text(), nullable=False),
         sa.Column("function_body", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -310,12 +316,13 @@ def upgrade() -> None:
             server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("user_id", sa.Text(), nullable=True),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("function_name", sa.Text(), nullable=False),
         sa.Column("mode", sa.Text(), nullable=False),
         sa.Column("function_body", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(

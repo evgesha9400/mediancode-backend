@@ -28,7 +28,7 @@ class FieldService(BaseService[FieldModel]):
 
     async def list_for_user(
         self,
-        user_id: str,
+        user_id: UUID,
         namespace_id: str | None = None,
     ) -> list[FieldModel]:
         """List fields owned by a user.
@@ -54,7 +54,7 @@ class FieldService(BaseService[FieldModel]):
         return list(result.scalars().all())
 
     async def get_by_id_for_user(
-        self, field_id: str, user_id: str
+        self, field_id: str, user_id: UUID
     ) -> FieldModel | None:
         """Get a field if owned by the user.
 
@@ -79,7 +79,7 @@ class FieldService(BaseService[FieldModel]):
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def create_for_user(self, user_id: str, data: FieldCreate) -> FieldModel:
+    async def create_for_user(self, user_id: UUID, data: FieldCreate) -> FieldModel:
         """Create a new field for a user.
 
         :param user_id: The authenticated user's ID.

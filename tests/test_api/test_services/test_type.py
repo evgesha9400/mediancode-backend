@@ -5,24 +5,27 @@ import pytest
 
 pytestmark = pytest.mark.integration
 
+from uuid import uuid4
+
 import pytest_asyncio
 from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.database import Namespace, TypeModel
+from api.models.database import Namespace, TypeModel, UserModel
 from api.services.type import TypeService
 from api.settings import get_settings
-from conftest import TEST_USER_ID
 
-OTHER_USER_ID = "test_user_other"
+OTHER_USER_ID = uuid4()
 
 
 @pytest_asyncio.fixture
-async def test_type(db_session: AsyncSession, test_namespace: Namespace):
+async def test_type(
+    db_session: AsyncSession, test_namespace: Namespace, test_user: UserModel
+):
     """Create a test type in the user namespace."""
     type_model = TypeModel(
         namespace_id=test_namespace.id,
-        user_id=TEST_USER_ID,
+        user_id=test_user.id,
         name="CustomType",
         python_type="CustomType",
         description="Custom test type",
@@ -42,6 +45,7 @@ async def test_type(db_session: AsyncSession, test_namespace: Namespace):
 async def test_seed_types_visible_via_system_namespace(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
+    test_user: UserModel,
 ):
     """Test that seed types from the system namespace are visible to provisioned users."""
     settings = get_settings()
@@ -50,7 +54,7 @@ async def test_seed_types_visible_via_system_namespace(
         .join(Namespace)
         .where(
             or_(
-                Namespace.user_id == TEST_USER_ID,
+                Namespace.user_id == test_user.id,
                 Namespace.id == settings.system_namespace_id,
             )
         )
@@ -123,6 +127,7 @@ async def test_list_types_includes_custom_and_seed(
     test_namespace: Namespace,
     test_type: TypeModel,
     provisioned_namespace: Namespace,
+    test_user: UserModel,
 ):
     """Test that user sees both seed types and custom types via OR clause."""
     settings = get_settings()
@@ -131,7 +136,7 @@ async def test_list_types_includes_custom_and_seed(
         .join(Namespace)
         .where(
             or_(
-                Namespace.user_id == TEST_USER_ID,
+                Namespace.user_id == test_user.id,
                 Namespace.id == settings.system_namespace_id,
             )
         )
@@ -150,6 +155,7 @@ async def test_list_types_includes_custom_and_seed(
 async def test_seed_types_include_primitives(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
+    test_user: UserModel,
 ):
     """Test that primitive types are visible from the system namespace."""
     settings = get_settings()
@@ -160,7 +166,7 @@ async def test_seed_types_include_primitives(
         .join(Namespace)
         .where(
             or_(
-                Namespace.user_id == TEST_USER_ID,
+                Namespace.user_id == test_user.id,
                 Namespace.id == settings.system_namespace_id,
             )
         )
@@ -182,10 +188,11 @@ async def test_get_type_by_id_for_user_returns_user_type(
     db_session: AsyncSession,
     test_namespace: Namespace,
     test_type: TypeModel,
+    test_user: UserModel,
 ):
     """get_by_id_for_user returns a type owned by the requesting user."""
     service = TypeService(db_session)
-    result = await service.get_by_id_for_user(str(test_type.id), TEST_USER_ID)
+    result = await service.get_by_id_for_user(str(test_type.id), test_user.id)
     assert result is not None
     assert result.id == test_type.id
 
@@ -194,6 +201,7 @@ async def test_get_type_by_id_for_user_returns_user_type(
 async def test_get_type_by_id_for_user_excludes_system_types(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
+    test_user: UserModel,
 ):
     """get_by_id_for_user returns None for system namespace types."""
     settings = get_settings()
@@ -206,7 +214,7 @@ async def test_get_type_by_id_for_user_excludes_system_types(
     assert system_type is not None
 
     service = TypeService(db_session)
-    result = await service.get_by_id_for_user(str(system_type.id), TEST_USER_ID)
+    result = await service.get_by_id_for_user(str(system_type.id), test_user.id)
     assert result is None
 
 

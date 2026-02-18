@@ -1,6 +1,8 @@
 # src/api/services/field_constraint.py
 """Service layer for Field Constraint operations."""
 
+from uuid import UUID
+
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +26,7 @@ class FieldConstraintService(BaseService[FieldConstraintModel]):
 
     async def list_for_user(
         self,
-        user_id: str,
+        user_id: UUID,
         namespace_id: str | None = None,
     ) -> list[FieldConstraintModel]:
         """List field constraints visible to a user (own namespaces + system namespace).
@@ -50,7 +52,7 @@ class FieldConstraintService(BaseService[FieldConstraintModel]):
         return list(result.scalars().all())
 
     async def get_by_id_for_user(
-        self, constraint_id: str, user_id: str
+        self, constraint_id: str, user_id: UUID
     ) -> FieldConstraintModel | None:
         """Get a field constraint if owned by the user.
 
@@ -73,7 +75,7 @@ class FieldConstraintService(BaseService[FieldConstraintModel]):
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_field_counts_for_user(self, user_id: str) -> dict[str, int]:
+    async def get_field_counts_for_user(self, user_id: UUID) -> dict[str, int]:
         """Get count of fields per constraint, scoped to the current user's fields.
 
         :param user_id: The authenticated user's ID.

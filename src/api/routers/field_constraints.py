@@ -41,8 +41,8 @@ async def list_field_constraints(
     :returns: List of field constraint responses.
     """
     service = get_service(db)
-    constraints = await service.list_for_user(user.clerk_id, namespace_id)
-    field_counts = await service.get_field_counts_for_user(user.clerk_id)
+    constraints = await service.list_for_user(user.id, namespace_id)
+    field_counts = await service.get_field_counts_for_user(user.id)
 
     return [
         FieldConstraintResponse(

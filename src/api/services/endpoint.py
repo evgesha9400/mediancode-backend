@@ -1,6 +1,8 @@
 # src/api/services/endpoint.py
 """Service layer for ApiEndpoint operations."""
 
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +21,7 @@ class EndpointService(BaseService[ApiEndpoint]):
 
     async def list_for_user(
         self,
-        user_id: str,
+        user_id: UUID,
         namespace_id: str | None = None,
     ) -> list[ApiEndpoint]:
         """List endpoints owned by a user.
@@ -40,7 +42,7 @@ class EndpointService(BaseService[ApiEndpoint]):
         return list(result.scalars().all())
 
     async def get_by_id_for_user(
-        self, endpoint_id: str, user_id: str
+        self, endpoint_id: str, user_id: UUID
     ) -> ApiEndpoint | None:
         """Get an endpoint if owned by the user.
 
@@ -61,7 +63,7 @@ class EndpointService(BaseService[ApiEndpoint]):
         return result.scalar_one_or_none()
 
     async def create_for_user(
-        self, user_id: str, data: ApiEndpointCreate
+        self, user_id: UUID, data: ApiEndpointCreate
     ) -> ApiEndpoint:
         """Create a new endpoint for a user.
 

@@ -50,7 +50,7 @@ async def list_apis(
     :returns: List of API responses.
     """
     service = get_service(db)
-    apis = await service.list_for_user(user.clerk_id, namespace_id)
+    apis = await service.list_for_user(user.id, namespace_id)
     return [ApiResponse.model_validate(api) for api in apis]
 
 
@@ -76,7 +76,7 @@ async def create_api(
     :returns: Created API response.
     """
     service = get_service(db)
-    api = await service.create_for_user(user.clerk_id, data)
+    api = await service.create_for_user(user.id, data)
     return ApiResponse.model_validate(api)
 
 
@@ -100,7 +100,7 @@ async def get_api(
     :raises HTTPException: If API not found.
     """
     service = get_service(db)
-    api = await service.get_by_id_for_user(api_id, user.clerk_id)
+    api = await service.get_by_id_for_user(api_id, user.id)
     if not api:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -131,7 +131,7 @@ async def update_api(
     :raises HTTPException: If API not found.
     """
     service = get_service(db)
-    api = await service.get_by_id_for_user(api_id, user.clerk_id)
+    api = await service.get_by_id_for_user(api_id, user.id)
     if not api:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -139,7 +139,7 @@ async def update_api(
         )
 
     # Verify ownership
-    if api.user_id != user.clerk_id:
+    if api.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot modify API in locked namespace",
@@ -168,7 +168,7 @@ async def delete_api(
     :raises HTTPException: If API not found.
     """
     service = get_service(db)
-    api = await service.get_by_id_for_user(api_id, user.clerk_id)
+    api = await service.get_by_id_for_user(api_id, user.id)
     if not api:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -176,7 +176,7 @@ async def delete_api(
         )
 
     # Verify ownership
-    if api.user_id != user.clerk_id:
+    if api.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete API in locked namespace",
@@ -222,7 +222,7 @@ async def generate_api_code(
         raise HTTPException(status_code=402, detail="Insufficient credits")
 
     service = get_service(db)
-    api = await service.get_with_relations(api_id, user.clerk_id)
+    api = await service.get_with_relations(api_id, user.id)
     if not api:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

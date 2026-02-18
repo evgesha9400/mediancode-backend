@@ -5,16 +5,17 @@ import pytest
 
 pytestmark = pytest.mark.integration
 
+from uuid import uuid4
+
 import pytest_asyncio
 from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.database import FieldConstraintModel, Namespace
+from api.models.database import FieldConstraintModel, Namespace, UserModel
 from api.services.field_constraint import FieldConstraintService
 from api.settings import get_settings
-from conftest import TEST_USER_ID
 
-OTHER_USER_ID = "test_user_other"
+OTHER_USER_ID = uuid4()
 
 
 @pytest_asyncio.fixture
@@ -45,6 +46,7 @@ async def test_constraint(db_session: AsyncSession, test_namespace: Namespace):
 async def test_seed_constraints_visible_via_system_namespace(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
+    test_user: UserModel,
 ):
     """Test that seed constraints from the system namespace are visible to provisioned users."""
     settings = get_settings()
@@ -53,7 +55,7 @@ async def test_seed_constraints_visible_via_system_namespace(
         .join(Namespace)
         .where(
             or_(
-                Namespace.user_id == TEST_USER_ID,
+                Namespace.user_id == test_user.id,
                 Namespace.id == settings.system_namespace_id,
             )
         )
@@ -83,6 +85,7 @@ async def test_list_constraints_includes_custom_and_seed(
     test_namespace: Namespace,
     test_constraint: FieldConstraintModel,
     provisioned_namespace: Namespace,
+    test_user: UserModel,
 ):
     """Test that user sees both seed and custom constraints via OR clause."""
     settings = get_settings()
@@ -91,7 +94,7 @@ async def test_list_constraints_includes_custom_and_seed(
         .join(Namespace)
         .where(
             or_(
-                Namespace.user_id == TEST_USER_ID,
+                Namespace.user_id == test_user.id,
                 Namespace.id == settings.system_namespace_id,
             )
         )
@@ -110,6 +113,7 @@ async def test_list_constraints_includes_custom_and_seed(
 async def test_seed_constraints_include_standard_set(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
+    test_user: UserModel,
 ):
     """Test that standard constraints are visible from the system namespace."""
     settings = get_settings()
@@ -120,7 +124,7 @@ async def test_seed_constraints_include_standard_set(
         .join(Namespace)
         .where(
             or_(
-                Namespace.user_id == TEST_USER_ID,
+                Namespace.user_id == test_user.id,
                 Namespace.id == settings.system_namespace_id,
             )
         )
@@ -160,10 +164,11 @@ async def test_get_constraint_by_id_for_user_returns_user_constraint(
     db_session: AsyncSession,
     test_namespace: Namespace,
     test_constraint: FieldConstraintModel,
+    test_user: UserModel,
 ):
     """get_by_id_for_user returns a constraint owned by the requesting user."""
     service = FieldConstraintService(db_session)
-    result = await service.get_by_id_for_user(str(test_constraint.id), TEST_USER_ID)
+    result = await service.get_by_id_for_user(str(test_constraint.id), test_user.id)
     assert result is not None
     assert result.id == test_constraint.id
 
@@ -172,6 +177,7 @@ async def test_get_constraint_by_id_for_user_returns_user_constraint(
 async def test_get_constraint_by_id_for_user_excludes_system_constraints(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
+    test_user: UserModel,
 ):
     """get_by_id_for_user returns None for system namespace constraints."""
     settings = get_settings()
@@ -184,7 +190,7 @@ async def test_get_constraint_by_id_for_user_excludes_system_constraints(
     assert system_constraint is not None
 
     service = FieldConstraintService(db_session)
-    result = await service.get_by_id_for_user(str(system_constraint.id), TEST_USER_ID)
+    result = await service.get_by_id_for_user(str(system_constraint.id), test_user.id)
     assert result is None
 
 

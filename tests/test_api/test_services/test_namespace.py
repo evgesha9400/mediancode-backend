@@ -5,15 +5,22 @@ import pytest
 
 pytestmark = pytest.mark.integration
 
+from uuid import uuid4
+
 import pytest_asyncio
 from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.database import ApiModel, FieldModel, Namespace, ObjectDefinition
+from api.models.database import (
+    ApiModel,
+    FieldModel,
+    Namespace,
+    ObjectDefinition,
+    UserModel,
+)
 from api.schemas.namespace import NamespaceCreate, NamespaceUpdate
 from api.services.namespace import NamespaceService
-from conftest import TEST_USER_ID
 
 
 # --- Fixtures ---
@@ -26,12 +33,14 @@ async def namespace_service(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def user_namespace(db_session: AsyncSession, provisioned_namespace: Namespace):
+async def user_namespace(
+    db_session: AsyncSession, provisioned_namespace: Namespace, test_user: UserModel
+):
     """Create a user-owned (unlocked) namespace for namespace tests."""
     namespace = Namespace(
         name="Custom Namespace",
         description="User-owned namespace for testing",
-        user_id=TEST_USER_ID,
+        user_id=test_user.id,
     )
     db_session.add(namespace)
     await db_session.commit()
@@ -47,6 +56,7 @@ async def user_namespace(db_session: AsyncSession, provisioned_namespace: Namesp
 async def namespace_with_field(
     db_session: AsyncSession,
     user_namespace: Namespace,
+    test_user: UserModel,
 ):
     """Create a namespace that contains a field entity."""
     from api.models.database import TypeModel
@@ -65,7 +75,7 @@ async def namespace_with_field(
 
     field = FieldModel(
         namespace_id=user_namespace.id,
-        user_id=TEST_USER_ID,
+        user_id=test_user.id,
         name="test_field",
         type_id=str_type.id,
     )
@@ -84,11 +94,12 @@ async def namespace_with_field(
 async def namespace_with_object(
     db_session: AsyncSession,
     user_namespace: Namespace,
+    test_user: UserModel,
 ):
     """Create a namespace that contains an object entity."""
     obj = ObjectDefinition(
         namespace_id=user_namespace.id,
-        user_id=TEST_USER_ID,
+        user_id=test_user.id,
         name="TestObject",
     )
     db_session.add(obj)
@@ -108,11 +119,12 @@ async def namespace_with_object(
 async def namespace_with_api(
     db_session: AsyncSession,
     user_namespace: Namespace,
+    test_user: UserModel,
 ):
     """Create a namespace that contains an API entity."""
     api = ApiModel(
         namespace_id=user_namespace.id,
-        user_id=TEST_USER_ID,
+        user_id=test_user.id,
         title="Test API",
         version="1.0.0",
     )
@@ -134,21 +146,23 @@ async def namespace_with_api(
 async def test_list_namespaces_returns_user_namespaces(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """Listing namespaces returns all namespaces owned by the user."""
-    namespaces = await namespace_service.list_for_user(TEST_USER_ID)
+    namespaces = await namespace_service.list_for_user(test_user.id)
 
     assert len(namespaces) >= 1
-    assert all(ns.user_id == TEST_USER_ID for ns in namespaces)
+    assert all(ns.user_id == test_user.id for ns in namespaces)
 
 
 @pytest.mark.asyncio
 async def test_list_namespaces_includes_default_namespace(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """Listing namespaces includes the user's default (Global) namespace."""
-    namespaces = await namespace_service.list_for_user(TEST_USER_ID)
+    namespaces = await namespace_service.list_for_user(test_user.id)
 
     default_namespaces = [ns for ns in namespaces if ns.is_default]
     assert len(default_namespaces) == 1
@@ -160,9 +174,10 @@ async def test_list_namespaces_includes_default_namespace(
 async def test_list_namespaces_includes_custom_namespace(
     user_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """Listing namespaces includes user-created custom namespaces."""
-    namespaces = await namespace_service.list_for_user(TEST_USER_ID)
+    namespaces = await namespace_service.list_for_user(test_user.id)
 
     namespace_names = {ns.name for ns in namespaces}
     assert "Custom Namespace" in namespace_names
@@ -173,22 +188,29 @@ async def test_list_namespaces_excludes_other_users(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """Listing namespaces does not return namespaces owned by other users."""
+    # Create another user for the FK constraint
+    other_user = UserModel(clerk_id="other_user_for_ns_test")
+    db_session.add(other_user)
+    await db_session.flush()
+
     other_user_ns = Namespace(
         name="Other User Namespace",
-        user_id="other_user_id",
+        user_id=other_user.id,
     )
     db_session.add(other_user_ns)
     await db_session.flush()
 
-    namespaces = await namespace_service.list_for_user(TEST_USER_ID)
+    namespaces = await namespace_service.list_for_user(test_user.id)
 
     namespace_ids = {ns.id for ns in namespaces}
     assert other_user_ns.id not in namespace_ids
 
     # Cleanup
     await db_session.execute(delete(Namespace).where(Namespace.id == other_user_ns.id))
+    await db_session.execute(delete(UserModel).where(UserModel.id == other_user.id))
     await db_session.flush()
 
 
@@ -199,10 +221,11 @@ async def test_list_namespaces_excludes_other_users(
 async def test_get_namespace_by_id(
     user_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """Getting a namespace by ID returns the correct namespace."""
     result = await namespace_service.get_by_id_for_user(
-        str(user_namespace.id), TEST_USER_ID
+        str(user_namespace.id), test_user.id
     )
 
     assert result is not None
@@ -215,12 +238,13 @@ async def test_get_namespace_by_id(
 async def test_get_namespace_by_id_not_found(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """Getting a non-existent namespace returns None."""
     import uuid
 
     fake_id = str(uuid.uuid4())
-    result = await namespace_service.get_by_id_for_user(fake_id, TEST_USER_ID)
+    result = await namespace_service.get_by_id_for_user(fake_id, test_user.id)
 
     assert result is None
 
@@ -231,9 +255,7 @@ async def test_get_namespace_by_id_wrong_user(
     namespace_service: NamespaceService,
 ):
     """Getting a namespace owned by another user returns None."""
-    result = await namespace_service.get_by_id_for_user(
-        str(user_namespace.id), "different_user_id"
-    )
+    result = await namespace_service.get_by_id_for_user(str(user_namespace.id), uuid4())
 
     assert result is None
 
@@ -242,10 +264,11 @@ async def test_get_namespace_by_id_wrong_user(
 async def test_get_default_namespace_by_id(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """Getting the default (Global) namespace by ID works correctly."""
     result = await namespace_service.get_by_id_for_user(
-        str(provisioned_namespace.id), TEST_USER_ID
+        str(provisioned_namespace.id), test_user.id
     )
 
     assert result is not None
@@ -261,14 +284,15 @@ async def test_get_default_namespace_by_id(
 async def test_create_namespace(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """Creating a namespace stores the correct data."""
     data = NamespaceCreate(name="New Project", description="A new project namespace")
-    namespace = await namespace_service.create_for_user(TEST_USER_ID, data)
+    namespace = await namespace_service.create_for_user(test_user.id, data)
 
     assert namespace.name == "New Project"
     assert namespace.description == "A new project namespace"
-    assert namespace.user_id == TEST_USER_ID
+    assert namespace.user_id == test_user.id
     assert namespace.locked is False
     assert namespace.is_default is False
     assert namespace.id is not None
@@ -278,10 +302,11 @@ async def test_create_namespace(
 async def test_create_namespace_without_description(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """Creating a namespace without a description sets it to None."""
     data = NamespaceCreate(name="No Description")
-    namespace = await namespace_service.create_for_user(TEST_USER_ID, data)
+    namespace = await namespace_service.create_for_user(test_user.id, data)
 
     assert namespace.name == "No Description"
     assert namespace.description is None
@@ -292,10 +317,11 @@ async def test_create_namespace_without_description(
 async def test_create_namespace_is_not_locked(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """User-created namespaces are never locked."""
     data = NamespaceCreate(name="Unlocked Namespace")
-    namespace = await namespace_service.create_for_user(TEST_USER_ID, data)
+    namespace = await namespace_service.create_for_user(test_user.id, data)
 
     assert namespace.locked is False
 
@@ -304,10 +330,11 @@ async def test_create_namespace_is_not_locked(
 async def test_create_namespace_is_not_default(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """User-created namespaces are never marked as default."""
     data = NamespaceCreate(name="Not Default")
-    namespace = await namespace_service.create_for_user(TEST_USER_ID, data)
+    namespace = await namespace_service.create_for_user(test_user.id, data)
 
     assert namespace.is_default is False
 
@@ -316,12 +343,13 @@ async def test_create_namespace_is_not_default(
 async def test_create_namespace_appears_in_list(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """A newly created namespace appears in the user's namespace list."""
     data = NamespaceCreate(name="Listed Namespace")
-    created = await namespace_service.create_for_user(TEST_USER_ID, data)
+    created = await namespace_service.create_for_user(test_user.id, data)
 
-    namespaces = await namespace_service.list_for_user(TEST_USER_ID)
+    namespaces = await namespace_service.list_for_user(test_user.id)
     namespace_ids = {ns.id for ns in namespaces}
 
     assert created.id in namespace_ids
@@ -331,6 +359,7 @@ async def test_create_namespace_appears_in_list(
 async def test_create_namespace_with_duplicate_name(
     user_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """Creating a namespace with the same name as an existing one is allowed.
 
@@ -339,7 +368,7 @@ async def test_create_namespace_with_duplicate_name(
     data = NamespaceCreate(
         name="Custom Namespace", description="Another namespace with same name"
     )
-    namespace = await namespace_service.create_for_user(TEST_USER_ID, data)
+    namespace = await namespace_service.create_for_user(test_user.id, data)
 
     assert namespace.name == "Custom Namespace"
     assert namespace.id != user_namespace.id
@@ -514,9 +543,10 @@ async def test_default_namespace_name_is_global(
 @pytest.mark.asyncio
 async def test_default_namespace_owned_by_user(
     provisioned_namespace: Namespace,
+    test_user: UserModel,
 ):
     """The provisioned default namespace is owned by the test user."""
-    assert provisioned_namespace.user_id == TEST_USER_ID
+    assert provisioned_namespace.user_id == test_user.id
 
 
 # --- Tests: User isolation ---
@@ -526,11 +556,12 @@ async def test_default_namespace_owned_by_user(
 async def test_user_cannot_see_system_namespace(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """The system namespace (user_id=NULL) does not appear in user's list."""
-    namespaces = await namespace_service.list_for_user(TEST_USER_ID)
+    namespaces = await namespace_service.list_for_user(test_user.id)
 
-    assert all(ns.user_id == TEST_USER_ID for ns in namespaces)
+    assert all(ns.user_id == test_user.id for ns in namespaces)
     assert all(ns.user_id is not None for ns in namespaces)
 
 
@@ -538,13 +569,14 @@ async def test_user_cannot_see_system_namespace(
 async def test_user_cannot_get_system_namespace_by_id(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """The system namespace cannot be fetched by a regular user."""
     from api.settings import get_settings
 
     settings = get_settings()
     result = await namespace_service.get_by_id_for_user(
-        str(settings.system_namespace_id), TEST_USER_ID
+        str(settings.system_namespace_id), test_user.id
     )
 
     assert result is None
@@ -555,22 +587,28 @@ async def test_user_cannot_see_other_users_namespaces(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """A user cannot list namespaces belonging to another user."""
+    other_user = UserModel(clerk_id="other_user_xyz_ns")
+    db_session.add(other_user)
+    await db_session.flush()
+
     other_ns = Namespace(
         name="Other Namespace",
-        user_id="other_user_xyz",
+        user_id=other_user.id,
     )
     db_session.add(other_ns)
     await db_session.flush()
 
-    namespaces = await namespace_service.list_for_user(TEST_USER_ID)
+    namespaces = await namespace_service.list_for_user(test_user.id)
     namespace_ids = {ns.id for ns in namespaces}
 
     assert other_ns.id not in namespace_ids
 
     # Cleanup
     await db_session.execute(delete(Namespace).where(Namespace.id == other_ns.id))
+    await db_session.execute(delete(UserModel).where(UserModel.id == other_user.id))
     await db_session.flush()
 
 
@@ -579,19 +617,25 @@ async def test_user_cannot_get_other_users_namespace_by_id(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """A user cannot fetch a namespace that belongs to another user."""
+    other_user = UserModel(clerk_id="other_user_abc_ns")
+    db_session.add(other_user)
+    await db_session.flush()
+
     other_ns = Namespace(
         name="Private Namespace",
-        user_id="other_user_abc",
+        user_id=other_user.id,
     )
     db_session.add(other_ns)
     await db_session.flush()
 
-    result = await namespace_service.get_by_id_for_user(str(other_ns.id), TEST_USER_ID)
+    result = await namespace_service.get_by_id_for_user(str(other_ns.id), test_user.id)
 
     assert result is None
 
     # Cleanup
     await db_session.execute(delete(Namespace).where(Namespace.id == other_ns.id))
+    await db_session.execute(delete(UserModel).where(UserModel.id == other_user.id))
     await db_session.flush()

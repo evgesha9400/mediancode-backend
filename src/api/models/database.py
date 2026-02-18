@@ -67,6 +67,19 @@ class UserModel(Base):
         DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
     )
 
+    # Relationships
+    namespaces: Mapped[list["Namespace"]] = relationship(back_populates="user")
+    types: Mapped[list["TypeModel"]] = relationship(back_populates="user")
+    apis: Mapped[list["ApiModel"]] = relationship(back_populates="user")
+    fields: Mapped[list["FieldModel"]] = relationship(back_populates="user")
+    objects: Mapped[list["ObjectDefinition"]] = relationship(back_populates="user")
+    field_validators: Mapped[list["FieldValidatorModel"]] = relationship(
+        back_populates="user"
+    )
+    model_validators: Mapped[list["ModelValidatorModel"]] = relationship(
+        back_populates="user"
+    )
+
 
 class Namespace(Base):
     """Namespace for organizing API entities.
@@ -92,13 +105,16 @@ class Namespace(Base):
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    user_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    user_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships
+    user: Mapped["UserModel | None"] = relationship(back_populates="namespaces")
     apis: Mapped[list["ApiModel"]] = relationship(
         back_populates="namespace", cascade="all, delete-orphan"
     )
@@ -143,7 +159,9 @@ class TypeModel(Base):
     namespace_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
-    user_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    user_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     python_type: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -153,6 +171,7 @@ class TypeModel(Base):
     )
 
     # Relationships
+    user: Mapped["UserModel | None"] = relationship(back_populates="types")
     namespace: Mapped["Namespace"] = relationship(back_populates="types")
     fields: Mapped[list["FieldModel"]] = relationship(back_populates="field_type")
     parent_type: Mapped["TypeModel | None"] = relationship(
@@ -214,7 +233,9 @@ class ApiModel(Base):
     namespace_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
-    user_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    user_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     version: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -228,6 +249,7 @@ class ApiModel(Base):
     )
 
     # Relationships
+    user: Mapped["UserModel"] = relationship(back_populates="apis")
     namespace: Mapped["Namespace"] = relationship(back_populates="apis")
     endpoints: Mapped[list["ApiEndpoint"]] = relationship(
         back_populates="api", cascade="all, delete-orphan"
@@ -254,7 +276,9 @@ class FieldModel(Base):
     namespace_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
-    user_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    user_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     type_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("types.id"), nullable=False, index=True
@@ -263,6 +287,7 @@ class FieldModel(Base):
     default_value: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
+    user: Mapped["UserModel"] = relationship(back_populates="fields")
     namespace: Mapped["Namespace"] = relationship(back_populates="fields")
     field_type: Mapped["TypeModel"] = relationship(back_populates="fields")
     object_associations: Mapped[list["ObjectFieldAssociation"]] = relationship(
@@ -295,13 +320,16 @@ class FieldValidatorModel(Base):
     namespace_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
-    user_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    user_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
+    )
     function_name: Mapped[str] = mapped_column(Text, nullable=False)
     mode: Mapped[str] = mapped_column(Text, nullable=False)
     function_body: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
+    user: Mapped["UserModel | None"] = relationship(back_populates="field_validators")
     namespace: Mapped["Namespace"] = relationship(back_populates="field_validators")
     field_associations: Mapped[list["FieldValidatorAssociation"]] = relationship(
         back_populates="validator", cascade="all, delete-orphan"
@@ -359,11 +387,14 @@ class ObjectDefinition(Base):
     namespace_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
-    user_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    user_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
+    user: Mapped["UserModel"] = relationship(back_populates="objects")
     namespace: Mapped["Namespace"] = relationship(back_populates="objects")
     field_associations: Mapped[list["ObjectFieldAssociation"]] = relationship(
         back_populates="object", cascade="all, delete-orphan"
@@ -426,13 +457,16 @@ class ModelValidatorModel(Base):
     namespace_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
     )
-    user_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    user_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
+    )
     function_name: Mapped[str] = mapped_column(Text, nullable=False)
     mode: Mapped[str] = mapped_column(Text, nullable=False)  # "before", "after", "wrap"
     function_body: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
+    user: Mapped["UserModel | None"] = relationship(back_populates="model_validators")
     namespace: Mapped["Namespace"] = relationship(back_populates="model_validators")
     object_associations: Mapped[list["ObjectModelValidatorAssociation"]] = relationship(
         back_populates="validator", cascade="all, delete-orphan"

@@ -65,7 +65,7 @@ async def list_objects(
     :returns: List of object responses.
     """
     service = get_service(db)
-    objects = await service.list_for_user(user.clerk_id, namespace_id)
+    objects = await service.list_for_user(user.id, namespace_id)
     return [await _to_response(obj, service) for obj in objects]
 
 
@@ -89,9 +89,9 @@ async def create_object(
     :returns: Created object response.
     """
     service = get_service(db)
-    obj = await service.create_for_user(user.clerk_id, data)
+    obj = await service.create_for_user(user.id, data)
     # Reload with field associations
-    obj = await service.get_by_id_for_user(obj.id, user.clerk_id)
+    obj = await service.get_by_id_for_user(obj.id, user.id)
     return await _to_response(obj, service)
 
 
@@ -115,7 +115,7 @@ async def get_object(
     :raises HTTPException: If object not found.
     """
     service = get_service(db)
-    obj = await service.get_by_id_for_user(object_id, user.clerk_id)
+    obj = await service.get_by_id_for_user(object_id, user.id)
     if not obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -146,7 +146,7 @@ async def update_object(
     :raises HTTPException: If object not found.
     """
     service = get_service(db)
-    obj = await service.get_by_id_for_user(object_id, user.clerk_id)
+    obj = await service.get_by_id_for_user(object_id, user.id)
     if not obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -154,7 +154,7 @@ async def update_object(
         )
 
     # Verify ownership
-    if obj.user_id != user.clerk_id:
+    if obj.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot modify object in locked namespace",
@@ -162,7 +162,7 @@ async def update_object(
 
     updated = await service.update_object(obj, data)
     # Reload with field associations
-    updated = await service.get_by_id_for_user(updated.id, user.clerk_id)
+    updated = await service.get_by_id_for_user(updated.id, user.id)
     return await _to_response(updated, service)
 
 
@@ -185,7 +185,7 @@ async def delete_object(
     :raises HTTPException: If object not found or in use.
     """
     service = get_service(db)
-    obj = await service.get_by_id_for_user(object_id, user.clerk_id)
+    obj = await service.get_by_id_for_user(object_id, user.id)
     if not obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -193,7 +193,7 @@ async def delete_object(
         )
 
     # Verify ownership
-    if obj.user_id != user.clerk_id:
+    if obj.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete object in locked namespace",

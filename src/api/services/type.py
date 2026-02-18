@@ -1,6 +1,8 @@
 # src/api/services/type.py
 """Service layer for Type operations."""
 
+from uuid import UUID
+
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +21,7 @@ class TypeService(BaseService[TypeModel]):
 
     async def list_for_user(
         self,
-        user_id: str,
+        user_id: UUID,
         namespace_id: str | None = None,
     ) -> list[TypeModel]:
         """List types visible to a user (own namespaces + system namespace).
@@ -44,7 +46,7 @@ class TypeService(BaseService[TypeModel]):
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
-    async def get_by_id_for_user(self, type_id: str, user_id: str) -> TypeModel | None:
+    async def get_by_id_for_user(self, type_id: str, user_id: UUID) -> TypeModel | None:
         """Get a type if owned by the user.
 
         System namespace types (``user_id IS NULL``) are excluded, so this
@@ -66,7 +68,7 @@ class TypeService(BaseService[TypeModel]):
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_field_counts_for_user(self, user_id: str) -> dict[str, int]:
+    async def get_field_counts_for_user(self, user_id: UUID) -> dict[str, int]:
         """Get count of fields per type, scoped to the current user's fields.
 
         :param user_id: The authenticated user's ID.

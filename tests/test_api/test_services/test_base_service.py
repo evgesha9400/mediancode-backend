@@ -9,10 +9,9 @@ from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.database import Namespace, TypeModel
+from api.models.database import Namespace, TypeModel, UserModel
 from api.services.type import TypeService
 from api.settings import get_settings
-from conftest import TEST_USER_ID
 
 
 @pytest.mark.asyncio
@@ -40,11 +39,12 @@ async def test_assert_mutable_rejects_system_type(
 async def test_assert_mutable_allows_user_type(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
+    test_user: UserModel,
 ):
     """_assert_mutable does not raise for user-owned entities."""
     user_type = TypeModel(
         namespace_id=provisioned_namespace.id,
-        user_id=TEST_USER_ID,
+        user_id=test_user.id,
         name="UserType",
         python_type="UserType",
     )
