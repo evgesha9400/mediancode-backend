@@ -1,4 +1,4 @@
-"""Seed system namespace, types, and field constraints
+"""Seed system data
 
 Revision ID: b1a2c3d4e5f6
 Revises: 4141ad7f2255
@@ -28,6 +28,9 @@ TYPE_DATETIME_ID = UUID("00000000-0000-0000-0001-000000000005")
 TYPE_UUID_ID = UUID("00000000-0000-0000-0001-000000000006")
 TYPE_EMAIL_STR_ID = UUID("00000000-0000-0000-0001-000000000007")
 TYPE_HTTP_URL_ID = UUID("00000000-0000-0000-0001-000000000008")
+TYPE_DECIMAL_ID = UUID("00000000-0000-0000-0001-000000000009")
+TYPE_DATE_ID = UUID("00000000-0000-0000-0001-000000000010")
+TYPE_TIME_ID = UUID("00000000-0000-0000-0001-000000000011")
 
 # Seed data for types
 TYPES_DATA = [
@@ -111,6 +114,36 @@ TYPES_DATA = [
         "user_id": None,
         "parent_type_id": TYPE_STR_ID,
     },
+    {
+        "id": TYPE_DECIMAL_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
+        "name": "Decimal",
+        "python_type": "Decimal",
+        "description": "Decimal type for precise financial values",
+        "import_path": "from decimal import Decimal",
+        "user_id": None,
+        "parent_type_id": None,
+    },
+    {
+        "id": TYPE_DATE_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
+        "name": "date",
+        "python_type": "datetime.date",
+        "description": "Date type for date-only values",
+        "import_path": "from datetime import date",
+        "user_id": None,
+        "parent_type_id": None,
+    },
+    {
+        "id": TYPE_TIME_ID,
+        "namespace_id": SYSTEM_NAMESPACE_ID,
+        "name": "time",
+        "python_type": "datetime.time",
+        "description": "Time type for time-only values",
+        "import_path": "from datetime import time",
+        "user_id": None,
+        "parent_type_id": None,
+    },
 ]
 
 # Seed data for field constraints (Pydantic Field constraints)
@@ -149,45 +182,45 @@ CONSTRAINTS_DATA = [
         "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "gt",
         "description": "Validates that number is greater than specified value",
-        "parameter_types": ["int", "float"],
+        "parameter_types": ["int", "float", "Decimal"],
         "docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints",
-        "compatible_types": ["int", "float"],
+        "compatible_types": ["int", "float", "Decimal", "date", "time", "datetime"],
     },
     {
         "id": UUID("00000000-0000-0000-0002-000000000007"),
         "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "ge",
         "description": "Validates that number is greater than or equal to specified value",
-        "parameter_types": ["int", "float"],
+        "parameter_types": ["int", "float", "Decimal"],
         "docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints",
-        "compatible_types": ["int", "float"],
+        "compatible_types": ["int", "float", "Decimal", "date", "time", "datetime"],
     },
     {
         "id": UUID("00000000-0000-0000-0002-000000000008"),
         "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "lt",
         "description": "Validates that number is less than specified value",
-        "parameter_types": ["int", "float"],
+        "parameter_types": ["int", "float", "Decimal"],
         "docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints",
-        "compatible_types": ["int", "float"],
+        "compatible_types": ["int", "float", "Decimal", "date", "time", "datetime"],
     },
     {
         "id": UUID("00000000-0000-0000-0002-000000000009"),
         "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "le",
         "description": "Validates that number is less than or equal to specified value",
-        "parameter_types": ["int", "float"],
+        "parameter_types": ["int", "float", "Decimal"],
         "docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints",
-        "compatible_types": ["int", "float"],
+        "compatible_types": ["int", "float", "Decimal", "date", "time", "datetime"],
     },
     {
         "id": UUID("00000000-0000-0000-0002-000000000010"),
         "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "multiple_of",
         "description": "Validates that number is a multiple of specified value",
-        "parameter_types": ["int", "float"],
+        "parameter_types": ["int", "float", "Decimal"],
         "docs_url": "https://docs.pydantic.dev/latest/concepts/fields/#numeric-constraints",
-        "compatible_types": ["int", "float"],
+        "compatible_types": ["int", "float", "Decimal"],
     },
 ]
 

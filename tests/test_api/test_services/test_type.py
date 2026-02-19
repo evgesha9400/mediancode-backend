@@ -61,8 +61,8 @@ async def test_seed_types_visible_via_system_namespace(
     )
     types = result.scalars().all()
 
-    # Should have all 8 standard types from system namespace
-    assert len(types) == 8
+    # Should have all 11 standard types from system namespace
+    assert len(types) == 11
 
     type_names = {t.name for t in types}
     expected = {
@@ -74,6 +74,9 @@ async def test_seed_types_visible_via_system_namespace(
         "uuid",
         "EmailStr",
         "HttpUrl",
+        "Decimal",
+        "date",
+        "time",
     }
     assert type_names == expected
 
@@ -92,7 +95,7 @@ async def test_seed_types_belong_to_system_namespace(
     )
     types = result.scalars().all()
 
-    assert len(types) == 8
+    assert len(types) == 11
     # Seed types have user_id=NULL since they belong to the system namespace
     assert all(t.user_id is None for t in types)
 

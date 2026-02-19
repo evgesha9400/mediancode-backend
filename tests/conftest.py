@@ -1,11 +1,59 @@
 # tests/conftest.py
 """Pytest configuration and shared fixtures."""
 
+import socket
+
+import pytest
 import pytest_asyncio
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from api.models.database import GenerationModel, Namespace, UserModel
+
+# --- Database availability check ---
+
+_DB_HOST = "localhost"
+_DB_PORT = 5432
+_DB_CHECK_TIMEOUT_SECONDS = 1
+
+
+def _check_database_available() -> bool:
+    """Check whether PostgreSQL is reachable via TCP socket.
+
+    :returns: True if the database port accepts connections, False otherwise.
+    """
+    try:
+        with socket.create_connection(
+            (_DB_HOST, _DB_PORT), timeout=_DB_CHECK_TIMEOUT_SECONDS
+        ):
+            return True
+    except OSError:
+        return False
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Skip integration tests when the database is unreachable.
+
+    Runs a single TCP check against PostgreSQL at collection time. If the
+    connection fails, every test marked ``integration`` is skipped with a
+    clear message. Non-integration tests are left untouched.
+    """
+    integration_items = [
+        item for item in items if item.get_closest_marker("integration")
+    ]
+    if not integration_items:
+        return
+
+    if _check_database_available():
+        return
+
+    skip_marker = pytest.mark.skip(
+        reason=f"PostgreSQL not available at {_DB_HOST}:{_DB_PORT} - start Docker Desktop to run integration tests"
+    )
+    for item in integration_items:
+        item.add_marker(skip_marker)
 
 
 # --- Integration test (database) fixtures ---

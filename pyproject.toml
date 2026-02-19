@@ -49,7 +49,7 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
-addopts = "-m 'not manual'"
+addopts = "-m 'not manual' -rs"
 markers = [
     "manual: generate output to tests/output/ for manual verification",
     "unit: pure logic tests with no external dependencies",

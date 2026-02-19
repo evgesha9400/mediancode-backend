@@ -171,7 +171,7 @@ async def test_system_namespace_types_visible_to_provisioned_user(
     )
     types = result.scalars().all()
 
-    assert len(types) == 8
+    assert len(types) == 11
     type_names = {t.name for t in types}
     assert type_names == {
         "str",
@@ -182,6 +182,9 @@ async def test_system_namespace_types_visible_to_provisioned_user(
         "uuid",
         "EmailStr",
         "HttpUrl",
+        "Decimal",
+        "date",
+        "time",
     }
 
 
