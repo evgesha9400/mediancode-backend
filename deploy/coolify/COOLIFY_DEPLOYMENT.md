@@ -208,7 +208,7 @@ Select the **development** environment, then:
 | **Image**          | `postgres:18-alpine` |
 | **Username**       | `postgres` (default, leave as-is) |
 | **Password**       | Keep the auto-generated strong password |
-| **Initial Database** | `median_code` |
+| **Initial Database** | `postgres` |
 
 3. **Make it publicly available**: Leave **unchecked**. External DB client access (DBeaver, TablePlus) is handled via SSH tunnel instead — see [Connecting from a Local DB Client](#connecting-from-a-local-db-client).
 4. Click **Save**, then **Start**
@@ -346,7 +346,7 @@ Select the **production** environment, then:
 | **Image**          | `postgres:18-alpine` |
 | **Username**       | `postgres` (default, leave as-is) |
 | **Password**       | Keep the auto-generated strong password |
-| **Initial Database** | `median_code` |
+| **Initial Database** | `postgres` |
 
 3. **Make it publicly available**: Leave **unchecked**. External DB client access (DBeaver, TablePlus) is handled via SSH tunnel instead — see [Connecting from a Local DB Client](#connecting-from-a-local-db-client).
 4. Click **Save**, then **Start**
@@ -573,75 +573,123 @@ git push origin main
 
 ### Access Database Shell
 
-In Coolify, click the Postgres resource and use the built-in **Terminal** tab to run:
+1. In Coolify, go to **Projects** > **Median Code** > select the environment (development or production)
+2. Click the Postgres resource (e.g., `dev-db-median-code`)
+3. Click the **Terminal** tab at the top of the resource page (not the sidebar Terminal — that shows all containers with unreadable random names)
+4. Run:
 
 ```bash
-psql -U postgres -d median_code
+psql -U postgres -d postgres
 ```
 
-### Connecting from a Local DB Client
+### Connecting from a Local DB Client (PyCharm, DBeaver, etc.)
 
-Use an SSH tunnel to connect from DBeaver, TablePlus, or other local clients. This avoids exposing the database port publicly — all traffic is encrypted through your SSH key.
+Use an SSH tunnel to connect from PyCharm, DBeaver, TablePlus, or other local clients. This avoids exposing the database port publicly — all traffic is encrypted through your SSH key.
 
-Both databases listen on port 5432 inside their containers. Map them to different local ports to avoid conflicts.
+The approach: map a port on the server host to the database container's internal port 5432 (via Coolify's **Ports Mappings**), then SSH-tunnel from your local machine to that host port.
 
-#### Finding the container hostname
+#### Step 1: Configure port mapping in Coolify
 
-Coolify generates random container names for database resources (e.g., `ys4gwgscgwg4ss40k4g4o4wk`). To find the hostname for each database:
+Each database container listens on port 5432 internally. We map them to different host ports to avoid conflicts:
+
+| Database               | Ports Mappings (host:container) |
+| ---------------------- | ------------------------------- |
+| `dev-db-median-code`   | `15432:5432`                    |
+| `prod-db-median-code`  | `15433:5432`                    |
+
+For each database:
 
 1. Open the Postgres resource in Coolify (e.g., `dev-db-median-code`)
-2. Go to the **General** tab
-3. Copy the **Postgres URL (internal)** — the hostname between `@` and `:5432` is the container name
+2. Go to the **Configuration** tab > **General**
+3. Under **Network**, set the **Ports Mappings** field to `15432:5432` (dev) or `15433:5432` (prod)
+4. Click **Save**
+5. Click **Restart** (top right) to apply the new port mapping
 
-Example: if the internal URL is `postgresql://postgres:pass@ys4gwgscgwg4ss40k4g4o4wk:5432/postgres`, the container hostname is `ys4gwgscgwg4ss40k4g4o4wk`.
+> **Why not use the container hostname directly?** Docker container hostnames (the random strings in the internal Postgres URL) are only resolvable inside Docker's network. SSH tunnels resolve the destination host at the OS level, so the server can't find them. Port mapping exposes the container on `localhost:<port>` at the OS level, which SSH tunnels can reach.
 
-> These hostnames survive restarts but change on redeployment. If you redeploy a database, update your tunnel config with the new hostname.
+#### Step 2: Create an SSH tunnel configuration in your DB client
 
-#### DB client configuration
+The SSH tunnel settings are the same across clients:
 
-Replace `<dev-db-host>` and `<prod-db-host>` below with the container hostnames from the step above.
+| Field                   | Value                              |
+| ----------------------- | ---------------------------------- |
+| **Host**                | `median-server` or `<droplet-ip>`  |
+| **Port**                | `22`                               |
+| **Username**            | `root`                             |
+| **Authentication**      | Public Key                         |
+| **Private key file**    | `~/.ssh/digitalocean`              |
+
+> **DBeaver does not read `~/.ssh/config`** — you must use the actual droplet IP address (e.g., `159.65.195.102`) instead of `median-server`. PyCharm reads the SSH config and can resolve `median-server`, but still requires you to select the private key file manually.
+
+**PyCharm** (Database tool window > Data Sources and Drivers):
+
+1. Select your data source (or create a new PostgreSQL one)
+2. Go to the **SSH/SSL** tab
+3. Check **Use SSH tunnel**
+4. Click the **`...`** button next to "SSH configuration" to open the SSH Configurations dialog
+5. Click **`+`** to add a new configuration
+6. Fill in: **Host** = `median-server`, **Port** = `22`, **Username** = `root`, **Authentication type** = `Key pair (OpenSSH or PuTTY)`, **Private key file** = select `~/.ssh/digitalocean`
+7. Click **Test Connection** to verify SSH connectivity
+8. Click **Apply** > **OK** to save the SSH configuration
+
+> This SSH configuration is reusable — both dev and prod data sources can share it.
+
+Back on the **SSH/SSL** tab, verify:
+
+- **SSH configuration**: shows `root@median-server:22 key`
+- **Local port**: must be `<Dynamic>` (the default). Do **not** set this to a specific port like `22` — privileged ports will fail with "Permission denied".
+
+**DBeaver** (Connection Settings):
+
+1. Click **SSH** in the tab bar (or **+ SSL, Proxy** > **SSH** if the tab isn't visible)
+2. Fill in: **Host/IP** = `<droplet-ip>`, **Port** = `22`, **User Name** = `root`, **Authentication Method** = `Public Key`, **Private Key** = select `~/.ssh/digitalocean`
+3. Check **Save credentials**
+4. Click **Test tunnel configuration** to verify SSH connectivity
+
+#### Step 3: Configure the database connection
+
+Back on the **General** tab of the data source, fill in the connection details. The **password** for each database is found in Coolify: open the Postgres resource > **Configuration** > **General** tab > click the **eye icon** next to the **Password** field to reveal it, then copy.
 
 **Development database:**
 
-| Field             | Value                         |
-| ----------------- | ----------------------------- |
-| **Host**          | `localhost`                   |
-| **Port**          | `5432`                        |
-| **Database**      | `median_code`                 |
-| **Username**      | `postgres`                    |
-| **Password**      | *(from Coolify dev DB config)* |
-| **SSH Host**      | `median-server` (or droplet IP) |
-| **SSH User**      | `root`                        |
-| **SSH Key**       | `~/.ssh/digitalocean`         |
-| **SSH Tunnel Port** | `5432` → `<dev-db-host>:5432` |
+| Field        | Value                              |
+| ------------ | ---------------------------------- |
+| **Host**     | `localhost`                        |
+| **Port**     | `15432`                            |
+| **Database** | `postgres`                         |
+| **User**     | `postgres`                         |
+| **Password** | *(Coolify > `dev-db-median-code` > General > Password eye icon)* |
 
 **Production database:**
 
-| Field             | Value                         |
-| ----------------- | ----------------------------- |
-| **Host**          | `localhost`                   |
-| **Port**          | `5433`                        |
-| **Database**      | `median_code`                 |
-| **Username**      | `postgres`                    |
-| **Password**      | *(from Coolify prod DB config)* |
-| **SSH Host**      | `median-server` (or droplet IP) |
-| **SSH User**      | `root`                        |
-| **SSH Key**       | `~/.ssh/digitalocean`         |
-| **SSH Tunnel Port** | `5433` → `<prod-db-host>:5432` |
+| Field        | Value                              |
+| ------------ | ---------------------------------- |
+| **Host**     | `localhost`                        |
+| **Port**     | `15433`                            |
+| **Database** | `postgres`                         |
+| **User**     | `postgres`                         |
+| **Password** | *(Coolify > `prod-db-median-code` > General > Password eye icon)* |
 
-> Both DB clients and CLI tools support SSH tunnels. In DBeaver: Connection Settings > SSH tab. In TablePlus: right-click connection > Edit > SSH tab.
+> With the SSH tunnel enabled, `localhost:15432` means "port 15432 on the server" (not your local machine). The port mapping forwards this to the database container's port 5432.
 
-**CLI alternative** — forward both ports in one command:
+Click **Test Connection** — you should see "Succeeded" with PostgreSQL version info.
+
+#### CLI alternative
+
+Forward both database ports in one SSH command:
 
 ```bash
-ssh -L 5432:<dev-db-host>:5432 -L 5433:<prod-db-host>:5432 median-server -N
+ssh -L 15432:localhost:15432 -L 15433:localhost:15433 median-server -N
 ```
 
-Then connect your client to `localhost:5432` (dev) or `localhost:5433` (prod).
+Then connect your client to `localhost:15432` (dev) or `localhost:15433` (prod) — no SSH tunnel config needed in the client since the tunnel is already running.
 
 ### Run Migrations Manually
 
-Use the application's **Terminal** in Coolify:
+1. In Coolify, go to **Projects** > **Median Code** > select the environment
+2. Click the API resource (e.g., `dev-api-median-code`)
+3. Click the **Terminal** tab at the top of the resource page
+4. Run:
 
 ```bash
 alembic -c alembic.ini upgrade head
