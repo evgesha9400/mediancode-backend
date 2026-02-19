@@ -9,8 +9,8 @@ import pytest_asyncio
 from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.database import FieldConstraintModel, Namespace, TypeModel
-from api.services.user_provisioning import UserProvisioningService
+from api.models.database import FieldConstraintModel, Namespace, TypeModel, UserModel
+from api.services.user import UserService
 from api.settings import get_settings
 
 PROVISION_USER_A = "test_provision_user_a"
@@ -22,8 +22,16 @@ async def cleanup_users(db_session: AsyncSession):
     """Clean up provisioned data after tests."""
     yield
 
-    for user_id in [PROVISION_USER_A, PROVISION_USER_B]:
-        await db_session.execute(delete(Namespace).where(Namespace.user_id == user_id))
+    for clerk_id in [PROVISION_USER_A, PROVISION_USER_B]:
+        result = await db_session.execute(
+            select(UserModel).where(UserModel.clerk_id == clerk_id)
+        )
+        user = result.scalar_one_or_none()
+        if user is not None:
+            await db_session.execute(
+                delete(Namespace).where(Namespace.user_id == user.id)
+            )
+            await db_session.execute(delete(UserModel).where(UserModel.id == user.id))
     await db_session.commit()
 
 
@@ -33,13 +41,13 @@ async def test_provisioning_creates_default_namespace(
     cleanup_users,
 ):
     """Test that provisioning creates a locked default namespace."""
-    service = UserProvisioningService(db_session)
-    await service.ensure_provisioned(PROVISION_USER_A)
+    service = UserService(db_session)
+    user = await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
 
     result = await db_session.execute(
         select(Namespace).where(
-            Namespace.user_id == PROVISION_USER_A,
+            Namespace.user_id == user.id,
             Namespace.is_default.is_(True),
         )
     )
@@ -48,7 +56,7 @@ async def test_provisioning_creates_default_namespace(
     assert namespace.name == "Global"
     assert namespace.locked is True
     assert namespace.is_default is True
-    assert namespace.user_id == PROVISION_USER_A
+    assert namespace.user_id == user.id
 
 
 @pytest.mark.asyncio
@@ -57,13 +65,13 @@ async def test_provisioned_namespace_is_empty(
     cleanup_users,
 ):
     """Test that provisioning does not copy types or constraints."""
-    service = UserProvisioningService(db_session)
-    await service.ensure_provisioned(PROVISION_USER_A)
+    service = UserService(db_session)
+    user = await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
 
     result = await db_session.execute(
         select(Namespace).where(
-            Namespace.user_id == PROVISION_USER_A,
+            Namespace.user_id == user.id,
             Namespace.is_default.is_(True),
         )
     )
@@ -90,8 +98,8 @@ async def test_provisioning_is_idempotent(
     cleanup_users,
 ):
     """Test that calling ensure_provisioned twice doesn't duplicate data."""
-    service = UserProvisioningService(db_session)
-    await service.ensure_provisioned(PROVISION_USER_A)
+    service = UserService(db_session)
+    user = await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
 
     # Call again
@@ -101,7 +109,7 @@ async def test_provisioning_is_idempotent(
     # Should still have exactly one default namespace
     result = await db_session.execute(
         select(Namespace).where(
-            Namespace.user_id == PROVISION_USER_A,
+            Namespace.user_id == user.id,
             Namespace.is_default.is_(True),
         )
     )
@@ -115,14 +123,14 @@ async def test_users_get_independent_namespaces(
     cleanup_users,
 ):
     """Test that two users get independent namespaces."""
-    service = UserProvisioningService(db_session)
-    await service.ensure_provisioned(PROVISION_USER_A)
-    await service.ensure_provisioned(PROVISION_USER_B)
+    service = UserService(db_session)
+    user_a = await service.ensure_provisioned(PROVISION_USER_A)
+    user_b = await service.ensure_provisioned(PROVISION_USER_B)
     await db_session.commit()
 
     result_a = await db_session.execute(
         select(Namespace).where(
-            Namespace.user_id == PROVISION_USER_A,
+            Namespace.user_id == user_a.id,
             Namespace.is_default.is_(True),
         )
     )
@@ -130,7 +138,7 @@ async def test_users_get_independent_namespaces(
 
     result_b = await db_session.execute(
         select(Namespace).where(
-            Namespace.user_id == PROVISION_USER_B,
+            Namespace.user_id == user_b.id,
             Namespace.is_default.is_(True),
         )
     )
@@ -146,8 +154,8 @@ async def test_system_namespace_types_visible_to_provisioned_user(
 ):
     """Test that seed types from the system namespace are visible via OR clause."""
     settings = get_settings()
-    service = UserProvisioningService(db_session)
-    await service.ensure_provisioned(PROVISION_USER_A)
+    service = UserService(db_session)
+    user = await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
 
     # Query types using the same OR pattern as TypeService.list_for_user()
@@ -156,7 +164,7 @@ async def test_system_namespace_types_visible_to_provisioned_user(
         .join(Namespace)
         .where(
             or_(
-                Namespace.user_id == PROVISION_USER_A,
+                Namespace.user_id == user.id,
                 Namespace.id == settings.system_namespace_id,
             )
         )
@@ -184,8 +192,8 @@ async def test_system_namespace_constraints_visible_to_provisioned_user(
 ):
     """Test that seed constraints from the system namespace are visible via OR clause."""
     settings = get_settings()
-    service = UserProvisioningService(db_session)
-    await service.ensure_provisioned(PROVISION_USER_A)
+    service = UserService(db_session)
+    user = await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
 
     # Query constraints using the same OR pattern as FieldConstraintService.list_for_user()
@@ -194,7 +202,7 @@ async def test_system_namespace_constraints_visible_to_provisioned_user(
         .join(Namespace)
         .where(
             or_(
-                Namespace.user_id == PROVISION_USER_A,
+                Namespace.user_id == user.id,
                 Namespace.id == settings.system_namespace_id,
             )
         )
