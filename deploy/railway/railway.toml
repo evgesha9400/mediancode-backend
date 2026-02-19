@@ -1,9 +1,0 @@
-[build]
-dockerfilePath = "Dockerfile"
-
-[deploy]
-healthcheckPath = "/health"
-healthcheckTimeout = 30
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3
-preDeployCommand = "alembic -c alembic.ini upgrade head"

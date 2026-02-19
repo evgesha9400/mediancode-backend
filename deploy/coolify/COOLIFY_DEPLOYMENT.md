@@ -203,7 +203,7 @@ Select the **development** environment, then:
 
 | Field              | Value                    |
 | ------------------ | ------------------------ |
-| **Name**           | `median-code-dev-db`     |
+| **Name**           | `dev-db-median-code`     |
 | **Description**    | `Development database for Median Code Backend` |
 | **Image**          | `postgres:18-alpine` |
 | **Username**       | `postgres` (default, leave as-is) |
@@ -229,7 +229,7 @@ In the application resource, go to **General** tab:
 
 | Field                  | Value                                        |
 | ---------------------- | -------------------------------------------- |
-| **Name**               | `median-code-dev-api`                        |
+| **Name**               | `dev-api-median-code`                        |
 | **Description**        | `Development API for Median Code Backend`    |
 | **Build Pack**         | `Dockerfile`                                 |
 | **Domains**            | `https://dev.api.mediancode.com` (or leave the auto-generated sslip.io URL for initial testing) |
@@ -287,7 +287,7 @@ Go to the **Resource Limits** tab. These limits ensure dev containers don't star
 
 > **Important**: Memory values must include the `m` suffix (e.g., `256m` not `256`). Without the suffix, Docker interprets the value as bytes and rejects it with "Minimum memory limit allowed is 6MB".
 
-**For the API container (`median-code-dev-api`):**
+**For the API container (`dev-api-median-code`):**
 
 | Field                  | Value  | Notes                                              |
 | ---------------------- | ------ | -------------------------------------------------- |
@@ -299,7 +299,7 @@ Go to the **Resource Limits** tab. These limits ensure dev containers don't star
 | **Maximum Memory Limit** | `256m` | Hard cap — container is OOM-killed if exceeded   |
 | **Maximum Swap Limit** | `0`    |                                                    |
 
-**For the database (`median-code-dev-db`):** apply the same values via its Resource Limits tab.
+**For the database (`dev-db-median-code`):** apply the same values via its Resource Limits tab.
 
 ### 9h. Verify Advanced Settings
 
@@ -341,7 +341,7 @@ Select the **production** environment, then:
 
 | Field              | Value                    |
 | ------------------ | ------------------------ |
-| **Name**           | `median-code-prod-db`    |
+| **Name**           | `prod-db-median-code`    |
 | **Description**    | `Production database for Median Code Backend` |
 | **Image**          | `postgres:18-alpine` |
 | **Username**       | `postgres` (default, leave as-is) |
@@ -367,7 +367,7 @@ In the application resource, go to **General** tab:
 
 | Field                  | Value                                        |
 | ---------------------- | -------------------------------------------- |
-| **Name**               | `median-code-prod-api`                       |
+| **Name**               | `prod-api-median-code`                       |
 | **Description**        | `Production API for Median Code Backend`     |
 | **Build Pack**         | `Dockerfile`                                 |
 | **Domains**            | `https://api.mediancode.com` (or leave the auto-generated sslip.io URL for initial testing) |
@@ -415,7 +415,7 @@ Click **Enable Healthcheck**, then **Save**.
 
 Go to the **Resource Limits** tab. Production gets ~2x the resources of development.
 
-**For the API container (`median-code-prod-api`):**
+**For the API container (`prod-api-median-code`):**
 
 | Field                  | Value  | Notes                                              |
 | ---------------------- | ------ | -------------------------------------------------- |
@@ -427,7 +427,7 @@ Go to the **Resource Limits** tab. Production gets ~2x the resources of developm
 | **Maximum Memory Limit** | `512m` | Hard cap — container is OOM-killed if exceeded   |
 | **Maximum Swap Limit** | `0`    |                                                    |
 
-**For the database (`median-code-prod-db`):** apply the same values via its Resource Limits tab.
+**For the database (`prod-db-median-code`):** apply the same values via its Resource Limits tab.
 
 ### 10h. Verify Advanced Settings
 
@@ -474,15 +474,15 @@ The CI workflow lives in `.github/workflows/ci.yml`. It runs tests on every push
 
 For each application resource, copy the webhook URL:
 
-**Development (`median-code-dev-api`):**
+**Development (`dev-api-median-code`):**
 
-1. Open the `median-code-dev-api` application resource
+1. Open the `dev-api-median-code` application resource
 2. Go to the **Webhooks** tab
 3. Copy the **Deploy Webhook** URL
 
-**Production (`median-code-prod-api`):**
+**Production (`prod-api-median-code`):**
 
-1. Open the `median-code-prod-api` application resource
+1. Open the `prod-api-median-code` application resource
 2. Go to the **Webhooks** tab
 3. Copy the **Deploy Webhook** URL
 
@@ -506,7 +506,7 @@ Go to your GitHub repository **Settings** > **Secrets and variables** > **Action
 
 | Variable          | Value                                        |
 | ----------------- | -------------------------------------------- |
-| `COOLIFY_WEBHOOK` | Deploy webhook URL for `median-code-dev-api` from step 11c |
+| `COOLIFY_WEBHOOK` | Deploy webhook URL for `dev-api-median-code` from step 11c |
 
 **`production` environment:**
 
@@ -516,7 +516,7 @@ Go to your GitHub repository **Settings** > **Secrets and variables** > **Action
 
 | Variable          | Value                                         |
 | ----------------- | --------------------------------------------- |
-| `COOLIFY_WEBHOOK` | Deploy webhook URL for `median-code-prod-api` from step 11c |
+| `COOLIFY_WEBHOOK` | Deploy webhook URL for `prod-api-median-code` from step 11c |
 
 > The `COOLIFY_TOKEN` secret is shared at the repo level (one Coolify instance). The `COOLIFY_WEBHOOK` variable differs per environment. The workflow automatically selects the correct environment based on the branch (`main` → `production`, `develop` → `development`).
 
@@ -583,7 +583,23 @@ psql -U postgres -d median_code
 
 Use an SSH tunnel to connect from DBeaver, TablePlus, or other local clients. This avoids exposing the database port publicly — all traffic is encrypted through your SSH key.
 
-Both databases listen on port 5432 inside their containers. Map them to different local ports to avoid conflicts:
+Both databases listen on port 5432 inside their containers. Map them to different local ports to avoid conflicts.
+
+#### Finding the container hostname
+
+Coolify generates random container names for database resources (e.g., `ys4gwgscgwg4ss40k4g4o4wk`). To find the hostname for each database:
+
+1. Open the Postgres resource in Coolify (e.g., `dev-db-median-code`)
+2. Go to the **General** tab
+3. Copy the **Postgres URL (internal)** — the hostname between `@` and `:5432` is the container name
+
+Example: if the internal URL is `postgresql://postgres:pass@ys4gwgscgwg4ss40k4g4o4wk:5432/postgres`, the container hostname is `ys4gwgscgwg4ss40k4g4o4wk`.
+
+> These hostnames survive restarts but change on redeployment. If you redeploy a database, update your tunnel config with the new hostname.
+
+#### DB client configuration
+
+Replace `<dev-db-host>` and `<prod-db-host>` below with the container hostnames from the step above.
 
 **Development database:**
 
@@ -597,7 +613,7 @@ Both databases listen on port 5432 inside their containers. Map them to differen
 | **SSH Host**      | `median-server` (or droplet IP) |
 | **SSH User**      | `root`                        |
 | **SSH Key**       | `~/.ssh/digitalocean`         |
-| **SSH Tunnel Port** | `5432` → `median-code-dev-db:5432` |
+| **SSH Tunnel Port** | `5432` → `<dev-db-host>:5432` |
 
 **Production database:**
 
@@ -611,14 +627,14 @@ Both databases listen on port 5432 inside their containers. Map them to differen
 | **SSH Host**      | `median-server` (or droplet IP) |
 | **SSH User**      | `root`                        |
 | **SSH Key**       | `~/.ssh/digitalocean`         |
-| **SSH Tunnel Port** | `5433` → `median-code-prod-db:5432` |
+| **SSH Tunnel Port** | `5433` → `<prod-db-host>:5432` |
 
 > Both DB clients and CLI tools support SSH tunnels. In DBeaver: Connection Settings > SSH tab. In TablePlus: right-click connection > Edit > SSH tab.
 
 **CLI alternative** — forward both ports in one command:
 
 ```bash
-ssh -L 5432:median-code-dev-db:5432 -L 5433:median-code-prod-db:5432 median-server -N
+ssh -L 5432:<dev-db-host>:5432 -L 5433:<prod-db-host>:5432 median-server -N
 ```
 
 Then connect your client to `localhost:5432` (dev) or `localhost:5433` (prod).
@@ -751,4 +767,4 @@ Consider upgrading to a $12/mo droplet (2GB RAM) if consistently hitting limits.
 | SSL Certificates (Let's Encrypt)  | Free          |
 | **Total**                         | **$6-12/mo**  |
 
-> Compare to Railway (~$15-25/mo) or DO App Platform (~$24/mo) for the same two-environment setup.
+> Compare to DO App Platform (~$24/mo) for the same two-environment setup.

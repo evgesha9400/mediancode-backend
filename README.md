@@ -57,11 +57,14 @@ make migration msg="..."    # Create new migration file
 ## Architecture
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Vercel         │     │  Railway        │     │  Railway        │
-│  Frontend       │────>│  Backend        │────>│  PostgreSQL     │
-│  (Next.js)      │     │  (FastAPI)      │     │                 │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
+┌─────────────────┐     ┌───────────────────────────────────────────────┐
+│  Vercel         │     │  Digital Ocean Droplet (Coolify)               │
+│  Frontend       │     │                                               │
+│  (Next.js)      │────>│  ┌─────────────┐     ┌─────────────────────┐  │
+└─────────────────┘     │  │  Backend     │────>│  PostgreSQL         │  │
+        │               │  │  (FastAPI)   │     │                     │  │
+        │               │  └─────────────┘     └─────────────────────┘  │
+        │               └───────────────────────────────────────────────┘
         │                       │
         └───────────────────────┘
                   │
@@ -120,8 +123,8 @@ src/
 | File | Purpose | Gitignored |
 |------|---------|------------|
 | `.env.local` | Local development | Yes |
-| `.env.development` | Railway dev secrets | Yes |
-| `.env.production` | Railway prod secrets | Yes |
+| `.env.development` | Deployed dev secrets | Yes |
+| `.env.production` | Deployed prod secrets | Yes |
 | `.env.*.example` | Templates | No |
 
 ## Development Workflow
@@ -131,38 +134,23 @@ Local (.env.local)
     │
     v
 Development Branch (develop)
-    │  make deploy-dev
+    │  git push → CI → Coolify webhook
     v
-Railway Development Environment
+Coolify Development Environment (dev.api.mediancode.com)
     │
     v
 Main Branch (main)
-    │  make deploy-prod
+    │  git push → CI → Coolify webhook
     v
-Railway Production Environment
+Coolify Production Environment (api.mediancode.com)
 ```
 
 ## Deployment
 
-See [deploy/railway/README.md](deploy/railway/README.md) for Railway deployment.
+Deployed on a Digital Ocean droplet via [Coolify](https://coolify.io/) (self-hosted PaaS).
+See [deploy/coolify/COOLIFY_DEPLOYMENT.md](deploy/coolify/COOLIFY_DEPLOYMENT.md) for full setup instructions.
 
-```bash
-# Deploy to development
-make deploy-dev
-
-# Deploy to production
-make deploy-prod
-
-# Preview without deploying
-make deploy-dev-dry
-make deploy-prod-dry
-
-# Railway database migrations
-make migrate-dev            # Run migrations on Railway development
-make migrate-prod           # Run migrations on Railway production
-make migrate-dev-status     # Show migration status on development
-make migrate-prod-status    # Show migration status on production
-```
+Deployments are CI-gated: pushing to `develop` or `main` triggers GitHub Actions (lint + test), and on success a webhook triggers Coolify to build and deploy automatically. Migrations run on every deploy via `entrypoint.sh`.
 
 ## Code Generation Pipeline
 

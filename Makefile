@@ -55,35 +55,6 @@ test-codegen: ## Run codegen tests (fast, no DB needed)
 	@$(POETRY) run pytest -m codegen
 
 # =============================================================================
-#  DEPLOY TO RAILWAY
-#  Deploy backend to Railway environments
-# =============================================================================
-
-.PHONY: deploy-dev
-deploy-dev: ## Deploy to DEVELOPMENT (reads .env.development)
-	@$(PYTHON) deploy/railway/deploy.py --env development
-
-.PHONY: deploy-prod
-deploy-prod: ## Deploy to PRODUCTION (reads .env.production)
-	@$(PYTHON) deploy/railway/deploy.py --env production
-
-.PHONY: deploy-dev-dry
-deploy-dev-dry: ## Preview development deploy (no changes)
-	@$(PYTHON) deploy/railway/deploy.py --env development --dry-run
-
-.PHONY: deploy-prod-dry
-deploy-prod-dry: ## Preview production deploy (no changes)
-	@$(PYTHON) deploy/railway/deploy.py --env production --dry-run
-
-.PHONY: logs
-logs: ## View Railway logs (current environment)
-	@railway logs
-
-.PHONY: dashboard
-dashboard: ## Open Railway dashboard
-	@railway open
-
-# =============================================================================
 #  LOCAL DATABASE MIGRATIONS
 #  Run against your local PostgreSQL (from docker-compose)
 # =============================================================================
@@ -107,29 +78,6 @@ migrate-history: ## Show migration history (local)
 .PHONY: migrate-current
 migrate-current: ## Show current migration version (local)
 	@$(POETRY) run alembic current
-
-# =============================================================================
-#  RAILWAY DATABASE MIGRATIONS
-#  Run against Railway PostgreSQL (without full deploy)
-# =============================================================================
-
-.PHONY: migrate-dev
-migrate-dev: ## Run migrations on Railway DEVELOPMENT
-	@echo "Running migrations on Railway development..."
-	@railway run -e development alembic upgrade head
-
-.PHONY: migrate-prod
-migrate-prod: ## Run migrations on Railway PRODUCTION
-	@echo "Running migrations on Railway production..."
-	@railway run -e production alembic upgrade head
-
-.PHONY: migrate-dev-status
-migrate-dev-status: ## Show migration status on Railway DEVELOPMENT
-	@railway run -e development alembic current
-
-.PHONY: migrate-prod-status
-migrate-prod-status: ## Show migration status on Railway PRODUCTION
-	@railway run -e production alembic current
 
 # =============================================================================
 #  UTILITIES
@@ -171,25 +119,11 @@ help: ## Show this help message
 	@echo "  make db-reset        Reset database: delete data, restart, re-migrate"
 	@echo "  make test            Run tests"
 	@echo ""
-	@echo "DEPLOY TO RAILWAY:"
-	@echo "  make deploy-dev      Deploy to DEVELOPMENT (reads .env.development)"
-	@echo "  make deploy-prod     Deploy to PRODUCTION (reads .env.production)"
-	@echo "  make deploy-dev-dry  Preview development deploy (no changes)"
-	@echo "  make deploy-prod-dry Preview production deploy (no changes)"
-	@echo "  make logs            View Railway logs"
-	@echo "  make dashboard       Open Railway dashboard"
-	@echo ""
 	@echo "LOCAL DATABASE MIGRATIONS (runs against local Docker PostgreSQL):"
 	@echo "  make migrate-up      Apply pending migrations"
 	@echo "  make migrate-down    Rollback last migration"
 	@echo "  make migrate-history Show migration history"
 	@echo "  make migration msg=\"...\"  Create new migration file"
-	@echo ""
-	@echo "RAILWAY DATABASE MIGRATIONS (runs against Railway PostgreSQL):"
-	@echo "  make migrate-dev     Run migrations on DEVELOPMENT"
-	@echo "  make migrate-prod    Run migrations on PRODUCTION"
-	@echo "  make migrate-dev-status   Show migration status on DEVELOPMENT"
-	@echo "  make migrate-prod-status  Show migration status on PRODUCTION"
 	@echo ""
 	@echo "UTILITIES:"
 	@echo "  make clean           Remove Python caches"

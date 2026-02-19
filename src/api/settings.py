@@ -46,9 +46,9 @@ class Settings(BaseSettings):
     def ensure_asyncpg_scheme(cls, v: str) -> str:
         """Ensure database URL uses the asyncpg driver scheme.
 
-        Railway and other PaaS providers inject DATABASE_URL with
-        ``postgres://`` or ``postgresql://`` scheme. SQLAlchemy's async
-        engine requires ``postgresql+asyncpg://``.
+        PaaS providers often inject DATABASE_URL with ``postgres://``
+        or ``postgresql://`` scheme. SQLAlchemy's async engine requires
+        ``postgresql+asyncpg://``.
 
         :param v: Raw database URL from environment.
         :returns: URL with ``postgresql+asyncpg://`` scheme.
