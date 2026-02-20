@@ -11,10 +11,12 @@ from api.models.database import (
     ApiEndpoint,
     FieldConstraintValueAssociation,
     FieldModel,
+    FieldValidatorAssociation,
     Namespace,
     ObjectFieldAssociation,
 )
 from api.schemas.field import FieldConstraintValueInput, FieldCreate, FieldUpdate
+from api.schemas.field_validator import FieldValidatorReferenceInput
 from api.services.base import BaseService
 
 
@@ -45,6 +47,9 @@ class FieldService(BaseService[FieldModel]):
                 selectinload(FieldModel.constraint_values).selectinload(
                     FieldConstraintValueAssociation.constraint
                 ),
+                selectinload(FieldModel.validator_associations).selectinload(
+                    FieldValidatorAssociation.validator
+                ),
             )
             .where(Namespace.user_id == user_id)
         )
@@ -69,6 +74,9 @@ class FieldService(BaseService[FieldModel]):
                 selectinload(FieldModel.field_type),
                 selectinload(FieldModel.constraint_values).selectinload(
                     FieldConstraintValueAssociation.constraint
+                ),
+                selectinload(FieldModel.validator_associations).selectinload(
+                    FieldValidatorAssociation.validator
                 ),
             )
             .where(
@@ -103,6 +111,9 @@ class FieldService(BaseService[FieldModel]):
         if data.constraints:
             await self._set_constraint_associations(field, data.constraints)
 
+        if data.validators:
+            await self._set_validator_associations(field, data.validators)
+
         await self.db.refresh(field)
         return field
 
@@ -122,6 +133,9 @@ class FieldService(BaseService[FieldModel]):
 
         if data.constraints is not None:
             await self._set_constraint_associations(field, data.constraints)
+
+        if data.validators is not None:
+            await self._set_validator_associations(field, data.validators)
 
         await self.db.flush()
         await self.db.refresh(field)
@@ -145,6 +159,27 @@ class FieldService(BaseService[FieldModel]):
                 constraint_id=c.constraint_id,
                 field_id=field.id,
                 value=c.value,
+            )
+            self.db.add(assoc)
+        await self.db.flush()
+
+    async def _set_validator_associations(
+        self, field: FieldModel, validators: list[FieldValidatorReferenceInput]
+    ) -> None:
+        """Replace validator associations for a field.
+
+        :param field: The field model.
+        :param validators: New validator inputs (empty list clears all).
+        """
+        await self.db.execute(
+            delete(FieldValidatorAssociation).where(
+                FieldValidatorAssociation.field_id == field.id
+            )
+        )
+        for v in validators:
+            assoc = FieldValidatorAssociation(
+                validator_id=v.validator_id,
+                field_id=field.id,
             )
             self.db.add(assoc)
         await self.db.flush()

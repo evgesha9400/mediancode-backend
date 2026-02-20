@@ -312,6 +312,9 @@ class FieldModel(Base):
     constraint_values: Mapped[list["FieldConstraintValueAssociation"]] = relationship(
         back_populates="field", cascade="all, delete-orphan"
     )
+    validator_associations: Mapped[list["FieldValidatorAssociation"]] = relationship(
+        back_populates="field", cascade="all, delete-orphan"
+    )
 
 
 class FieldValidatorModel(Base):
@@ -343,6 +346,10 @@ class FieldValidatorModel(Base):
     mode: Mapped[str] = mapped_column(Text, nullable=False)
     function_body: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    compatible_types: Mapped[list] = mapped_column(
+        ARRAY(Text), nullable=False, server_default="{}"
+    )
 
     # Relationships
     user: Mapped["UserModel | None"] = relationship(back_populates="field_validators")
@@ -382,7 +389,7 @@ class FieldValidatorAssociation(Base):
     validator: Mapped["FieldValidatorModel"] = relationship(
         back_populates="field_associations"
     )
-    field: Mapped["FieldModel"] = relationship()
+    field: Mapped["FieldModel"] = relationship(back_populates="validator_associations")
 
 
 class ObjectDefinition(Base):

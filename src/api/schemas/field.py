@@ -5,6 +5,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from api.schemas.field_validator import (
+    FieldValidatorReferenceInput,
+    FieldValidatorReferenceResponse,
+)
+
 
 class FieldConstraintValueInput(BaseModel):
     """Request schema for attaching a field constraint to a field.
@@ -55,6 +60,7 @@ class FieldCreate(BaseModel):
     description: str | None = Field(default=None, examples=["User email address"])
     default_value: str | None = Field(default=None, alias="defaultValue", examples=[""])
     constraints: list[FieldConstraintValueInput] = Field(default_factory=list)
+    validators: list[FieldValidatorReferenceInput] = Field(default_factory=list)
 
 
 class FieldUpdate(BaseModel):
@@ -72,6 +78,7 @@ class FieldUpdate(BaseModel):
         default=None, alias="defaultValue", examples=["new_default"]
     )
     constraints: list[FieldConstraintValueInput] | None = Field(default=None)
+    validators: list[FieldValidatorReferenceInput] | None = Field(default=None)
 
 
 class FieldResponse(BaseModel):
@@ -103,5 +110,6 @@ class FieldResponse(BaseModel):
         examples=[["00000000-0000-0000-0004-000000000001"]],
     )
     constraints: list[FieldConstraintValueResponse] = Field(default_factory=list)
+    validators: list[FieldValidatorReferenceResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

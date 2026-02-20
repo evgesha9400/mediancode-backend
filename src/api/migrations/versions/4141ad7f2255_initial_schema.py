@@ -235,6 +235,13 @@ def upgrade() -> None:
         sa.Column("mode", sa.Text(), nullable=False),
         sa.Column("function_body", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("name", sa.Text(), nullable=True),
+        sa.Column(
+            "compatible_types",
+            postgresql.ARRAY(sa.Text()),
+            nullable=False,
+            server_default="{}",
+        ),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),

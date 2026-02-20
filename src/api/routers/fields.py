@@ -10,6 +10,7 @@ from api.schemas.field import (
     FieldResponse,
     FieldUpdate,
 )
+from api.schemas.field_validator import FieldValidatorReferenceResponse
 from api.services.field import FieldService, get_field_service
 
 router = APIRouter(prefix="/fields", tags=["Fields"])
@@ -40,6 +41,14 @@ async def _to_response(field, service: FieldService) -> FieldResponse:
         )
         for cv in field.constraint_values
     ]
+    validators = [
+        FieldValidatorReferenceResponse(
+            validator_id=va.validator_id,
+            function_name=va.validator.function_name,
+            name=va.validator.name,
+        )
+        for va in field.validator_associations
+    ]
     return FieldResponse(
         id=field.id,
         namespace_id=field.namespace_id,
@@ -49,6 +58,7 @@ async def _to_response(field, service: FieldService) -> FieldResponse:
         default_value=field.default_value,
         used_in_apis=used_in_apis,
         constraints=constraints,
+        validators=validators,
     )
 
 
