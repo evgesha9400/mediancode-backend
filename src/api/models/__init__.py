@@ -9,9 +9,11 @@ from api.models.database import (
     FieldValidatorAssociation,
     FieldValidatorModel,
     GenerationModel,
+    ModelValidatorModel,
     Namespace,
     ObjectDefinition,
     ObjectFieldAssociation,
+    ObjectModelValidatorAssociation,
     TypeModel,
     UserModel,
 )
@@ -24,9 +26,11 @@ __all__ = [
     "FieldValidatorAssociation",
     "FieldValidatorModel",
     "GenerationModel",
+    "ModelValidatorModel",
     "Namespace",
     "ObjectDefinition",
     "ObjectFieldAssociation",
+    "ObjectModelValidatorAssociation",
     "TypeModel",
     "UserModel",
 ]

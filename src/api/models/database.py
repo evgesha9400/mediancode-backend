@@ -466,10 +466,11 @@ class ModelValidatorModel(Base):
     :ivar id: Unique identifier for the validator.
     :ivar namespace_id: Reference to the containing namespace.
     :ivar user_id: Owner user ID (null for system validators).
-    :ivar function_name: Name of the validation function.
-    :ivar mode: Validator mode ("before", "after", "wrap").
-    :ivar function_body: Python source code of the validator function.
+    :ivar name: Name of the validation function.
+    :ivar mode: Validator mode ("before", "after").
+    :ivar code: Python source code of the validator function.
     :ivar description: Optional description of the validator.
+    :ivar required_fields: List of field names required by this validator.
     """
 
     __tablename__ = "model_validators"
@@ -483,10 +484,13 @@ class ModelValidatorModel(Base):
     user_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
     )
-    function_name: Mapped[str] = mapped_column(Text, nullable=False)
-    mode: Mapped[str] = mapped_column(Text, nullable=False)  # "before", "after", "wrap"
-    function_body: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    mode: Mapped[str] = mapped_column(Text, nullable=False)
+    code: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    required_fields: Mapped[list] = mapped_column(
+        ARRAY(Text), nullable=False, server_default="{}"
+    )
 
     # Relationships
     user: Mapped["UserModel | None"] = relationship(back_populates="model_validators")
