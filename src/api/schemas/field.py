@@ -5,11 +5,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from api.schemas.field_validator import (
-    FieldValidatorReferenceInput,
-    FieldValidatorReferenceResponse,
-)
-
 
 class FieldConstraintValueInput(BaseModel):
     """Request schema for attaching a field constraint to a field.
@@ -39,6 +34,42 @@ class FieldConstraintValueResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
+class FieldValidatorInput(BaseModel):
+    """Request schema for an inline field validator definition.
+
+    :ivar function_name: Python function name for the validator.
+    :ivar mode: Validator mode (before, after, wrap, plain).
+    :ivar function_body: Python source code of the validator function.
+    :ivar description: Optional description.
+    """
+
+    function_name: str = Field(..., alias="functionName")
+    mode: str
+    function_body: str = Field(..., alias="functionBody")
+    description: str | None = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class FieldValidatorResponse(BaseModel):
+    """Response schema for a field validator attached to a field.
+
+    :ivar id: Unique identifier for the validator.
+    :ivar function_name: Python function name.
+    :ivar mode: Validator mode.
+    :ivar function_body: Python source code.
+    :ivar description: Optional description.
+    """
+
+    id: UUID
+    function_name: str = Field(..., alias="functionName")
+    mode: str
+    function_body: str = Field(..., alias="functionBody")
+    description: str | None = None
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
 class FieldCreate(BaseModel):
     """Request schema for creating a field.
 
@@ -48,6 +79,7 @@ class FieldCreate(BaseModel):
     :ivar description: Field description.
     :ivar default_value: Default value expression.
     :ivar constraints: Constraints to attach to this field.
+    :ivar validators: Inline validator definitions for this field.
     """
 
     namespace_id: UUID = Field(
@@ -60,7 +92,7 @@ class FieldCreate(BaseModel):
     description: str | None = Field(default=None, examples=["User email address"])
     default_value: str | None = Field(default=None, alias="defaultValue", examples=[""])
     constraints: list[FieldConstraintValueInput] = Field(default_factory=list)
-    validators: list[FieldValidatorReferenceInput] = Field(default_factory=list)
+    validators: list[FieldValidatorInput] = Field(default_factory=list)
 
 
 class FieldUpdate(BaseModel):
@@ -70,6 +102,7 @@ class FieldUpdate(BaseModel):
     :ivar description: Updated description.
     :ivar default_value: Updated default value.
     :ivar constraints: Updated constraints (None = don't touch, [] = clear all).
+    :ivar validators: Updated validators (None = don't touch, [] = clear all).
     """
 
     name: str | None = Field(default=None, examples=["updated_field_name"])
@@ -78,7 +111,7 @@ class FieldUpdate(BaseModel):
         default=None, alias="defaultValue", examples=["new_default"]
     )
     constraints: list[FieldConstraintValueInput] | None = Field(default=None)
-    validators: list[FieldValidatorReferenceInput] | None = Field(default=None)
+    validators: list[FieldValidatorInput] | None = Field(default=None)
 
 
 class FieldResponse(BaseModel):
@@ -92,6 +125,7 @@ class FieldResponse(BaseModel):
     :ivar default_value: Default value expression.
     :ivar used_in_apis: Array of endpoint IDs where this field is used.
     :ivar constraints: Constraints attached to this field.
+    :ivar validators: Validators attached to this field.
     """
 
     id: UUID = Field(..., examples=["00000000-0000-0000-0003-000000000001"])
@@ -110,6 +144,6 @@ class FieldResponse(BaseModel):
         examples=[["00000000-0000-0000-0004-000000000001"]],
     )
     constraints: list[FieldConstraintValueResponse] = Field(default_factory=list)
-    validators: list[FieldValidatorReferenceResponse] = Field(default_factory=list)
+    validators: list[FieldValidatorResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
