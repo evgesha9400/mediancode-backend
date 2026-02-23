@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from api.deps import DbSession, ProvisionedUser
 from api.schemas.object import (
+    ModelValidatorResponse,
     ObjectCreate,
     ObjectFieldReferenceSchema,
     ObjectResponse,
@@ -35,6 +36,16 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
         ObjectFieldReferenceSchema(field_id=fa.field_id, required=fa.required)
         for fa in sorted(obj.field_associations, key=lambda x: x.position)
     ]
+    validators = [
+        ModelValidatorResponse(
+            id=v.id,
+            function_name=v.function_name,
+            mode=v.mode,
+            function_body=v.function_body,
+            description=v.description,
+        )
+        for v in sorted(obj.validators, key=lambda x: x.position)
+    ]
     used_in_apis = await service.get_used_in_apis(obj.id)
     return ObjectResponse(
         id=obj.id,
@@ -43,6 +54,7 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
         description=obj.description,
         fields=fields,
         used_in_apis=used_in_apis,
+        validators=validators,
     )
 
 

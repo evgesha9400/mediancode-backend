@@ -16,9 +16,7 @@ from api.routers import (
     apis_router,
     endpoints_router,
     field_constraints_router,
-    field_validators_router,
     fields_router,
-    model_validators_router,
     namespaces_router,
     objects_router,
     types_router,
@@ -110,8 +108,6 @@ app.include_router(namespaces_router, prefix=api_v1_prefix)
 app.include_router(apis_router, prefix=api_v1_prefix)
 app.include_router(types_router, prefix=api_v1_prefix)
 app.include_router(field_constraints_router, prefix=api_v1_prefix)
-app.include_router(field_validators_router, prefix=api_v1_prefix)
-app.include_router(model_validators_router, prefix=api_v1_prefix)
 app.include_router(fields_router, prefix=api_v1_prefix)
 app.include_router(objects_router, prefix=api_v1_prefix)
 app.include_router(endpoints_router, prefix=api_v1_prefix)

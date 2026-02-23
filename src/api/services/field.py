@@ -3,6 +3,7 @@
 
 from uuid import UUID
 
+from fastapi import HTTPException, status
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -11,12 +12,16 @@ from api.models.database import (
     ApiEndpoint,
     FieldConstraintValueAssociation,
     FieldModel,
-    FieldValidatorAssociation,
+    FieldValidatorModel,
     Namespace,
     ObjectFieldAssociation,
 )
-from api.schemas.field import FieldConstraintValueInput, FieldCreate, FieldUpdate
-from api.schemas.field_validator import FieldValidatorReferenceInput
+from api.schemas.field import (
+    FieldConstraintValueInput,
+    FieldCreate,
+    FieldUpdate,
+    FieldValidatorInput,
+)
 from api.services.base import BaseService
 
 
@@ -27,6 +32,16 @@ class FieldService(BaseService[FieldModel]):
     """
 
     model_class = FieldModel
+
+    def _field_load_options(self):
+        """Standard eager-load options for field queries."""
+        return [
+            selectinload(FieldModel.field_type),
+            selectinload(FieldModel.constraint_values).selectinload(
+                FieldConstraintValueAssociation.constraint
+            ),
+            selectinload(FieldModel.validators),
+        ]
 
     async def list_for_user(
         self,
@@ -42,15 +57,7 @@ class FieldService(BaseService[FieldModel]):
         query = (
             select(FieldModel)
             .join(Namespace)
-            .options(
-                selectinload(FieldModel.field_type),
-                selectinload(FieldModel.constraint_values).selectinload(
-                    FieldConstraintValueAssociation.constraint
-                ),
-                selectinload(FieldModel.validator_associations).selectinload(
-                    FieldValidatorAssociation.validator
-                ),
-            )
+            .options(*self._field_load_options())
             .where(Namespace.user_id == user_id)
         )
         if namespace_id:
@@ -70,15 +77,7 @@ class FieldService(BaseService[FieldModel]):
         query = (
             select(FieldModel)
             .join(Namespace)
-            .options(
-                selectinload(FieldModel.field_type),
-                selectinload(FieldModel.constraint_values).selectinload(
-                    FieldConstraintValueAssociation.constraint
-                ),
-                selectinload(FieldModel.validator_associations).selectinload(
-                    FieldValidatorAssociation.validator
-                ),
-            )
+            .options(*self._field_load_options())
             .where(
                 FieldModel.id == field_id,
                 Namespace.user_id == user_id,
@@ -112,7 +111,7 @@ class FieldService(BaseService[FieldModel]):
             await self._set_constraint_associations(field, data.constraints)
 
         if data.validators:
-            await self._set_validator_associations(field, data.validators)
+            await self._set_validators(field, data.validators)
 
         await self.db.refresh(field)
         return field
@@ -135,7 +134,7 @@ class FieldService(BaseService[FieldModel]):
             await self._set_constraint_associations(field, data.constraints)
 
         if data.validators is not None:
-            await self._set_validator_associations(field, data.validators)
+            await self._set_validators(field, data.validators)
 
         await self.db.flush()
         await self.db.refresh(field)
@@ -163,25 +162,27 @@ class FieldService(BaseService[FieldModel]):
             self.db.add(assoc)
         await self.db.flush()
 
-    async def _set_validator_associations(
-        self, field: FieldModel, validators: list[FieldValidatorReferenceInput]
+    async def _set_validators(
+        self, field: FieldModel, validators: list[FieldValidatorInput]
     ) -> None:
-        """Replace validator associations for a field.
+        """Replace validators for a field.
 
         :param field: The field model.
         :param validators: New validator inputs (empty list clears all).
         """
         await self.db.execute(
-            delete(FieldValidatorAssociation).where(
-                FieldValidatorAssociation.field_id == field.id
-            )
+            delete(FieldValidatorModel).where(FieldValidatorModel.field_id == field.id)
         )
-        for v in validators:
-            assoc = FieldValidatorAssociation(
-                validator_id=v.validator_id,
+        for position, v in enumerate(validators):
+            validator = FieldValidatorModel(
                 field_id=field.id,
+                function_name=v.function_name,
+                mode=v.mode,
+                function_body=v.function_body,
+                description=v.description,
+                position=position,
             )
-            self.db.add(assoc)
+            self.db.add(validator)
         await self.db.flush()
 
     async def delete_field(self, field: FieldModel) -> None:
@@ -190,7 +191,6 @@ class FieldService(BaseService[FieldModel]):
         :param field: The field to delete.
         :raises HTTPException: If field is used in objects.
         """
-        # Check if field is used in any objects
         count_query = (
             select(func.count())
             .select_from(ObjectFieldAssociation)
@@ -211,20 +211,14 @@ class FieldService(BaseService[FieldModel]):
     async def get_used_in_apis(self, field_id: UUID) -> list[UUID]:
         """Get endpoint IDs where this field is used.
 
-        A field is considered "used" if it belongs to an object that is referenced
-        by an endpoint as query params, request body, or response body.
-
         :param field_id: The field's ID.
         :returns: List of endpoint IDs.
         """
-        # Find all objects that contain this field
         objects_subquery = (
             select(ObjectFieldAssociation.object_id)
             .where(ObjectFieldAssociation.field_id == field_id)
             .subquery()
         )
-
-        # Find all endpoints that reference these objects
         query = (
             select(ApiEndpoint.id)
             .where(
@@ -236,7 +230,6 @@ class FieldService(BaseService[FieldModel]):
             )
             .distinct()
         )
-
         result = await self.db.execute(query)
         return [row[0] for row in result.fetchall()]
 

@@ -3,17 +3,24 @@
 
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from fastapi import HTTPException, status
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from api.models.database import (
     ApiEndpoint,
+    ModelValidatorModel,
     Namespace,
     ObjectDefinition,
     ObjectFieldAssociation,
 )
-from api.schemas.object import ObjectCreate, ObjectFieldReferenceSchema, ObjectUpdate
+from api.schemas.object import (
+    ModelValidatorInput,
+    ObjectCreate,
+    ObjectFieldReferenceSchema,
+    ObjectUpdate,
+)
 from api.services.base import BaseService
 
 
@@ -25,6 +32,13 @@ class ObjectService(BaseService[ObjectDefinition]):
 
     model_class = ObjectDefinition
 
+    def _object_load_options(self):
+        """Standard eager-load options for object queries."""
+        return [
+            selectinload(ObjectDefinition.field_associations),
+            selectinload(ObjectDefinition.validators),
+        ]
+
     async def list_for_user(
         self,
         user_id: UUID,
@@ -34,12 +48,12 @@ class ObjectService(BaseService[ObjectDefinition]):
 
         :param user_id: The authenticated user's ID.
         :param namespace_id: Optional namespace filter.
-        :returns: List of user's objects with field associations loaded.
+        :returns: List of user's objects with field associations and validators loaded.
         """
         query = (
             select(ObjectDefinition)
             .join(Namespace)
-            .options(selectinload(ObjectDefinition.field_associations))
+            .options(*self._object_load_options())
             .where(Namespace.user_id == user_id)
         )
         if namespace_id:
@@ -59,7 +73,7 @@ class ObjectService(BaseService[ObjectDefinition]):
         query = (
             select(ObjectDefinition)
             .join(Namespace)
-            .options(selectinload(ObjectDefinition.field_associations))
+            .options(*self._object_load_options())
             .where(
                 ObjectDefinition.id == object_id,
                 Namespace.user_id == user_id,
@@ -89,8 +103,10 @@ class ObjectService(BaseService[ObjectDefinition]):
         self.db.add(obj)
         await self.db.flush()
 
-        # Add field associations
         await self._set_field_associations(obj, data.fields)
+
+        if data.validators:
+            await self._set_validators(obj, data.validators)
 
         await self.db.refresh(obj)
         return obj
@@ -111,6 +127,9 @@ class ObjectService(BaseService[ObjectDefinition]):
         if data.fields is not None:
             await self._set_field_associations(obj, data.fields)
 
+        if data.validators is not None:
+            await self._set_validators(obj, data.validators)
+
         await self.db.flush()
         await self.db.refresh(obj)
         return obj
@@ -121,7 +140,6 @@ class ObjectService(BaseService[ObjectDefinition]):
         :param obj: The object to delete.
         :raises HTTPException: If object is used in endpoints.
         """
-        # Check if object is used in any endpoints
         count_query = (
             select(func.count())
             .select_from(ApiEndpoint)
@@ -155,7 +173,6 @@ class ObjectService(BaseService[ObjectDefinition]):
         :param obj: The object to update field associations for.
         :param fields: List of field reference schemas.
         """
-        # Delete existing associations
         delete_query = select(ObjectFieldAssociation).where(
             ObjectFieldAssociation.object_id == obj.id
         )
@@ -163,7 +180,6 @@ class ObjectService(BaseService[ObjectDefinition]):
         for assoc in result.scalars().all():
             await self.db.delete(assoc)
 
-        # Add new associations
         for position, field_ref in enumerate(fields):
             assoc = ObjectFieldAssociation(
                 object_id=obj.id,
@@ -173,6 +189,29 @@ class ObjectService(BaseService[ObjectDefinition]):
             )
             self.db.add(assoc)
 
+        await self.db.flush()
+
+    async def _set_validators(
+        self, obj: ObjectDefinition, validators: list[ModelValidatorInput]
+    ) -> None:
+        """Replace model validators for an object.
+
+        :param obj: The object model.
+        :param validators: New validator inputs (empty list clears all).
+        """
+        await self.db.execute(
+            delete(ModelValidatorModel).where(ModelValidatorModel.object_id == obj.id)
+        )
+        for position, v in enumerate(validators):
+            validator = ModelValidatorModel(
+                object_id=obj.id,
+                function_name=v.function_name,
+                mode=v.mode,
+                function_body=v.function_body,
+                description=v.description,
+                position=position,
+            )
+            self.db.add(validator)
         await self.db.flush()
 
     async def get_used_in_apis(self, object_id: UUID) -> list[UUID]:
