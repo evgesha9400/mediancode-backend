@@ -59,12 +59,6 @@ class UserModel(Base):
     apis: Mapped[list["ApiModel"]] = relationship(back_populates="user")
     fields: Mapped[list["FieldModel"]] = relationship(back_populates="user")
     objects: Mapped[list["ObjectDefinition"]] = relationship(back_populates="user")
-    field_validators: Mapped[list["FieldValidatorModel"]] = relationship(
-        back_populates="user"
-    )
-    model_validators: Mapped[list["ModelValidatorModel"]] = relationship(
-        back_populates="user"
-    )
     generations: Mapped[list["GenerationModel"]] = relationship(back_populates="user")
 
 
@@ -144,12 +138,6 @@ class Namespace(Base):
         back_populates="namespace", cascade="all, delete-orphan"
     )
     field_constraints: Mapped[list["FieldConstraintModel"]] = relationship(
-        back_populates="namespace", cascade="all, delete-orphan"
-    )
-    field_validators: Mapped[list["FieldValidatorModel"]] = relationship(
-        back_populates="namespace", cascade="all, delete-orphan"
-    )
-    model_validators: Mapped[list["ModelValidatorModel"]] = relationship(
         back_populates="namespace", cascade="all, delete-orphan"
     )
 
@@ -312,23 +300,23 @@ class FieldModel(Base):
     constraint_values: Mapped[list["FieldConstraintValueAssociation"]] = relationship(
         back_populates="field", cascade="all, delete-orphan"
     )
-    validator_associations: Mapped[list["FieldValidatorAssociation"]] = relationship(
-        back_populates="field", cascade="all, delete-orphan"
+    validators: Mapped[list["FieldValidatorModel"]] = relationship(
+        back_populates="field",
+        cascade="all, delete-orphan",
+        order_by="FieldValidatorModel.position",
     )
 
 
 class FieldValidatorModel(Base):
-    """Custom field validator function definition.
-
-    User-defined Python validation functions that can be attached to fields.
+    """Field validator function owned by a specific field.
 
     :ivar id: Unique identifier for the validator.
-    :ivar namespace_id: Reference to the containing namespace.
-    :ivar user_id: Owner user ID (null for system validators).
+    :ivar field_id: Reference to the parent field.
     :ivar function_name: Name of the validation function.
     :ivar mode: Validator mode ("before", "after", "wrap", "plain").
     :ivar function_body: Python source code of the validator function.
     :ivar description: Optional description of the validator.
+    :ivar position: Display order position.
     """
 
     __tablename__ = "field_validators"
@@ -336,60 +324,20 @@ class FieldValidatorModel(Base):
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    namespace_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
-    )
-    user_id: Mapped[UUID | None] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
-    )
-    function_name: Mapped[str] = mapped_column(Text, nullable=False)
-    mode: Mapped[str] = mapped_column(Text, nullable=False)
-    function_body: Mapped[str] = mapped_column(Text, nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    compatible_types: Mapped[list] = mapped_column(
-        ARRAY(Text), nullable=False, server_default="{}"
-    )
-
-    # Relationships
-    user: Mapped["UserModel | None"] = relationship(back_populates="field_validators")
-    namespace: Mapped["Namespace"] = relationship(back_populates="field_validators")
-    field_associations: Mapped[list["FieldValidatorAssociation"]] = relationship(
-        back_populates="validator", cascade="all, delete-orphan"
-    )
-
-
-class FieldValidatorAssociation(Base):
-    """Association between a custom field validator and a field.
-
-    :ivar id: Unique identifier for the association.
-    :ivar validator_id: Reference to the field validator.
-    :ivar field_id: Reference to the field.
-    """
-
-    __tablename__ = "field_validator_field_associations"
-
-    id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
-    )
-    validator_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True),
-        ForeignKey("field_validators.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
     field_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True),
         ForeignKey("fields.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
+    function_name: Mapped[str] = mapped_column(Text, nullable=False)
+    mode: Mapped[str] = mapped_column(Text, nullable=False)
+    function_body: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    position: Mapped[int] = mapped_column(default=0, nullable=False)
 
     # Relationships
-    validator: Mapped["FieldValidatorModel"] = relationship(
-        back_populates="field_associations"
-    )
-    field: Mapped["FieldModel"] = relationship(back_populates="validator_associations")
+    field: Mapped["FieldModel"] = relationship(back_populates="validators")
 
 
 class ObjectDefinition(Base):
@@ -421,6 +369,11 @@ class ObjectDefinition(Base):
     namespace: Mapped["Namespace"] = relationship(back_populates="objects")
     field_associations: Mapped[list["ObjectFieldAssociation"]] = relationship(
         back_populates="object", cascade="all, delete-orphan"
+    )
+    validators: Mapped[list["ModelValidatorModel"]] = relationship(
+        back_populates="object",
+        cascade="all, delete-orphan",
+        order_by="ModelValidatorModel.position",
     )
 
 
@@ -459,18 +412,15 @@ class ObjectFieldAssociation(Base):
 
 
 class ModelValidatorModel(Base):
-    """Custom model validator function definition.
-
-    User-defined Python validation functions that run on entire Pydantic models.
+    """Model validator function owned by a specific object.
 
     :ivar id: Unique identifier for the validator.
-    :ivar namespace_id: Reference to the containing namespace.
-    :ivar user_id: Owner user ID (null for system validators).
-    :ivar name: Name of the validation function.
+    :ivar object_id: Reference to the parent object.
+    :ivar function_name: Name of the validation function.
     :ivar mode: Validator mode ("before", "after").
-    :ivar code: Python source code of the validator function.
+    :ivar function_body: Python source code of the validator function.
     :ivar description: Optional description of the validator.
-    :ivar required_fields: List of field names required by this validator.
+    :ivar position: Display order position.
     """
 
     __tablename__ = "model_validators"
@@ -478,59 +428,20 @@ class ModelValidatorModel(Base):
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
-    namespace_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("namespaces.id"), nullable=False, index=True
-    )
-    user_id: Mapped[UUID | None] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
-    )
-    name: Mapped[str] = mapped_column(Text, nullable=False)
-    mode: Mapped[str] = mapped_column(Text, nullable=False)
-    code: Mapped[str] = mapped_column(Text, nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    required_fields: Mapped[list] = mapped_column(
-        ARRAY(Text), nullable=False, server_default="{}"
-    )
-
-    # Relationships
-    user: Mapped["UserModel | None"] = relationship(back_populates="model_validators")
-    namespace: Mapped["Namespace"] = relationship(back_populates="model_validators")
-    object_associations: Mapped[list["ObjectModelValidatorAssociation"]] = relationship(
-        back_populates="validator", cascade="all, delete-orphan"
-    )
-
-
-class ObjectModelValidatorAssociation(Base):
-    """Association between a model validator and an object.
-
-    :ivar id: Unique identifier for the association.
-    :ivar validator_id: Reference to the model validator.
-    :ivar object_id: Reference to the object.
-    """
-
-    __tablename__ = "model_validator_object_associations"
-
-    id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
-    )
-    validator_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True),
-        ForeignKey("model_validators.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
     object_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True),
         ForeignKey("objects.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
+    function_name: Mapped[str] = mapped_column(Text, nullable=False)
+    mode: Mapped[str] = mapped_column(Text, nullable=False)
+    function_body: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    position: Mapped[int] = mapped_column(default=0, nullable=False)
 
     # Relationships
-    validator: Mapped["ModelValidatorModel"] = relationship(
-        back_populates="object_associations"
-    )
-    object: Mapped["ObjectDefinition"] = relationship()
+    object: Mapped["ObjectDefinition"] = relationship(back_populates="validators")
 
 
 class FieldConstraintValueAssociation(Base):

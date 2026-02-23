@@ -220,7 +220,7 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_objects_user_id"), "objects", ["user_id"], unique=False)
 
-    # Create field_validators table (custom validator function definitions)
+    # Create field_validators table (inline child of fields)
     op.create_table(
         "field_validators",
         sa.Column(
@@ -229,62 +229,18 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("gen_random_uuid()"),
         ),
-        sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("field_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("function_name", sa.Text(), nullable=False),
         sa.Column("mode", sa.Text(), nullable=False),
         sa.Column("function_body", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("name", sa.Text(), nullable=True),
-        sa.Column(
-            "compatible_types",
-            postgresql.ARRAY(sa.Text()),
-            nullable=False,
-            server_default="{}",
-        ),
-        sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_field_validators_namespace_id"),
-        "field_validators",
-        ["namespace_id"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_field_validators_user_id"),
-        "field_validators",
-        ["user_id"],
-        unique=False,
-    )
-
-    # Create field_validator_field_associations table
-    op.create_table(
-        "field_validator_field_associations",
-        sa.Column(
-            "id",
-            postgresql.UUID(as_uuid=True),
-            nullable=False,
-            server_default=sa.text("gen_random_uuid()"),
-        ),
-        sa.Column("validator_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("field_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["validator_id"], ["field_validators.id"], ondelete="CASCADE"
-        ),
+        sa.Column("position", sa.Integer(), nullable=False, server_default="0"),
         sa.ForeignKeyConstraint(["field_id"], ["fields.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_field_validator_field_associations_validator_id"),
-        "field_validator_field_associations",
-        ["validator_id"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_field_validator_field_associations_field_id"),
-        "field_validator_field_associations",
+        op.f("ix_field_validators_field_id"),
+        "field_validators",
         ["field_id"],
         unique=False,
     )
@@ -319,7 +275,7 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # Create model_validators table (custom model-level validator function definitions)
+    # Create model_validators table (inline child of objects)
     op.create_table(
         "model_validators",
         sa.Column(
@@ -328,61 +284,18 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("gen_random_uuid()"),
         ),
-        sa.Column("namespace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("name", sa.Text(), nullable=False),
-        sa.Column("mode", sa.Text(), nullable=False),
-        sa.Column("code", sa.Text(), nullable=False),
-        sa.Column("description", sa.Text(), nullable=True),
-        sa.Column(
-            "required_fields",
-            postgresql.ARRAY(sa.Text()),
-            nullable=False,
-            server_default="{}",
-        ),
-        sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_model_validators_namespace_id"),
-        "model_validators",
-        ["namespace_id"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_model_validators_user_id"),
-        "model_validators",
-        ["user_id"],
-        unique=False,
-    )
-
-    # Create model_validator_object_associations table
-    op.create_table(
-        "model_validator_object_associations",
-        sa.Column(
-            "id",
-            postgresql.UUID(as_uuid=True),
-            nullable=False,
-            server_default=sa.text("gen_random_uuid()"),
-        ),
-        sa.Column("validator_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("object_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["validator_id"], ["model_validators.id"], ondelete="CASCADE"
-        ),
+        sa.Column("function_name", sa.Text(), nullable=False),
+        sa.Column("mode", sa.Text(), nullable=False),
+        sa.Column("function_body", sa.Text(), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("position", sa.Integer(), nullable=False, server_default="0"),
         sa.ForeignKeyConstraint(["object_id"], ["objects.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_model_validator_object_associations_validator_id"),
-        "model_validator_object_associations",
-        ["validator_id"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_model_validator_object_associations_object_id"),
-        "model_validator_object_associations",
+        op.f("ix_model_validators_object_id"),
+        "model_validators",
         ["object_id"],
         unique=False,
     )
@@ -480,19 +393,7 @@ def downgrade() -> None:
         table_name="field_constraint_field_associations",
     )
     op.drop_table("field_constraint_field_associations")
-    op.drop_index(
-        op.f("ix_model_validator_object_associations_object_id"),
-        table_name="model_validator_object_associations",
-    )
-    op.drop_index(
-        op.f("ix_model_validator_object_associations_validator_id"),
-        table_name="model_validator_object_associations",
-    )
-    op.drop_table("model_validator_object_associations")
-    op.drop_index(op.f("ix_model_validators_user_id"), table_name="model_validators")
-    op.drop_index(
-        op.f("ix_model_validators_namespace_id"), table_name="model_validators"
-    )
+    op.drop_index(op.f("ix_model_validators_object_id"), table_name="model_validators")
     op.drop_table("model_validators")
     op.drop_index(
         op.f("ix_object_field_associations_object_id"),
@@ -503,19 +404,7 @@ def downgrade() -> None:
         table_name="object_field_associations",
     )
     op.drop_table("object_field_associations")
-    op.drop_index(
-        op.f("ix_field_validator_field_associations_field_id"),
-        table_name="field_validator_field_associations",
-    )
-    op.drop_index(
-        op.f("ix_field_validator_field_associations_validator_id"),
-        table_name="field_validator_field_associations",
-    )
-    op.drop_table("field_validator_field_associations")
-    op.drop_index(op.f("ix_field_validators_user_id"), table_name="field_validators")
-    op.drop_index(
-        op.f("ix_field_validators_namespace_id"), table_name="field_validators"
-    )
+    op.drop_index(op.f("ix_field_validators_field_id"), table_name="field_validators")
     op.drop_table("field_validators")
     op.drop_index(op.f("ix_objects_user_id"), table_name="objects")
     op.drop_index(op.f("ix_objects_namespace_id"), table_name="objects")
