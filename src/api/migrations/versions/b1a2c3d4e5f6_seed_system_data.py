@@ -224,6 +224,325 @@ CONSTRAINTS_DATA = [
     },
 ]
 
+# Fixed UUIDs for field validator templates
+FVT_STRIP_AND_NORMALIZE_ID = UUID("00000000-0000-0000-0003-000000000001")
+FVT_NORMALIZE_WHITESPACE_ID = UUID("00000000-0000-0000-0003-000000000002")
+FVT_DEFAULT_IF_EMPTY_ID = UUID("00000000-0000-0000-0003-000000000003")
+FVT_TRIM_TO_LENGTH_ID = UUID("00000000-0000-0000-0003-000000000004")
+FVT_SANITIZE_HTML_ID = UUID("00000000-0000-0000-0003-000000000005")
+FVT_ROUND_DECIMAL_ID = UUID("00000000-0000-0000-0003-000000000006")
+FVT_SLUG_FORMAT_ID = UUID("00000000-0000-0000-0003-000000000007")
+FVT_FUTURE_DATE_ID = UUID("00000000-0000-0000-0003-000000000008")
+FVT_PAST_DATE_ID = UUID("00000000-0000-0000-0003-000000000009")
+
+FIELD_VALIDATOR_TEMPLATES_DATA = [
+    {
+        "id": FVT_STRIP_AND_NORMALIZE_ID,
+        "name": "Strip & Normalize Case",
+        "description": "Strips whitespace and normalizes text case",
+        "compatible_types": ["str"],
+        "mode": "before",
+        "parameters": [
+            {
+                "key": "case",
+                "label": "Case normalization",
+                "type": "select",
+                "placeholder": "",
+                "options": [
+                    {"value": "lower", "label": "lowercase"},
+                    {"value": "upper", "label": "UPPERCASE"},
+                    {"value": "title", "label": "Title Case"},
+                ],
+                "required": True,
+            }
+        ],
+        "body_template": "    v = v.strip().{{ case }}()\n    return v",
+    },
+    {
+        "id": FVT_NORMALIZE_WHITESPACE_ID,
+        "name": "Normalize Whitespace",
+        "description": "Collapses multiple whitespace characters into single spaces and strips edges",
+        "compatible_types": ["str"],
+        "mode": "before",
+        "parameters": [],
+        "body_template": "    import re\n    v = re.sub(r'\\s+', ' ', v).strip()\n    return v",
+    },
+    {
+        "id": FVT_DEFAULT_IF_EMPTY_ID,
+        "name": "Default If Empty",
+        "description": "Replaces empty or whitespace-only strings with a default value",
+        "compatible_types": ["str"],
+        "mode": "before",
+        "parameters": [
+            {
+                "key": "default_value",
+                "label": "Default value",
+                "type": "text",
+                "placeholder": "N/A",
+                "required": True,
+            }
+        ],
+        "body_template": '    if not v or not v.strip():\n        v = "{{ default_value }}"\n    return v',
+    },
+    {
+        "id": FVT_TRIM_TO_LENGTH_ID,
+        "name": "Trim To Length",
+        "description": "Truncates string to maximum length instead of rejecting",
+        "compatible_types": ["str"],
+        "mode": "before",
+        "parameters": [
+            {
+                "key": "max_length",
+                "label": "Maximum length",
+                "type": "number",
+                "placeholder": "255",
+                "required": True,
+            }
+        ],
+        "body_template": "    v = v[:{{ max_length }}]\n    return v",
+    },
+    {
+        "id": FVT_SANITIZE_HTML_ID,
+        "name": "Strip HTML Tags",
+        "description": "Removes HTML tags from string input for security",
+        "compatible_types": ["str"],
+        "mode": "before",
+        "parameters": [],
+        "body_template": "    import re\n    v = re.sub(r'<[^>]+>', '', v)\n    return v",
+    },
+    {
+        "id": FVT_ROUND_DECIMAL_ID,
+        "name": "Round Decimal",
+        "description": "Rounds numeric value to specified decimal places",
+        "compatible_types": ["float", "Decimal"],
+        "mode": "before",
+        "parameters": [
+            {
+                "key": "places",
+                "label": "Decimal places",
+                "type": "number",
+                "placeholder": "2",
+                "required": True,
+            }
+        ],
+        "body_template": "    v = round(v, {{ places }})\n    return v",
+    },
+    {
+        "id": FVT_SLUG_FORMAT_ID,
+        "name": "Slug Format",
+        "description": "Validates that string is a valid URL slug (lowercase alphanumeric and hyphens)",
+        "compatible_types": ["str"],
+        "mode": "after",
+        "parameters": [],
+        "body_template": "    import re\n    if not re.match(r'^[a-z0-9]+(?:-[a-z0-9]+)*$', v):\n        raise ValueError('Value must be a valid slug (lowercase letters, numbers, and hyphens)')\n    return v",
+    },
+    {
+        "id": FVT_FUTURE_DATE_ID,
+        "name": "Future Date Only",
+        "description": "Validates that date/datetime is in the future",
+        "compatible_types": ["datetime", "date"],
+        "mode": "after",
+        "parameters": [],
+        "body_template": "    from datetime import datetime, date\n    now = datetime.now() if isinstance(v, datetime) else date.today()\n    if v <= now:\n        raise ValueError('Value must be a future date')\n    return v",
+    },
+    {
+        "id": FVT_PAST_DATE_ID,
+        "name": "Past Date Only",
+        "description": "Validates that date/datetime is in the past",
+        "compatible_types": ["datetime", "date"],
+        "mode": "after",
+        "parameters": [],
+        "body_template": "    from datetime import datetime, date\n    now = datetime.now() if isinstance(v, datetime) else date.today()\n    if v >= now:\n        raise ValueError('Value must be a past date')\n    return v",
+    },
+]
+
+# Fixed UUIDs for model validator templates
+MVT_PASSWORD_CONFIRM_ID = UUID("00000000-0000-0000-0004-000000000001")
+MVT_DATE_RANGE_ID = UUID("00000000-0000-0000-0004-000000000002")
+MVT_MUTUAL_EXCLUSIVITY_ID = UUID("00000000-0000-0000-0004-000000000003")
+MVT_CONDITIONAL_REQUIRED_ID = UUID("00000000-0000-0000-0004-000000000004")
+MVT_NUMERIC_COMPARISON_ID = UUID("00000000-0000-0000-0004-000000000005")
+MVT_AT_LEAST_ONE_ID = UUID("00000000-0000-0000-0004-000000000006")
+
+MODEL_VALIDATOR_TEMPLATES_DATA = [
+    {
+        "id": MVT_PASSWORD_CONFIRM_ID,
+        "name": "Password Confirmation",
+        "description": "Ensures password and confirmation fields match",
+        "mode": "after",
+        "parameters": [],
+        "field_mappings": [
+            {
+                "key": "password_field",
+                "label": "Password field",
+                "compatibleTypes": ["str"],
+                "required": True,
+            },
+            {
+                "key": "confirm_field",
+                "label": "Confirmation field",
+                "compatibleTypes": ["str"],
+                "required": True,
+            },
+        ],
+        "body_template": "    if self.{{ password_field }} != self.{{ confirm_field }}:\n        raise ValueError('Password and confirmation do not match')\n    return self",
+    },
+    {
+        "id": MVT_DATE_RANGE_ID,
+        "name": "Date Range",
+        "description": "Validates that start date is before end date",
+        "mode": "after",
+        "parameters": [
+            {
+                "key": "comparison",
+                "label": "Comparison mode",
+                "type": "select",
+                "placeholder": "",
+                "options": [
+                    {"value": "<", "label": "Strict (start < end)"},
+                    {"value": "<=", "label": "Inclusive (start <= end)"},
+                ],
+                "required": True,
+            }
+        ],
+        "field_mappings": [
+            {
+                "key": "start_field",
+                "label": "Start date field",
+                "compatibleTypes": ["datetime", "date"],
+                "required": True,
+            },
+            {
+                "key": "end_field",
+                "label": "End date field",
+                "compatibleTypes": ["datetime", "date"],
+                "required": True,
+            },
+        ],
+        "body_template": "    if not (self.{{ start_field }} {{ comparison }} self.{{ end_field }}):\n        raise ValueError('Start date must be before end date')\n    return self",
+    },
+    {
+        "id": MVT_MUTUAL_EXCLUSIVITY_ID,
+        "name": "Mutual Exclusivity",
+        "description": "Ensures exactly one of two fields is set (not both, not neither)",
+        "mode": "after",
+        "parameters": [],
+        "field_mappings": [
+            {
+                "key": "field_a",
+                "label": "Field A",
+                "compatibleTypes": [],
+                "required": True,
+            },
+            {
+                "key": "field_b",
+                "label": "Field B",
+                "compatibleTypes": [],
+                "required": True,
+            },
+        ],
+        "body_template": "    a_set = self.{{ field_a }} is not None\n    b_set = self.{{ field_b }} is not None\n    if a_set == b_set:\n        raise ValueError('Exactly one of {{ field_a }} or {{ field_b }} must be provided')\n    return self",
+    },
+    {
+        "id": MVT_CONDITIONAL_REQUIRED_ID,
+        "name": "Conditional Required",
+        "description": "Makes a field required when a trigger field meets a condition",
+        "mode": "after",
+        "parameters": [
+            {
+                "key": "condition",
+                "label": "Condition",
+                "type": "select",
+                "placeholder": "",
+                "options": [
+                    {"value": "equals", "label": "Equals value"},
+                    {"value": "not_equals", "label": "Does not equal value"},
+                    {"value": "is_truthy", "label": "Is truthy"},
+                ],
+                "required": True,
+            },
+            {
+                "key": "trigger_value",
+                "label": "Trigger value",
+                "type": "text",
+                "placeholder": "value to compare against",
+                "required": False,
+            },
+        ],
+        "field_mappings": [
+            {
+                "key": "trigger_field",
+                "label": "Trigger field",
+                "compatibleTypes": [],
+                "required": True,
+            },
+            {
+                "key": "required_field",
+                "label": "Required field",
+                "compatibleTypes": [],
+                "required": True,
+            },
+        ],
+        "body_template": "    trigger = self.{{ trigger_field }}\n    condition_met = False\n    if '{{ condition }}' == 'equals':\n        condition_met = str(trigger) == '{{ trigger_value }}'\n    elif '{{ condition }}' == 'not_equals':\n        condition_met = str(trigger) != '{{ trigger_value }}'\n    elif '{{ condition }}' == 'is_truthy':\n        condition_met = bool(trigger)\n    if condition_met and self.{{ required_field }} is None:\n        raise ValueError('{{ required_field }} is required when {{ trigger_field }} condition is met')\n    return self",
+    },
+    {
+        "id": MVT_NUMERIC_COMPARISON_ID,
+        "name": "Numeric Comparison",
+        "description": "Validates that one numeric field is less than another",
+        "mode": "after",
+        "parameters": [
+            {
+                "key": "comparison",
+                "label": "Comparison mode",
+                "type": "select",
+                "placeholder": "",
+                "options": [
+                    {"value": "<", "label": "Strict (lesser < greater)"},
+                    {"value": "<=", "label": "Inclusive (lesser <= greater)"},
+                ],
+                "required": True,
+            }
+        ],
+        "field_mappings": [
+            {
+                "key": "lesser_field",
+                "label": "Lesser field",
+                "compatibleTypes": ["int", "float", "Decimal"],
+                "required": True,
+            },
+            {
+                "key": "greater_field",
+                "label": "Greater field",
+                "compatibleTypes": ["int", "float", "Decimal"],
+                "required": True,
+            },
+        ],
+        "body_template": "    if self.{{ lesser_field }} is not None and self.{{ greater_field }} is not None:\n        if not (self.{{ lesser_field }} {{ comparison }} self.{{ greater_field }}):\n            raise ValueError('{{ lesser_field }} must be less than {{ greater_field }}')\n    return self",
+    },
+    {
+        "id": MVT_AT_LEAST_ONE_ID,
+        "name": "At Least One Required",
+        "description": "Ensures at least one of two fields is provided",
+        "mode": "before",
+        "parameters": [],
+        "field_mappings": [
+            {
+                "key": "field_a",
+                "label": "Field A",
+                "compatibleTypes": [],
+                "required": True,
+            },
+            {
+                "key": "field_b",
+                "label": "Field B",
+                "compatibleTypes": [],
+                "required": True,
+            },
+        ],
+        "body_template": "    if data.get('{{ field_a }}') is None and data.get('{{ field_b }}') is None:\n        raise ValueError('At least one of {{ field_a }} or {{ field_b }} must be provided')\n    return data",
+    },
+]
+
 
 def upgrade() -> None:
     # Seed system namespace (required for FK constraints on types/constraints)
@@ -261,8 +580,38 @@ def upgrade() -> None:
     )
     op.bulk_insert(constraints_table, CONSTRAINTS_DATA)
 
+    # Seed field validator templates
+    fvt_table = sa.table(
+        "field_validator_templates",
+        sa.column("id", postgresql.UUID),
+        sa.column("name", sa.Text),
+        sa.column("description", sa.Text),
+        sa.column("compatible_types", postgresql.ARRAY(sa.Text)),
+        sa.column("mode", sa.Text),
+        sa.column("parameters", postgresql.JSONB),
+        sa.column("body_template", sa.Text),
+    )
+    op.bulk_insert(fvt_table, FIELD_VALIDATOR_TEMPLATES_DATA)
+
+    # Seed model validator templates
+    mvt_table = sa.table(
+        "model_validator_templates",
+        sa.column("id", postgresql.UUID),
+        sa.column("name", sa.Text),
+        sa.column("description", sa.Text),
+        sa.column("mode", sa.Text),
+        sa.column("parameters", postgresql.JSONB),
+        sa.column("field_mappings", postgresql.JSONB),
+        sa.column("body_template", sa.Text),
+    )
+    op.bulk_insert(mvt_table, MODEL_VALIDATOR_TEMPLATES_DATA)
+
 
 def downgrade() -> None:
+    # Delete template seed data first (reverse order)
+    op.execute("DELETE FROM model_validator_templates")
+    op.execute("DELETE FROM field_validator_templates")
+
     # Delete seed data in reverse order (field_constraints, types, namespace)
     op.execute(
         f"DELETE FROM field_constraints WHERE namespace_id = '{SYSTEM_NAMESPACE_ID}'::uuid"
