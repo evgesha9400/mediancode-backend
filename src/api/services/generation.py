@@ -6,12 +6,15 @@ import os
 import tempfile
 import zipfile
 
+from jinja2 import Environment
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from api.models.database import (
     ApiModel,
+    AppliedFieldValidatorModel,
+    AppliedModelValidatorModel,
     FieldConstraintValueAssociation,
     FieldModel,
     ObjectDefinition,
@@ -28,6 +31,18 @@ from api_craft.models.input import (
     InputTag,
     InputValidator,
 )
+
+
+def _render_template(body_template: str, context: dict[str, str]) -> str:
+    """Render a Jinja2 body template with the given context.
+
+    :param body_template: Jinja2 template string.
+    :param context: Template variables to substitute.
+    :returns: Rendered Python code string.
+    """
+    env = Environment()
+    template = env.from_string(body_template)
+    return template.render(**context)
 
 
 async def generate_api_zip(api: ApiModel, db: AsyncSession) -> io.BytesIO:
@@ -89,10 +104,15 @@ async def _fetch_objects(
     if not object_ids:
         return {}
 
-    # Fetch objects with field associations
+    # Fetch objects with field associations and validator templates
     query = (
         select(ObjectDefinition)
-        .options(selectinload(ObjectDefinition.field_associations))
+        .options(
+            selectinload(ObjectDefinition.field_associations),
+            selectinload(ObjectDefinition.validators).selectinload(
+                AppliedModelValidatorModel.template
+            ),
+        )
         .where(ObjectDefinition.id.in_(object_ids))
     )
     result = await db.execute(query)
@@ -129,13 +149,16 @@ async def _fetch_fields(
     if not field_ids:
         return {}
 
-    # Fetch fields with type and constraint values
+    # Fetch fields with type, constraint values, and validator templates
     query = (
         select(FieldModel)
         .options(
             selectinload(FieldModel.field_type),
             selectinload(FieldModel.constraint_values).selectinload(
                 FieldConstraintValueAssociation.constraint
+            ),
+            selectinload(FieldModel.validators).selectinload(
+                AppliedFieldValidatorModel.template
             ),
         )
         .where(FieldModel.id.in_(field_ids))
@@ -171,7 +194,7 @@ def _convert_to_input_api(
                     required=assoc.required,
                     description=field.description,
                     default_value=field.default_value,
-                    validators=_build_validators(field),
+                    validators=_build_field_validators(field),
                 )
                 fields.append(input_field)
 
@@ -342,8 +365,8 @@ def _build_endpoint_name(method: str, path: str) -> str:
     return name
 
 
-def _build_validators(field: FieldModel) -> list[InputValidator]:
-    """Convert a field's constraint associations to InputValidator list.
+def _build_field_validators(field: FieldModel) -> list[InputValidator]:
+    """Convert field constraints to InputValidator list for Field() parameters.
 
     :param field: Field model with constraint_values loaded.
     :returns: List of InputValidator instances for code generation.
@@ -376,3 +399,53 @@ def _parse_constraint_value(value: str | None, parameter_types: list[str]) -> ob
         except ValueError:
             pass
     return value
+
+
+def _build_resolved_field_validators(
+    field: FieldModel,
+) -> list[dict]:
+    """Resolve applied field validators to function definitions.
+
+    :param field: Field model with validators and templates loaded.
+    :returns: List of dicts with function_name, mode, function_body.
+    """
+    resolved = []
+    for v in sorted(field.validators, key=lambda x: x.position):
+        template = v.template
+        context = v.parameters or {}
+        function_body = _render_template(template.body_template, context)
+        function_name = f"{template.name.lower().replace(' ', '_').replace('&', 'and')}_{field.name}"
+        resolved.append(
+            {
+                "function_name": function_name,
+                "mode": template.mode,
+                "function_body": function_body,
+            }
+        )
+    return resolved
+
+
+def _build_resolved_model_validators(
+    obj: ObjectDefinition,
+) -> list[dict]:
+    """Resolve applied model validators to function definitions.
+
+    :param obj: Object model with validators and templates loaded.
+    :returns: List of dicts with function_name, mode, function_body.
+    """
+    resolved = []
+    for v in sorted(obj.validators, key=lambda x: x.position):
+        template = v.template
+        context = {**(v.parameters or {}), **v.field_mappings}
+        function_body = _render_template(template.body_template, context)
+        function_name = (
+            f"validate_{template.name.lower().replace(' ', '_').replace('&', 'and')}"
+        )
+        resolved.append(
+            {
+                "function_name": function_name,
+                "mode": template.mode,
+                "function_body": function_body,
+            }
+        )
+    return resolved
