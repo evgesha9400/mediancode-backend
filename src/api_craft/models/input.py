@@ -22,6 +22,32 @@ class InputValidator(BaseModel):
     params: dict[str, Any] | None = None
 
 
+class InputResolvedFieldValidator(BaseModel):
+    """A resolved field validator with final Python code.
+
+    :ivar function_name: Generated function name.
+    :ivar mode: Validator mode (before, after).
+    :ivar function_body: Rendered Python function body.
+    """
+
+    function_name: str
+    mode: str
+    function_body: str
+
+
+class InputResolvedModelValidator(BaseModel):
+    """A resolved model validator with final Python code.
+
+    :ivar function_name: Generated function name.
+    :ivar mode: Validator mode (before, after).
+    :ivar function_body: Rendered Python function body.
+    """
+
+    function_name: str
+    mode: str
+    function_body: str
+
+
 class InputField(BaseModel):
     """Field definition for an input object.
 
@@ -31,6 +57,7 @@ class InputField(BaseModel):
     :ivar description: Human-readable description of the field.
     :ivar default_value: Default value expression (Python code).
     :ivar validators: List of validators applied to this field.
+    :ivar field_validators: List of resolved field validators with rendered code.
     """
 
     type: str
@@ -39,6 +66,7 @@ class InputField(BaseModel):
     description: str | None = None
     default_value: str | None = None
     validators: list[InputValidator] = Field(default_factory=list)
+    field_validators: list[InputResolvedFieldValidator] = Field(default_factory=list)
 
 
 class InputModel(BaseModel):
@@ -47,11 +75,13 @@ class InputModel(BaseModel):
     :ivar name: Object name in PascalCase.
     :ivar fields: Ordered collection of :class:`InputField` definitions.
     :ivar description: Human-readable description of the object.
+    :ivar model_validators: List of resolved model validators with rendered code.
     """
 
     name: Name
     fields: list[InputField]
     description: str | None = None
+    model_validators: list[InputResolvedModelValidator] = Field(default_factory=list)
 
 
 class InputQueryParam(BaseModel):

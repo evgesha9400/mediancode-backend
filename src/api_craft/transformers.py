@@ -8,6 +8,8 @@ from api_craft.models.input import (
     InputModel,
     InputPathParam,
     InputQueryParam,
+    InputResolvedFieldValidator,
+    InputResolvedModelValidator,
     InputTag,
     InputValidator,
 )
@@ -18,6 +20,8 @@ from api_craft.models.template import (
     TemplateModel,
     TemplatePathParam,
     TemplateQueryParam,
+    TemplateResolvedFieldValidator,
+    TemplateResolvedModelValidator,
     TemplateTag,
     TemplateValidator,
     TemplateView,
@@ -41,6 +45,36 @@ def transform_validator(input_validator: InputValidator) -> TemplateValidator:
     return TemplateValidator(name=input_validator.name, params=input_validator.params)
 
 
+def transform_resolved_field_validator(
+    v: InputResolvedFieldValidator,
+) -> TemplateResolvedFieldValidator:
+    """Transform an :class:`InputResolvedFieldValidator` into a :class:`TemplateResolvedFieldValidator`.
+
+    :param v: Source resolved field validator.
+    :returns: Template-ready resolved field validator.
+    """
+    return TemplateResolvedFieldValidator(
+        function_name=v.function_name,
+        mode=v.mode,
+        function_body=v.function_body,
+    )
+
+
+def transform_resolved_model_validator(
+    v: InputResolvedModelValidator,
+) -> TemplateResolvedModelValidator:
+    """Transform an :class:`InputResolvedModelValidator` into a :class:`TemplateResolvedModelValidator`.
+
+    :param v: Source resolved model validator.
+    :returns: Template-ready resolved model validator.
+    """
+    return TemplateResolvedModelValidator(
+        function_name=v.function_name,
+        mode=v.mode,
+        function_body=v.function_body,
+    )
+
+
 def transform_field(input_field: InputField) -> TemplateField:
     """Transform an :class:`InputField` into a :class:`TemplateField`.
 
@@ -48,6 +82,9 @@ def transform_field(input_field: InputField) -> TemplateField:
     :returns: Template-ready field definition with resolved types.
     """
     validators = [transform_validator(v) for v in input_field.validators]
+    field_validators = [
+        transform_resolved_field_validator(v) for v in input_field.field_validators
+    ]
     return TemplateField(
         type=input_field.type,
         name=input_field.name,
@@ -55,16 +92,21 @@ def transform_field(input_field: InputField) -> TemplateField:
         description=input_field.description,
         default_value=input_field.default_value,
         validators=validators,
+        field_validators=field_validators,
     )
 
 
 def transform_model(input_model: InputModel) -> TemplateModel:
     """Convert an :class:`InputModel` to a :class:`TemplateModel`."""
     transformed_fields = [transform_field(field) for field in input_model.fields]
+    model_validators = [
+        transform_resolved_model_validator(v) for v in input_model.model_validators
+    ]
     return TemplateModel(
         name=input_model.name,
         fields=transformed_fields,
         description=input_model.description,
+        model_validators=model_validators,
     )
 
 

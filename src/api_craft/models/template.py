@@ -12,6 +12,22 @@ class TemplateValidator(BaseModel):
     params: dict[str, Any] | None = None
 
 
+class TemplateResolvedFieldValidator(BaseModel):
+    """Resolved field validator for template rendering."""
+
+    function_name: str
+    mode: str
+    function_body: str
+
+
+class TemplateResolvedModelValidator(BaseModel):
+    """Resolved model validator for template rendering."""
+
+    function_name: str
+    mode: str
+    function_body: str
+
+
 class TemplateField(BaseModel):
     """Field definition for template rendering."""
 
@@ -21,6 +37,7 @@ class TemplateField(BaseModel):
     description: str | None = None
     default_value: str | None = None
     validators: list[TemplateValidator] = []
+    field_validators: list[TemplateResolvedFieldValidator] = []
 
 
 class TemplateModel(BaseModel):
@@ -29,6 +46,7 @@ class TemplateModel(BaseModel):
     name: str
     fields: list[TemplateField]
     description: str | None = None
+    model_validators: list[TemplateResolvedModelValidator] = []
 
 
 class TemplateQueryParam(BaseModel):

@@ -56,16 +56,37 @@ def render_field(field):
         else:
             return f'{field.name}: {type_annotation} | None = None'
 
-# Check if any model has validators
-has_validators = any(
+# Check if any model has Field() constraints
+has_field_constraints = any(
     any(field.validators for field in model.fields)
     for model in models
 )
+
+# Check if any model has @field_validator functions
+has_field_validators = any(
+    any(field.field_validators for field in model.fields)
+    for model in models
+)
+
+# Check if any model has @model_validator functions
+has_model_validators = any(
+    model.model_validators
+    for model in models
+)
+
+# Build pydantic imports
+pydantic_imports = ['BaseModel']
+if has_field_constraints:
+    pydantic_imports.append('Field')
+if has_field_validators:
+    pydantic_imports.append('field_validator')
+if has_model_validators:
+    pydantic_imports.append('model_validator')
 %>\
 % for import_stmt in sorted(imports):
 ${import_stmt}
 % endfor
-from pydantic import BaseModel${', Field' if has_validators else ''}
+from pydantic import ${', '.join(sorted(pydantic_imports))}
 % for model in models:
 
 
@@ -73,5 +94,24 @@ class ${model.name}(BaseModel):
 %     for field in model.fields:
     ${render_field(field)}
 %     endfor
-% endfor
+%     for field in model.fields:
+%         for fv in field.field_validators:
 
+    @field_validator("${field.name}", mode="${fv.mode}")
+    @classmethod
+    def ${fv.function_name}(cls, v):
+${fv.function_body}
+%         endfor
+%     endfor
+%     for mv in model.model_validators:
+
+    @model_validator(mode="${mv.mode}")
+%         if mv.mode == "before":
+    @classmethod
+    def ${mv.function_name}(cls, data):
+%         else:
+    def ${mv.function_name}(self):
+%         endif
+${mv.function_body}
+%     endfor
+% endfor

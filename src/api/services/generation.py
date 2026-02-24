@@ -28,6 +28,8 @@ from api_craft.models.input import (
     InputModel,
     InputPathParam,
     InputQueryParam,
+    InputResolvedFieldValidator,
+    InputResolvedModelValidator,
     InputTag,
     InputValidator,
 )
@@ -195,13 +197,25 @@ def _convert_to_input_api(
                     description=field.description,
                     default_value=field.default_value,
                     validators=_build_field_validators(field),
+                    field_validators=[
+                        InputResolvedFieldValidator(**rv)
+                        for rv in _build_resolved_field_validators(field)
+                    ],
                 )
                 fields.append(input_field)
 
         # Ensure object name is PascalCase
         obj_name = _to_pascal_case(obj.name)
         input_objects.append(
-            InputModel(name=obj_name, fields=fields, description=obj.description)
+            InputModel(
+                name=obj_name,
+                fields=fields,
+                description=obj.description,
+                model_validators=[
+                    InputResolvedModelValidator(**rv)
+                    for rv in _build_resolved_model_validators(obj)
+                ],
+            )
         )
 
     # Derive tags from endpoint tag_names
