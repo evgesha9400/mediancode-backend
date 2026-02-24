@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from api.models.database import (
+    AppliedFieldValidatorModel,
     FieldModel,
-    FieldValidatorModel,
     Namespace,
     TypeModel,
     UserModel,
@@ -338,7 +338,9 @@ async def test_delete_field_cascades_validators(
 
     # Verify validator exists
     result = await db_session.execute(
-        select(FieldValidatorModel).where(FieldValidatorModel.field_id == field_id)
+        select(AppliedFieldValidatorModel).where(
+            AppliedFieldValidatorModel.field_id == field_id
+        )
     )
     assert len(result.scalars().all()) == 1
 
@@ -349,6 +351,8 @@ async def test_delete_field_cascades_validators(
 
     # Verify validator was cascade-deleted
     result = await db_session.execute(
-        select(FieldValidatorModel).where(FieldValidatorModel.field_id == field_id)
+        select(AppliedFieldValidatorModel).where(
+            AppliedFieldValidatorModel.field_id == field_id
+        )
     )
     assert len(result.scalars().all()) == 0
