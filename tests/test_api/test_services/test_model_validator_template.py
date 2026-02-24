@@ -16,17 +16,16 @@ async def test_list_all_returns_seeded_templates(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
 ):
-    """All 6 seeded model validator templates are returned."""
+    """All 5 seeded model validator templates are returned."""
     service = ModelValidatorTemplateService(db_session)
     templates = await service.list_all()
-    assert len(templates) == 6
+    assert len(templates) == 5
     names = {t.name for t in templates}
-    assert "Password Confirmation" in names
-    assert "Date Range" in names
+    assert "Field Comparison" in names
     assert "Mutual Exclusivity" in names
-    assert "Conditional Required" in names
-    assert "Numeric Comparison" in names
     assert "At Least One Required" in names
+    assert "All Or None" in names
+    assert "Conditional Required" in names
 
 
 @pytest.mark.asyncio

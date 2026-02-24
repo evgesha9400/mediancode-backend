@@ -362,69 +362,48 @@ FIELD_VALIDATOR_TEMPLATES_DATA = [
 ]
 
 # Fixed UUIDs for model validator templates
-MVT_PASSWORD_CONFIRM_ID = UUID("00000000-0000-0000-0004-000000000001")
-MVT_DATE_RANGE_ID = UUID("00000000-0000-0000-0004-000000000002")
-MVT_MUTUAL_EXCLUSIVITY_ID = UUID("00000000-0000-0000-0004-000000000003")
-MVT_CONDITIONAL_REQUIRED_ID = UUID("00000000-0000-0000-0004-000000000004")
-MVT_NUMERIC_COMPARISON_ID = UUID("00000000-0000-0000-0004-000000000005")
-MVT_AT_LEAST_ONE_ID = UUID("00000000-0000-0000-0004-000000000006")
+MVT_FIELD_COMPARISON_ID = UUID("00000000-0000-0000-0004-000000000001")
+MVT_MUTUAL_EXCLUSIVITY_ID = UUID("00000000-0000-0000-0004-000000000002")
+MVT_AT_LEAST_ONE_ID = UUID("00000000-0000-0000-0004-000000000003")
+MVT_ALL_OR_NONE_ID = UUID("00000000-0000-0000-0004-000000000004")
+MVT_CONDITIONAL_REQUIRED_ID = UUID("00000000-0000-0000-0004-000000000005")
 
 MODEL_VALIDATOR_TEMPLATES_DATA = [
     {
-        "id": MVT_PASSWORD_CONFIRM_ID,
-        "name": "Password Confirmation",
-        "description": "Ensures password and confirmation fields match",
-        "mode": "after",
-        "parameters": [],
-        "field_mappings": [
-            {
-                "key": "password_field",
-                "label": "Password field",
-                "compatibleTypes": ["str"],
-                "required": True,
-            },
-            {
-                "key": "confirm_field",
-                "label": "Confirmation field",
-                "compatibleTypes": ["str"],
-                "required": True,
-            },
-        ],
-        "body_template": "    if self.{{ password_field }} != self.{{ confirm_field }}:\n        raise ValueError('Password and confirmation do not match')\n    return self",
-    },
-    {
-        "id": MVT_DATE_RANGE_ID,
-        "name": "Date Range",
-        "description": "Validates that start date is before end date",
+        "id": MVT_FIELD_COMPARISON_ID,
+        "name": "Field Comparison",
+        "description": "Compares two fields using the selected operator",
         "mode": "after",
         "parameters": [
             {
-                "key": "comparison",
-                "label": "Comparison mode",
+                "key": "operator",
+                "label": "Operator",
                 "type": "select",
                 "placeholder": "",
                 "options": [
-                    {"value": "<", "label": "Strict (start < end)"},
-                    {"value": "<=", "label": "Inclusive (start <= end)"},
+                    {"value": "==", "label": "Equal (A == B)"},
+                    {"value": "!=", "label": "Not equal (A != B)"},
+                    {"value": "<", "label": "Less than (A < B)"},
+                    {"value": "<=", "label": "Less than or equal (A <= B)"},
                 ],
                 "required": True,
             }
         ],
         "field_mappings": [
             {
-                "key": "start_field",
-                "label": "Start date field",
-                "compatibleTypes": ["datetime", "date"],
+                "key": "field_a",
+                "label": "Field A",
+                "compatibleTypes": [],
                 "required": True,
             },
             {
-                "key": "end_field",
-                "label": "End date field",
-                "compatibleTypes": ["datetime", "date"],
+                "key": "field_b",
+                "label": "Field B",
+                "compatibleTypes": [],
                 "required": True,
             },
         ],
-        "body_template": "    if not (self.{{ start_field }} {{ comparison }} self.{{ end_field }}):\n        raise ValueError('Start date must be before end date')\n    return self",
+        "body_template": "    if self.{{ field_a }} is not None and self.{{ field_b }} is not None:\n        if not (self.{{ field_a }} {{ operator }} self.{{ field_b }}):\n            raise ValueError('{{ field_a }} must be {{ operator }} {{ field_b }}')\n    return self",
     },
     {
         "id": MVT_MUTUAL_EXCLUSIVITY_ID,
@@ -449,82 +428,6 @@ MODEL_VALIDATOR_TEMPLATES_DATA = [
         "body_template": "    a_set = self.{{ field_a }} is not None\n    b_set = self.{{ field_b }} is not None\n    if a_set == b_set:\n        raise ValueError('Exactly one of {{ field_a }} or {{ field_b }} must be provided')\n    return self",
     },
     {
-        "id": MVT_CONDITIONAL_REQUIRED_ID,
-        "name": "Conditional Required",
-        "description": "Makes a field required when a trigger field meets a condition",
-        "mode": "after",
-        "parameters": [
-            {
-                "key": "condition",
-                "label": "Condition",
-                "type": "select",
-                "placeholder": "",
-                "options": [
-                    {"value": "equals", "label": "Equals value"},
-                    {"value": "not_equals", "label": "Does not equal value"},
-                    {"value": "is_truthy", "label": "Is truthy"},
-                ],
-                "required": True,
-            },
-            {
-                "key": "trigger_value",
-                "label": "Trigger value",
-                "type": "text",
-                "placeholder": "value to compare against",
-                "required": False,
-            },
-        ],
-        "field_mappings": [
-            {
-                "key": "trigger_field",
-                "label": "Trigger field",
-                "compatibleTypes": [],
-                "required": True,
-            },
-            {
-                "key": "required_field",
-                "label": "Required field",
-                "compatibleTypes": [],
-                "required": True,
-            },
-        ],
-        "body_template": "    trigger = self.{{ trigger_field }}\n    condition_met = False\n    if '{{ condition }}' == 'equals':\n        condition_met = str(trigger) == '{{ trigger_value }}'\n    elif '{{ condition }}' == 'not_equals':\n        condition_met = str(trigger) != '{{ trigger_value }}'\n    elif '{{ condition }}' == 'is_truthy':\n        condition_met = bool(trigger)\n    if condition_met and self.{{ required_field }} is None:\n        raise ValueError('{{ required_field }} is required when {{ trigger_field }} condition is met')\n    return self",
-    },
-    {
-        "id": MVT_NUMERIC_COMPARISON_ID,
-        "name": "Numeric Comparison",
-        "description": "Validates that one numeric field is less than another",
-        "mode": "after",
-        "parameters": [
-            {
-                "key": "comparison",
-                "label": "Comparison mode",
-                "type": "select",
-                "placeholder": "",
-                "options": [
-                    {"value": "<", "label": "Strict (lesser < greater)"},
-                    {"value": "<=", "label": "Inclusive (lesser <= greater)"},
-                ],
-                "required": True,
-            }
-        ],
-        "field_mappings": [
-            {
-                "key": "lesser_field",
-                "label": "Lesser field",
-                "compatibleTypes": ["int", "float", "Decimal"],
-                "required": True,
-            },
-            {
-                "key": "greater_field",
-                "label": "Greater field",
-                "compatibleTypes": ["int", "float", "Decimal"],
-                "required": True,
-            },
-        ],
-        "body_template": "    if self.{{ lesser_field }} is not None and self.{{ greater_field }} is not None:\n        if not (self.{{ lesser_field }} {{ comparison }} self.{{ greater_field }}):\n            raise ValueError('{{ lesser_field }} must be less than {{ greater_field }}')\n    return self",
-    },
-    {
         "id": MVT_AT_LEAST_ONE_ID,
         "name": "At Least One Required",
         "description": "Ensures at least one of two fields is provided",
@@ -545,6 +448,50 @@ MODEL_VALIDATOR_TEMPLATES_DATA = [
             },
         ],
         "body_template": "    if data.get('{{ field_a }}') is None and data.get('{{ field_b }}') is None:\n        raise ValueError('At least one of {{ field_a }} or {{ field_b }} must be provided')\n    return data",
+    },
+    {
+        "id": MVT_ALL_OR_NONE_ID,
+        "name": "All Or None",
+        "description": "If either field is set, both must be set",
+        "mode": "after",
+        "parameters": [],
+        "field_mappings": [
+            {
+                "key": "field_a",
+                "label": "Field A",
+                "compatibleTypes": [],
+                "required": True,
+            },
+            {
+                "key": "field_b",
+                "label": "Field B",
+                "compatibleTypes": [],
+                "required": True,
+            },
+        ],
+        "body_template": "    a_set = self.{{ field_a }} is not None\n    b_set = self.{{ field_b }} is not None\n    if a_set != b_set:\n        raise ValueError('{{ field_a }} and {{ field_b }} must both be provided or both be omitted')\n    return self",
+    },
+    {
+        "id": MVT_CONDITIONAL_REQUIRED_ID,
+        "name": "Conditional Required",
+        "description": "Makes a field required when another field is provided",
+        "mode": "after",
+        "parameters": [],
+        "field_mappings": [
+            {
+                "key": "trigger_field",
+                "label": "Trigger field",
+                "compatibleTypes": [],
+                "required": True,
+            },
+            {
+                "key": "dependent_field",
+                "label": "Dependent field",
+                "compatibleTypes": [],
+                "required": True,
+            },
+        ],
+        "body_template": "    if self.{{ trigger_field }} is not None and self.{{ dependent_field }} is None:\n        raise ValueError('{{ dependent_field }} is required when {{ trigger_field }} is provided')\n    return self",
     },
 ]
 

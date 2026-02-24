@@ -26,9 +26,8 @@ from api.services.object import ObjectService
 from api.settings import get_settings
 
 # Seed model validator template UUIDs (from b1a2c3d4e5f6 migration)
-MVT_PASSWORD_CONFIRM_ID = "00000000-0000-0000-0004-000000000001"
-MVT_DATE_RANGE_ID = "00000000-0000-0000-0004-000000000002"
-MVT_MUTUAL_EXCLUSIVITY_ID = "00000000-0000-0000-0004-000000000003"
+MVT_FIELD_COMPARISON_ID = "00000000-0000-0000-0004-000000000001"
+MVT_MUTUAL_EXCLUSIVITY_ID = "00000000-0000-0000-0004-000000000002"
 
 
 # --- Fixtures ---
@@ -154,11 +153,11 @@ async def test_create_object_with_validators(
         name="ValidatedObject",
         validators=[
             {
-                "templateId": MVT_PASSWORD_CONFIRM_ID,
-                "parameters": None,
+                "templateId": MVT_FIELD_COMPARISON_ID,
+                "parameters": {"operator": "=="},
                 "fieldMappings": {
-                    "password_field": "password",
-                    "confirm_field": "password_confirm",
+                    "field_a": "password",
+                    "field_b": "password_confirm",
                 },
             }
         ],
@@ -167,11 +166,11 @@ async def test_create_object_with_validators(
 
     assert len(loaded.validators) == 1
     v = loaded.validators[0]
-    assert v.template_id == UUID(MVT_PASSWORD_CONFIRM_ID)
-    assert v.parameters is None
+    assert v.template_id == UUID(MVT_FIELD_COMPARISON_ID)
+    assert v.parameters == {"operator": "=="}
     assert v.field_mappings == {
-        "password_field": "password",
-        "confirm_field": "password_confirm",
+        "field_a": "password",
+        "field_b": "password_confirm",
     }
     assert v.id is not None
 
@@ -212,11 +211,11 @@ async def test_create_object_with_multiple_validators(
         name="MultiValObject",
         validators=[
             {
-                "templateId": MVT_PASSWORD_CONFIRM_ID,
-                "parameters": None,
+                "templateId": MVT_FIELD_COMPARISON_ID,
+                "parameters": {"operator": "=="},
                 "fieldMappings": {
-                    "password_field": "password",
-                    "confirm_field": "password_confirm",
+                    "field_a": "password",
+                    "field_b": "password_confirm",
                 },
             },
             {
@@ -232,7 +231,7 @@ async def test_create_object_with_multiple_validators(
     loaded = await _reload_object(object_service, obj, test_user.id)
 
     assert len(loaded.validators) == 2
-    assert loaded.validators[0].template_id == UUID(MVT_PASSWORD_CONFIRM_ID)
+    assert loaded.validators[0].template_id == UUID(MVT_FIELD_COMPARISON_ID)
     assert loaded.validators[0].position == 0
     assert loaded.validators[1].template_id == UUID(MVT_MUTUAL_EXCLUSIVITY_ID)
     assert loaded.validators[1].position == 1
@@ -257,28 +256,28 @@ async def test_update_object_replace_validators(
         name="ReplaceValObject",
         validators=[
             {
-                "templateId": MVT_PASSWORD_CONFIRM_ID,
-                "parameters": None,
+                "templateId": MVT_FIELD_COMPARISON_ID,
+                "parameters": {"operator": "=="},
                 "fieldMappings": {
-                    "password_field": "password",
-                    "confirm_field": "password_confirm",
+                    "field_a": "password",
+                    "field_b": "password_confirm",
                 },
             }
         ],
     )
     loaded = await _reload_object(object_service, obj, test_user.id)
     assert len(loaded.validators) == 1
-    assert loaded.validators[0].template_id == UUID(MVT_PASSWORD_CONFIRM_ID)
+    assert loaded.validators[0].template_id == UUID(MVT_FIELD_COMPARISON_ID)
 
     update = ObjectUpdate.model_validate(
         {
             "validators": [
                 {
-                    "templateId": MVT_DATE_RANGE_ID,
-                    "parameters": {"comparison": "<"},
+                    "templateId": MVT_FIELD_COMPARISON_ID,
+                    "parameters": {"operator": "<"},
                     "fieldMappings": {
-                        "start_field": "start_date",
-                        "end_field": "end_date",
+                        "field_a": "start_date",
+                        "field_b": "end_date",
                     },
                 }
             ]
@@ -288,11 +287,11 @@ async def test_update_object_replace_validators(
     reloaded = await _reload_object(object_service, loaded, test_user.id)
 
     assert len(reloaded.validators) == 1
-    assert reloaded.validators[0].template_id == UUID(MVT_DATE_RANGE_ID)
-    assert reloaded.validators[0].parameters == {"comparison": "<"}
+    assert reloaded.validators[0].template_id == UUID(MVT_FIELD_COMPARISON_ID)
+    assert reloaded.validators[0].parameters == {"operator": "<"}
     assert reloaded.validators[0].field_mappings == {
-        "start_field": "start_date",
-        "end_field": "end_date",
+        "field_a": "start_date",
+        "field_b": "end_date",
     }
 
 
@@ -347,11 +346,11 @@ async def test_update_object_validators_unchanged_when_omitted(
         name="PreserveValObject",
         validators=[
             {
-                "templateId": MVT_PASSWORD_CONFIRM_ID,
-                "parameters": None,
+                "templateId": MVT_FIELD_COMPARISON_ID,
+                "parameters": {"operator": "=="},
                 "fieldMappings": {
-                    "password_field": "password",
-                    "confirm_field": "password_confirm",
+                    "field_a": "password",
+                    "field_b": "password_confirm",
                 },
             }
         ],
@@ -365,10 +364,10 @@ async def test_update_object_validators_unchanged_when_omitted(
 
     assert reloaded.name == "RenamedObject"
     assert len(reloaded.validators) == 1
-    assert reloaded.validators[0].template_id == UUID(MVT_PASSWORD_CONFIRM_ID)
+    assert reloaded.validators[0].template_id == UUID(MVT_FIELD_COMPARISON_ID)
     assert reloaded.validators[0].field_mappings == {
-        "password_field": "password",
-        "confirm_field": "password_confirm",
+        "field_a": "password",
+        "field_b": "password_confirm",
     }
 
 
@@ -392,11 +391,11 @@ async def test_delete_object_cascades_validators(
         name="CascadeObject",
         validators=[
             {
-                "templateId": MVT_PASSWORD_CONFIRM_ID,
-                "parameters": None,
+                "templateId": MVT_FIELD_COMPARISON_ID,
+                "parameters": {"operator": "=="},
                 "fieldMappings": {
-                    "password_field": "password",
-                    "confirm_field": "password_confirm",
+                    "field_a": "password",
+                    "field_b": "password_confirm",
                 },
             }
         ],
