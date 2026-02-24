@@ -39,10 +39,9 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
     validators = [
         ModelValidatorResponse(
             id=v.id,
-            function_name=v.function_name,
-            mode=v.mode,
-            function_body=v.function_body,
-            description=v.description,
+            template_id=v.template_id,
+            parameters=v.parameters,
+            field_mappings=v.field_mappings,
         )
         for v in sorted(obj.validators, key=lambda x: x.position)
     ]

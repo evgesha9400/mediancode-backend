@@ -44,10 +44,8 @@ async def _to_response(field, service: FieldService) -> FieldResponse:
     validators = [
         FieldValidatorResponse(
             id=v.id,
-            function_name=v.function_name,
-            mode=v.mode,
-            function_body=v.function_body,
-            description=v.description,
+            template_id=v.template_id,
+            parameters=v.parameters,
         )
         for v in sorted(field.validators, key=lambda x: x.position)
     ]
