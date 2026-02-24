@@ -1,1820 +1,2389 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: Median Code API
-  description: |
-    Production-ready FastAPI code generation and API entity management with Clerk JWT authentication.
-
-    ## Authentication
-
-    All endpoints require Bearer JWT authentication via Clerk. Include your Clerk JWT token in the Authorization header:
-
-    ```
-    Authorization: Bearer <your-clerk-jwt-token>
-    ```
-
-    ## API Overview
-
-    This API provides two main categories of endpoints:
-
-    ### 1. Entity Management (CRUD Operations)
-
-    Manage your API design entities with full CRUD operations:
-
-    - **Namespaces** (`/namespaces`) - Create and manage namespaces for organizing entities
-    - **APIs** (`/apis`) - Create and manage API definitions that group endpoints and tags
-    - **Types** (`/types`) - Retrieve primitive and abstract type definitions (read-only)
-    - **Validators** (`/validators`) - Retrieve validator definitions (read-only)
-    - **Fields** (`/fields`) - Create, read, update, and delete field definitions
-    - **Objects** (`/objects`) - Create, read, update, and delete object definitions
-    - **Tags** (`/tags`) - Create, read, update, and delete endpoint tags
-    - **Endpoints** (`/endpoints`) - Create, read, update, and delete API endpoint definitions
-
-    All list endpoints support filtering by `namespaceId` query parameter.
-
-    ### 2. Code Generation
-
-    The `/apis/{id}/generate` endpoint generates a production-ready FastAPI application for a specific API and returns it as a downloadable zip file.
-
-    #### Generated Application Structure
-
-    The generated zip file contains:
-    - `main.py` - FastAPI application with all defined endpoints
-    - `models/` - Pydantic models for request/response validation
-    - `requirements.txt` - Python dependencies
-    - `README.md` - Setup and deployment instructions
-
-    The server automatically retrieves all related entities (tags, endpoints, objects, fields, validators) for the specified API ID.
-
-    ## Namespace Isolation
-
-    Entities belong to namespaces for organization and access control:
-    - **System namespace** (`00000000-0000-0000-0000-000000000001`) - Read-only, contains built-in seed types and constraints
-    - **User namespaces** - User-created namespaces for custom entities
-
+  description: Production-ready FastAPI code generation and API entity management
+    with Clerk JWT authentication.
   version: 1.0.0
-  contact:
-    name: Median Code Support
-    url: https://app.mediancode.com
-
-servers:
-  - url: https://api.dev.mediancode.com/v1
-    description: Development server
-  - url: https://api.mediancode.com/v1
-    description: Production server
-
-security:
-  - BearerAuth: []
-
-tags:
-  - name: Namespaces
-    description: Manage user namespaces for organizing API entities
-  - name: APIs
-    description: Manage API definitions, group endpoints and tags, and generate production-ready FastAPI applications
-  - name: Types
-    description: Retrieve primitive and abstract type definitions
-  - name: Validators
-    description: Retrieve validator definitions for field validation
-  - name: Fields
-    description: Manage field definitions used in objects
-  - name: Objects
-    description: Manage object definitions used in API endpoints
-  - name: Tags
-    description: Manage endpoint tags for OpenAPI organization
-  - name: Endpoints
-    description: Manage API endpoint definitions
-
 paths:
-  /namespaces:
+  /v1/namespaces:
     get:
       tags:
-        - Namespaces
+      - Namespaces
       summary: List all namespaces
-      description: Retrieve all namespaces accessible to the authenticated user. Includes both global (locked) and user-created namespaces.
-      operationId: listNamespaces
+      description: Retrieve all namespaces accessible to the authenticated user.
+      operationId: list_namespaces_v1_namespaces_get
       responses:
         '200':
-          description: Successfully retrieved namespaces
+          description: Successful Response
           content:
             application/json:
               schema:
-                type: array
                 items:
-                  $ref: '#/components/schemas/Namespace'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  $ref: '#/components/schemas/NamespaceResponse'
+                type: array
+                title: Response List Namespaces V1 Namespaces Get
+      security:
+      - HTTPBearer: []
     post:
       tags:
-        - Namespaces
+      - Namespaces
       summary: Create a new namespace
-      description: Create a new namespace for organizing API entities. User-created namespaces are unlocked by default.
-      operationId: createNamespace
+      description: Create a new namespace for organizing API entities.
+      operationId: create_namespace_v1_namespaces_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - name
-              properties:
-                name:
-                  type: string
-                  example: "my-api-project"
-                description:
-                  type: string
-                  example: "Custom namespace for my API project"
+              $ref: '#/components/schemas/NamespaceCreate'
+        required: true
       responses:
         '201':
-          description: Namespace created successfully
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Namespace'
-        '400':
-          description: Invalid request
+                $ref: '#/components/schemas/NamespaceResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /namespaces/{id}:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /v1/namespaces/{namespace_id}:
     get:
       tags:
-        - Namespaces
+      - Namespaces
       summary: Get namespace by ID
       description: Retrieve a specific namespace by its ID.
-      operationId: getNamespace
+      operationId: get_namespace_v1_namespaces__namespace_id__get
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Namespace ID
+      - name: namespace_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Namespace Id
       responses:
         '200':
-          description: Successfully retrieved namespace
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Namespace'
-        '404':
-          description: Namespace not found
+                $ref: '#/components/schemas/NamespaceResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: '#/components/schemas/HTTPValidationError'
     put:
       tags:
-        - Namespaces
+      - Namespaces
       summary: Update namespace
-      description: Update an existing namespace. Locked namespaces (like global) cannot be modified.
-      operationId: updateNamespace
+      description: Update an existing namespace. Locked namespaces cannot be modified.
+      operationId: update_namespace_v1_namespaces__namespace_id__put
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Namespace ID
+      - name: namespace_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Namespace Id
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  example: "updated-namespace-name"
-                description:
-                  type: string
-                  example: "Updated description"
+              $ref: '#/components/schemas/NamespaceUpdate'
       responses:
         '200':
-          description: Namespace updated successfully
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Namespace'
-        '400':
-          description: Invalid request or namespace is locked
+                $ref: '#/components/schemas/NamespaceResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Namespace not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: '#/components/schemas/HTTPValidationError'
     delete:
       tags:
-        - Namespaces
+      - Namespaces
       summary: Delete namespace
-      description: Delete a namespace. Only allowed if the namespace has no entities (fields, objects, endpoints, etc.) and is not locked.
-      operationId: deleteNamespace
+      description: Delete a namespace. Only allowed if the namespace has no entities.
+      operationId: delete_namespace_v1_namespaces__namespace_id__delete
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Namespace ID
+      - name: namespace_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Namespace Id
       responses:
         '204':
-          description: Namespace deleted successfully
-        '400':
-          description: Cannot delete namespace (has entities or is locked)
+          description: Successful Response
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                detail: "Cannot delete namespace: contains 5 fields, 3 objects, and 2 endpoints"
-        '404':
-          description: Namespace not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /apis:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/apis:
     get:
       tags:
-        - APIs
+      - APIs
       summary: List all APIs
-      description: Retrieve all API definitions accessible to the authenticated user. APIs can be filtered by namespace.
-      operationId: listApis
+      description: Retrieve all API definitions accessible to the authenticated user.
+      operationId: list_apis_v1_apis_get
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: namespaceId
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Filter APIs by namespace ID
+      - name: namespace_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Namespace Id
       responses:
         '200':
-          description: Successfully retrieved APIs
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Api'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  $ref: '#/components/schemas/ApiResponse'
+                title: Response List Apis V1 Apis Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     post:
       tags:
-        - APIs
+      - APIs
       summary: Create a new API
-      description: Create a new API definition. Server automatically sets createdAt and updatedAt timestamps.
-      operationId: createApi
+      description: Create a new API definition.
+      operationId: create_api_v1_apis_post
+      security:
+      - HTTPBearer: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - namespaceId
-                - title
-                - version
-              properties:
-                namespaceId:
-                  type: string
-                  example: "namespace-user"
-                title:
-                  type: string
-                  example: "User Management API"
-                version:
-                  type: string
-                  example: "1.0.0"
-                description:
-                  type: string
-                  example: "API for managing user accounts"
-                baseUrl:
-                  type: string
-                  example: "/api/v1"
-                serverUrl:
-                  type: string
-                  example: "https://api.example.com"
+              $ref: '#/components/schemas/ApiCreate'
       responses:
         '201':
-          description: API created successfully
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Api'
-        '400':
-          description: Invalid request
+                $ref: '#/components/schemas/ApiResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /apis/{id}:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/apis/{api_id}:
     get:
       tags:
-        - APIs
+      - APIs
       summary: Get API by ID
       description: Retrieve a specific API definition by its ID.
-      operationId: getApi
+      operationId: get_api_v1_apis__api_id__get
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: API ID
+      - name: api_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Api Id
       responses:
         '200':
-          description: Successfully retrieved API
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Api'
-        '404':
-          description: API not found
+                $ref: '#/components/schemas/ApiResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: '#/components/schemas/HTTPValidationError'
     put:
       tags:
-        - APIs
+      - APIs
       summary: Update API
-      description: Update an existing API definition. Server automatically updates the updatedAt timestamp.
-      operationId: updateApi
+      description: Update an existing API definition.
+      operationId: update_api_v1_apis__api_id__put
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: API ID
+      - name: api_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Api Id
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                  example: "Updated API Title"
-                version:
-                  type: string
-                  example: "2.0.0"
-                description:
-                  type: string
-                  example: "Updated API description"
-                baseUrl:
-                  type: string
-                  example: "/api/v2"
-                serverUrl:
-                  type: string
-                  example: "https://api.example.com"
+              $ref: '#/components/schemas/ApiUpdate'
       responses:
         '200':
-          description: API updated successfully
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Api'
-        '400':
-          description: Invalid request
+                $ref: '#/components/schemas/ApiResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: API not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: '#/components/schemas/HTTPValidationError'
     delete:
       tags:
-        - APIs
+      - APIs
       summary: Delete API
-      description: Delete an API definition. This operation cascades and also deletes all endpoints and tags belonging to this API.
-      operationId: deleteApi
+      description: Delete an API definition. This cascades to endpoints.
+      operationId: delete_api_v1_apis__api_id__delete
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: API ID
+      - name: api_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Api Id
       responses:
         '204':
-          description: API deleted successfully (including all endpoints and tags)
-        '404':
-          description: API not found
+          description: Successful Response
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /apis/{id}/generate:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/apis/{api_id}/generate:
     post:
       tags:
-        - APIs
+      - APIs
       summary: Generate FastAPI application
-      description: |
-        Generates a complete, production-ready FastAPI application for the specified API.
-
-        The generated application includes:
-        - Fully configured FastAPI app with all endpoints
-        - Pydantic models for validation
-        - Type hints throughout
-        - OpenAPI documentation
-        - Requirements file with dependencies
-        - README with setup instructions
-
-        The server automatically retrieves all related entities (tags, endpoints, objects, fields, validators) for the specified API ID.
-
-        **Returns:** A binary zip file containing the complete application structure.
-
-        **Authentication:** Requires valid Clerk JWT token.
-      operationId: generateApiCode
+      description: Generates a complete FastAPI application for the specified API.
+      operationId: generate_api_code_v1_apis__api_id__generate_post
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: API ID to generate code for
+      - name: api_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Api Id
       responses:
         '200':
           description: Successfully generated FastAPI application
           content:
+            application/json:
+              schema: {}
             application/zip:
               schema:
                 type: string
                 format: binary
-          headers:
-            Content-Disposition:
-              schema:
-                type: string
-                example: attachment; filename="fastapi-app.zip"
-        '404':
-          description: API not found
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                detail: "API with ID 'api-1' not found"
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /types:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/types:
     get:
       tags:
-        - Types
+      - Types
       summary: List all types
-      description: Retrieve all primitive and abstract type definitions. Types are read-only and globally available.
-      operationId: listTypes
-      responses:
-        '200':
-          description: Successfully retrieved types
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Type'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /validators:
-    get:
-      tags:
-        - Validators
-      summary: List all validators
-      description: Retrieve all validator definitions including inline (built-in) and custom validators. Validators can be filtered by namespace.
-      operationId: listValidators
+      description: Retrieve all type definitions accessible to the authenticated user.
+      operationId: list_types_v1_types_get
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: namespaceId
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Filter validators by namespace ID
+      - name: namespace_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Namespace Id
       responses:
         '200':
-          description: Successfully retrieved validators
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ValidatorBase'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /fields:
+                  $ref: '#/components/schemas/TypeResponse'
+                title: Response List Types V1 Types Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/field-constraints:
     get:
       tags:
-        - Fields
+      - Field Constraints
+      summary: List all field constraints
+      description: Retrieve all field constraint definitions accessible to the authenticated
+        user.
+      operationId: list_field_constraints_v1_field_constraints_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: namespace_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Namespace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FieldConstraintResponse'
+                title: Response List Field Constraints V1 Field Constraints Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/field-validator-templates:
+    get:
+      tags:
+      - Field Validator Templates
+      summary: List all field validator templates
+      description: Retrieve all field validator template definitions.
+      operationId: list_field_validator_templates_v1_field_validator_templates_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/FieldValidatorTemplateResponse'
+                type: array
+                title: Response List Field Validator Templates V1 Field Validator
+                  Templates Get
+      security:
+      - HTTPBearer: []
+  /v1/model-validator-templates:
+    get:
+      tags:
+      - Model Validator Templates
+      summary: List all model validator templates
+      description: Retrieve all model validator template definitions.
+      operationId: list_model_validator_templates_v1_model_validator_templates_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ModelValidatorTemplateResponse'
+                type: array
+                title: Response List Model Validator Templates V1 Model Validator
+                  Templates Get
+      security:
+      - HTTPBearer: []
+  /v1/fields:
+    get:
+      tags:
+      - Fields
       summary: List all fields
-      description: Retrieve all field definitions. Fields can be filtered by namespace.
-      operationId: listFields
+      description: Retrieve all field definitions accessible to the authenticated
+        user.
+      operationId: list_fields_v1_fields_get
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: namespaceId
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Filter fields by namespace ID
+      - name: namespace_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Namespace Id
       responses:
         '200':
-          description: Successfully retrieved fields
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Field'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  $ref: '#/components/schemas/FieldResponse'
+                title: Response List Fields V1 Fields Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     post:
       tags:
-        - Fields
+      - Fields
       summary: Create a new field
       description: Create a new field definition.
-      operationId: createField
+      operationId: create_field_v1_fields_post
+      security:
+      - HTTPBearer: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - namespaceId
-                - name
-                - type
-              properties:
-                namespaceId:
-                  type: string
-                  example: "namespace-user"
-                name:
-                  type: string
-                  example: "email"
-                type:
-                  type: string
-                  enum: [str, int, float, bool, datetime, uuid]
-                  example: "str"
-                description:
-                  type: string
-                  example: "User email address"
-                defaultValue:
-                  type: string
-                  example: ""
-                validators:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/FieldValidator'
+              $ref: '#/components/schemas/FieldCreate'
       responses:
         '201':
-          description: Field created successfully
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Field'
-        '400':
-          description: Invalid request
+                $ref: '#/components/schemas/FieldResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /fields/{id}:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/fields/{field_id}:
     get:
       tags:
-        - Fields
+      - Fields
       summary: Get field by ID
       description: Retrieve a specific field by its ID.
-      operationId: getField
+      operationId: get_field_v1_fields__field_id__get
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Field ID
+      - name: field_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Field Id
       responses:
         '200':
-          description: Successfully retrieved field
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Field'
-        '404':
-          description: Field not found
+                $ref: '#/components/schemas/FieldResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: '#/components/schemas/HTTPValidationError'
     put:
       tags:
-        - Fields
+      - Fields
       summary: Update field
       description: Update an existing field definition.
-      operationId: updateField
+      operationId: update_field_v1_fields__field_id__put
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Field ID
+      - name: field_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Field Id
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  example: "updated_field_name"
-                description:
-                  type: string
-                  example: "Updated description"
-                defaultValue:
-                  type: string
-                  example: "new_default"
-                validators:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/FieldValidator'
+              $ref: '#/components/schemas/FieldUpdate'
       responses:
         '200':
-          description: Field updated successfully
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Field'
-        '400':
-          description: Invalid request
+                $ref: '#/components/schemas/FieldResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Field not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: '#/components/schemas/HTTPValidationError'
     delete:
       tags:
-        - Fields
+      - Fields
       summary: Delete field
-      description: Delete a field. Cannot delete if the field is used in any objects.
-      operationId: deleteField
+      description: Delete a field. Cannot delete if used in objects.
+      operationId: delete_field_v1_fields__field_id__delete
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Field ID
+      - name: field_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Field Id
       responses:
         '204':
-          description: Field deleted successfully
-        '400':
-          description: Cannot delete field (used in objects)
+          description: Successful Response
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                detail: "Cannot delete field: used in 3 objects"
-        '404':
-          description: Field not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /objects:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/objects:
     get:
       tags:
-        - Objects
+      - Objects
       summary: List all objects
-      description: Retrieve all object definitions. Objects can be filtered by namespace.
-      operationId: listObjects
+      description: Retrieve all object definitions accessible to the authenticated
+        user.
+      operationId: list_objects_v1_objects_get
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: namespaceId
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Filter objects by namespace ID
+      - name: namespace_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Namespace Id
       responses:
         '200':
-          description: Successfully retrieved objects
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ObjectDefinition'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  $ref: '#/components/schemas/ObjectResponse'
+                title: Response List Objects V1 Objects Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     post:
       tags:
-        - Objects
+      - Objects
       summary: Create a new object
       description: Create a new object definition.
-      operationId: createObject
+      operationId: create_object_v1_objects_post
+      security:
+      - HTTPBearer: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - namespaceId
-                - name
-                - fields
-              properties:
-                namespaceId:
-                  type: string
-                  example: "namespace-user"
-                name:
-                  type: string
-                  example: "User"
-                description:
-                  type: string
-                  example: "User object definition"
-                fields:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/ObjectFieldReference'
+              $ref: '#/components/schemas/ObjectCreate'
       responses:
         '201':
-          description: Object created successfully
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectDefinition'
-        '400':
-          description: Invalid request
+                $ref: '#/components/schemas/ObjectResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /objects/{id}:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/objects/{object_id}:
     get:
       tags:
-        - Objects
+      - Objects
       summary: Get object by ID
       description: Retrieve a specific object by its ID.
-      operationId: getObject
+      operationId: get_object_v1_objects__object_id__get
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Object ID
+      - name: object_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Object Id
       responses:
         '200':
-          description: Successfully retrieved object
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectDefinition'
-        '404':
-          description: Object not found
+                $ref: '#/components/schemas/ObjectResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: '#/components/schemas/HTTPValidationError'
     put:
       tags:
-        - Objects
+      - Objects
       summary: Update object
       description: Update an existing object definition.
-      operationId: updateObject
+      operationId: update_object_v1_objects__object_id__put
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Object ID
+      - name: object_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Object Id
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  example: "UpdatedObjectName"
-                description:
-                  type: string
-                  example: "Updated description"
-                fields:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/ObjectFieldReference'
+              $ref: '#/components/schemas/ObjectUpdate'
       responses:
         '200':
-          description: Object updated successfully
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectDefinition'
-        '400':
-          description: Invalid request
+                $ref: '#/components/schemas/ObjectResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Object not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: '#/components/schemas/HTTPValidationError'
     delete:
       tags:
-        - Objects
+      - Objects
       summary: Delete object
-      description: Delete an object. Cannot delete if the object is used in any endpoints.
-      operationId: deleteObject
+      description: Delete an object. Cannot delete if used in endpoints.
+      operationId: delete_object_v1_objects__object_id__delete
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Object ID
+      - name: object_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Object Id
       responses:
         '204':
-          description: Object deleted successfully
-        '400':
-          description: Cannot delete object (used in endpoints)
+          description: Successful Response
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                detail: "Cannot delete object: used in 2 endpoints"
-        '404':
-          description: Object not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /tags:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/endpoints:
     get:
       tags:
-        - Tags
-      summary: List all tags
-      description: Retrieve all endpoint tags. Tags can be filtered by namespace.
-      operationId: listTags
-      parameters:
-        - name: namespaceId
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Filter tags by namespace ID
-      responses:
-        '200':
-          description: Successfully retrieved tags
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/EndpointTag'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    post:
-      tags:
-        - Tags
-      summary: Create a new tag
-      description: Create a new endpoint tag.
-      operationId: createTag
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - namespaceId
-                - apiId
-                - name
-                - description
-              properties:
-                namespaceId:
-                  type: string
-                  example: "namespace-user"
-                apiId:
-                  type: string
-                  example: "api-1"
-                name:
-                  type: string
-                  example: "Users"
-                description:
-                  type: string
-                  example: "User management endpoints"
-      responses:
-        '201':
-          description: Tag created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EndpointTag'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /tags/{id}:
-    get:
-      tags:
-        - Tags
-      summary: Get tag by ID
-      description: Retrieve a specific tag by its ID.
-      operationId: getTag
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tag ID
-      responses:
-        '200':
-          description: Successfully retrieved tag
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EndpointTag'
-        '404':
-          description: Tag not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    put:
-      tags:
-        - Tags
-      summary: Update tag
-      description: Update an existing endpoint tag.
-      operationId: updateTag
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tag ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                apiId:
-                  type: string
-                  example: "api-1"
-                name:
-                  type: string
-                  example: "UpdatedTagName"
-                description:
-                  type: string
-                  example: "Updated description"
-      responses:
-        '200':
-          description: Tag updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EndpointTag'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Tag not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    delete:
-      tags:
-        - Tags
-      summary: Delete tag
-      description: Delete an endpoint tag. Cannot delete if the tag is used by any endpoints.
-      operationId: deleteTag
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tag ID
-      responses:
-        '204':
-          description: Tag deleted successfully
-        '400':
-          description: Cannot delete tag (used by endpoints)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                detail: "Cannot delete tag: used by 5 endpoints"
-        '404':
-          description: Tag not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /endpoints:
-    get:
-      tags:
-        - Endpoints
+      - Endpoints
       summary: List all endpoints
-      description: Retrieve all API endpoint definitions. Endpoints can be filtered by namespace.
-      operationId: listEndpoints
+      description: Retrieve all API endpoint definitions accessible to the authenticated
+        user.
+      operationId: list_endpoints_v1_endpoints_get
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: namespaceId
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Filter endpoints by namespace ID
-        - name: apiId
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Filter endpoints by API ID
+      - name: namespace_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Namespace Id
       responses:
         '200':
-          description: Successfully retrieved endpoints
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ApiEndpoint'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  $ref: '#/components/schemas/ApiEndpointResponse'
+                title: Response List Endpoints V1 Endpoints Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     post:
       tags:
-        - Endpoints
+      - Endpoints
       summary: Create a new endpoint
       description: Create a new API endpoint definition.
-      operationId: createEndpoint
+      operationId: create_endpoint_v1_endpoints_post
+      security:
+      - HTTPBearer: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - namespaceId
-                - apiId
-                - method
-                - path
-                - description
-                - pathParams
-                - useEnvelope
-                - responseShape
-              properties:
-                namespaceId:
-                  type: string
-                  example: "namespace-user"
-                apiId:
-                  type: string
-                  example: "api-1"
-                method:
-                  type: string
-                  enum: [GET, POST, PUT, PATCH, DELETE]
-                  example: "GET"
-                path:
-                  type: string
-                  example: "/users/{user_id}"
-                description:
-                  type: string
-                  example: "Get user by ID"
-                tagId:
-                  type: string
-                  nullable: true
-                  example: "tag-1"
-                pathParams:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/EndpointParameter'
-                queryParamsObjectId:
-                  type: string
-                  nullable: true
-                  example: "object-query-1"
-                requestBodyObjectId:
-                  type: string
-                  nullable: true
-                  example: "object-2"
-                responseBodyObjectId:
-                  type: string
-                  nullable: true
-                  example: "object-1"
-                useEnvelope:
-                  type: boolean
-                  example: true
-                responseShape:
-                  type: string
-                  enum: [object, list]
-                  example: "object"
+              $ref: '#/components/schemas/ApiEndpointCreate'
       responses:
         '201':
-          description: Endpoint created successfully
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiEndpoint'
-        '400':
-          description: Invalid request
+                $ref: '#/components/schemas/ApiEndpointResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /endpoints/{id}:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/endpoints/{endpoint_id}:
     get:
       tags:
-        - Endpoints
+      - Endpoints
       summary: Get endpoint by ID
       description: Retrieve a specific API endpoint by its ID.
-      operationId: getEndpoint
+      operationId: get_endpoint_v1_endpoints__endpoint_id__get
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Endpoint ID
+      - name: endpoint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Endpoint Id
       responses:
         '200':
-          description: Successfully retrieved endpoint
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiEndpoint'
-        '404':
-          description: Endpoint not found
+                $ref: '#/components/schemas/ApiEndpointResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: '#/components/schemas/HTTPValidationError'
     put:
       tags:
-        - Endpoints
+      - Endpoints
       summary: Update endpoint
       description: Update an existing API endpoint definition.
-      operationId: updateEndpoint
+      operationId: update_endpoint_v1_endpoints__endpoint_id__put
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Endpoint ID
+      - name: endpoint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Endpoint Id
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                apiId:
-                  type: string
-                  example: "api-1"
-                method:
-                  type: string
-                  enum: [GET, POST, PUT, PATCH, DELETE]
-                  example: "POST"
-                path:
-                  type: string
-                  example: "/users"
-                description:
-                  type: string
-                  example: "Updated endpoint description"
-                tagId:
-                  type: string
-                  nullable: true
-                pathParams:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/EndpointParameter'
-                queryParamsObjectId:
-                  type: string
-                  nullable: true
-                requestBodyObjectId:
-                  type: string
-                  nullable: true
-                responseBodyObjectId:
-                  type: string
-                  nullable: true
-                useEnvelope:
-                  type: boolean
-                responseShape:
-                  type: string
-                  enum: [object, list]
+              $ref: '#/components/schemas/ApiEndpointUpdate'
       responses:
         '200':
-          description: Endpoint updated successfully
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiEndpoint'
-        '400':
-          description: Invalid request
+                $ref: '#/components/schemas/ApiEndpointResponse'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Endpoint not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: '#/components/schemas/HTTPValidationError'
     delete:
       tags:
-        - Endpoints
+      - Endpoints
       summary: Delete endpoint
       description: Delete an API endpoint definition.
-      operationId: deleteEndpoint
+      operationId: delete_endpoint_v1_endpoints__endpoint_id__delete
+      security:
+      - HTTPBearer: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Endpoint ID
+      - name: endpoint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Endpoint Id
       responses:
         '204':
-          description: Endpoint deleted successfully
-        '404':
-          description: Endpoint not found
+          description: Successful Response
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: '#/components/schemas/HTTPValidationError'
+  /health:
+    get:
+      tags:
+      - Health
+      summary: Health Check
+      description: 'Health check endpoint.
 
+
+        :param request: The incoming request (required for rate limiting).
+
+        :returns: Health status.'
+      operationId: health_check_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Health Check Health Get
 components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: Clerk JWT token from authentication flow
-
   schemas:
-    # ========================================================================
-    # Namespace Schema
-    # ========================================================================
-
-    Namespace:
-      type: object
-      required:
-        - id
-        - name
-        - locked
+    ApiCreate:
       properties:
-        id:
-          type: string
-          description: Unique identifier for the namespace
-          example: "00000000-0000-0000-0000-000000000001"
-        name:
-          type: string
-          description: Namespace name
-          example: "global"
-        description:
-          type: string
-          description: Namespace description
-          example: "Immutable global templates and examples"
-        locked:
-          type: boolean
-          description: Whether this namespace is locked (immutable)
-          example: true
-
-    # ========================================================================
-    # Api Schema
-    # ========================================================================
-
-    Api:
-      type: object
-      required:
-        - id
-        - namespaceId
-        - title
-        - version
-        - description
-        - baseUrl
-        - serverUrl
-        - createdAt
-        - updatedAt
-      properties:
-        id:
-          type: string
-          description: Client-generated unique identifier
-          example: "api-1"
         namespaceId:
           type: string
-          description: Namespace this API belongs to
-          example: "00000000-0000-0000-0000-000000000001"
+          format: uuid
+          title: Namespaceid
+          examples:
+          - 00000000-0000-0000-0000-000000000002
         title:
           type: string
-          description: API title for OpenAPI spec
-          example: "User Management API"
+          title: Title
+          examples:
+          - User Management API
         version:
           type: string
-          description: API version (semantic versioning)
-          example: "1.0.0"
+          title: Version
+          examples:
+          - 1.0.0
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          default: ''
+          examples:
+          - API for managing user accounts
+        baseUrl:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Baseurl
+          default: ''
+          examples:
+          - /api/v1
+        serverUrl:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Serverurl
+          default: ''
+          examples:
+          - https://api.example.com
+      type: object
+      required:
+      - namespaceId
+      - title
+      - version
+      title: ApiCreate
+      description: 'Request schema for creating an API.
+
+
+        :ivar namespace_id: Namespace this API belongs to.
+
+        :ivar title: API title for OpenAPI spec.
+
+        :ivar version: Semantic version string.
+
+        :ivar description: API description.
+
+        :ivar base_url: Base path for all endpoints.
+
+        :ivar server_url: Full server URL.'
+    ApiEndpointCreate:
+      properties:
+        apiId:
+          type: string
+          format: uuid
+          title: Apiid
+          examples:
+          - 00000000-0000-0000-0005-000000000001
+        method:
+          type: string
+          enum:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          title: Method
+          examples:
+          - GET
+        path:
+          type: string
+          title: Path
+          examples:
+          - /users/{user_id}
         description:
           type: string
-          description: API description
-          example: "Endpoints for user management"
+          title: Description
+          examples:
+          - Get user by ID
+        tagName:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tagname
+          examples:
+          - Users
+        pathParams:
+          items:
+            $ref: '#/components/schemas/PathParamSchema'
+          type: array
+          title: Pathparams
+        queryParamsObjectId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Queryparamsobjectid
+          examples:
+          - 00000000-0000-0000-0007-000000000001
+        requestBodyObjectId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Requestbodyobjectid
+          examples:
+          - 00000000-0000-0000-0007-000000000002
+        responseBodyObjectId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Responsebodyobjectid
+          examples:
+          - 00000000-0000-0000-0007-000000000001
+        useEnvelope:
+          type: boolean
+          title: Useenvelope
+          examples:
+          - true
+        responseShape:
+          type: string
+          enum:
+          - object
+          - list
+          title: Responseshape
+          examples:
+          - object
+      type: object
+      required:
+      - apiId
+      - method
+      - path
+      - description
+      - pathParams
+      - useEnvelope
+      - responseShape
+      title: ApiEndpointCreate
+      description: 'Request schema for creating an endpoint.
+
+
+        :ivar api_id: API this endpoint belongs to.
+
+        :ivar method: HTTP method.
+
+        :ivar path: URL path with optional parameters.
+
+        :ivar description: Endpoint description.
+
+        :ivar tag_name: Optional tag name (must exist in the parent API''s tags).
+
+        :ivar path_params: Path parameters referencing field definitions.
+
+        :ivar query_params_object_id: Optional query params object reference.
+
+        :ivar request_body_object_id: Optional request body object reference.
+
+        :ivar response_body_object_id: Optional response body object reference.
+
+        :ivar use_envelope: Whether to wrap response in envelope.
+
+        :ivar response_shape: Response shape (object or list).'
+    ApiEndpointResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+          examples:
+          - 00000000-0000-0000-0004-000000000001
+        apiId:
+          type: string
+          format: uuid
+          title: Apiid
+          examples:
+          - 00000000-0000-0000-0005-000000000001
+        method:
+          type: string
+          title: Method
+          examples:
+          - GET
+        path:
+          type: string
+          title: Path
+          examples:
+          - /users/{user_id}
+        description:
+          type: string
+          title: Description
+          examples:
+          - Retrieve user by ID
+        tagName:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tagname
+          examples:
+          - Users
+        pathParams:
+          items:
+            $ref: '#/components/schemas/PathParamSchema'
+          type: array
+          title: Pathparams
+        queryParamsObjectId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Queryparamsobjectid
+          examples:
+          - 00000000-0000-0000-0007-000000000001
+        requestBodyObjectId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Requestbodyobjectid
+          examples:
+          - 00000000-0000-0000-0007-000000000002
+        responseBodyObjectId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Responsebodyobjectid
+          examples:
+          - 00000000-0000-0000-0007-000000000001
+        useEnvelope:
+          type: boolean
+          title: Useenvelope
+          examples:
+          - true
+        responseShape:
+          type: string
+          title: Responseshape
+          examples:
+          - object
+      type: object
+      required:
+      - id
+      - apiId
+      - method
+      - path
+      - description
+      - useEnvelope
+      - responseShape
+      title: ApiEndpointResponse
+      description: 'Response schema for endpoint data.
+
+
+        :ivar id: Unique identifier for the endpoint.
+
+        :ivar api_id: API this endpoint belongs to.
+
+        :ivar method: HTTP method.
+
+        :ivar path: URL path.
+
+        :ivar description: Endpoint description.
+
+        :ivar tag_name: Tag name (references a tag in the parent API).
+
+        :ivar path_params: Path parameters referencing field definitions.
+
+        :ivar query_params_object_id: Query params object reference.
+
+        :ivar request_body_object_id: Request body object reference.
+
+        :ivar response_body_object_id: Response body object reference.
+
+        :ivar use_envelope: Whether response is wrapped in envelope.
+
+        :ivar response_shape: Response shape.'
+    ApiEndpointUpdate:
+      properties:
+        apiId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Apiid
+          examples:
+          - 00000000-0000-0000-0005-000000000001
+        method:
+          anyOf:
+          - type: string
+            enum:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+          - type: 'null'
+          title: Method
+          examples:
+          - POST
+        path:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Path
+          examples:
+          - /users
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - Updated endpoint description
+        tagName:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tagname
+        pathParams:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/PathParamSchema'
+            type: array
+          - type: 'null'
+          title: Pathparams
+        queryParamsObjectId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Queryparamsobjectid
+        requestBodyObjectId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Requestbodyobjectid
+        responseBodyObjectId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Responsebodyobjectid
+        useEnvelope:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Useenvelope
+        responseShape:
+          anyOf:
+          - type: string
+            enum:
+            - object
+            - list
+          - type: 'null'
+          title: Responseshape
+      type: object
+      title: ApiEndpointUpdate
+      description: 'Request schema for updating an endpoint.
+
+
+        :ivar api_id: Updated API reference.
+
+        :ivar method: Updated HTTP method.
+
+        :ivar path: Updated URL path.
+
+        :ivar description: Updated description.
+
+        :ivar tag_name: Updated tag name.
+
+        :ivar path_params: Updated path parameters.
+
+        :ivar query_params_object_id: Updated query params object reference.
+
+        :ivar request_body_object_id: Updated request body object reference.
+
+        :ivar response_body_object_id: Updated response body object reference.
+
+        :ivar use_envelope: Updated envelope setting.
+
+        :ivar response_shape: Updated response shape.'
+    ApiResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+          examples:
+          - 00000000-0000-0000-0005-000000000001
+        namespaceId:
+          type: string
+          format: uuid
+          title: Namespaceid
+          examples:
+          - 00000000-0000-0000-0000-000000000001
+        title:
+          type: string
+          title: Title
+          examples:
+          - User Management API
+        version:
+          type: string
+          title: Version
+          examples:
+          - 1.0.0
+        description:
+          type: string
+          title: Description
+          examples:
+          - Endpoints for user management
         baseUrl:
           type: string
-          description: Base path for all endpoints
-          example: "/api/v1"
+          title: Baseurl
+          examples:
+          - /api/v1
         serverUrl:
           type: string
-          description: Full server URL
-          example: "https://api.example.com"
+          title: Serverurl
+          examples:
+          - https://api.example.com
         createdAt:
           type: string
           format: date-time
-          description: Timestamp when the API was created
-          example: "2026-01-25T10:30:00Z"
+          title: Createdat
+          examples:
+          - '2026-01-25T10:30:00Z'
         updatedAt:
           type: string
           format: date-time
-          description: Timestamp when the API was last updated
-          example: "2026-01-25T10:30:00Z"
-
-    # ========================================================================
-    # Type Schema
-    # ========================================================================
-
-    Type:
+          title: Updatedat
+          examples:
+          - '2026-01-25T10:30:00Z'
       type: object
       required:
-        - name
-        - category
-        - pythonType
-        - description
-        - validatorCategories
+      - id
+      - namespaceId
+      - title
+      - version
+      - description
+      - baseUrl
+      - serverUrl
+      - createdAt
+      - updatedAt
+      title: ApiResponse
+      description: 'Response schema for API data.
+
+
+        :ivar id: Unique identifier for the API.
+
+        :ivar namespace_id: Namespace this API belongs to.
+
+        :ivar title: API title.
+
+        :ivar version: Semantic version string.
+
+        :ivar description: API description.
+
+        :ivar base_url: Base path for all endpoints.
+
+        :ivar server_url: Full server URL.
+
+        :ivar created_at: Creation timestamp.
+
+        :ivar updated_at: Last update timestamp.'
+    ApiUpdate:
       properties:
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+          examples:
+          - Updated API Title
+        version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+          examples:
+          - 2.0.0
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - Updated API description
+        baseUrl:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Baseurl
+          examples:
+          - /api/v2
+        serverUrl:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Serverurl
+          examples:
+          - https://api.example.com
+      type: object
+      title: ApiUpdate
+      description: 'Request schema for updating an API.
+
+
+        :ivar title: Updated API title.
+
+        :ivar version: Updated version string.
+
+        :ivar description: Updated API description.
+
+        :ivar base_url: Updated base path.
+
+        :ivar server_url: Updated server URL.'
+    FieldConstraintResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+          examples:
+          - 00000000-0000-0000-0002-000000000001
+        namespaceId:
+          type: string
+          format: uuid
+          title: Namespaceid
+          examples:
+          - 00000000-0000-0000-0000-000000000001
         name:
           type: string
-          description: Type name
-          example: "str"
-        category:
-          type: string
-          enum: [primitive, abstract]
-          description: Type category
-          example: "primitive"
-        pythonType:
-          type: string
-          description: Python type representation
-          example: "str"
+          title: Name
+          examples:
+          - max_length
         description:
           type: string
-          description: Type description
-          example: "String type for text data"
-        validatorCategories:
-          type: array
+          title: Description
+          examples:
+          - Validates string length does not exceed maximum
+        parameterTypes:
           items:
             type: string
-          description: Compatible validator categories for this type
-          example: ["string"]
-
-    # ========================================================================
-    # Endpoint Tag
-    # ========================================================================
-
-    EndpointTag:
-      type: object
-      required:
-        - id
-        - namespaceId
-        - apiId
-        - name
-        - description
-      properties:
-        id:
-          type: string
-          description: Client-generated unique identifier
-          example: "tag-1"
-        namespaceId:
-          type: string
-          description: Namespace this tag belongs to
-          example: "00000000-0000-0000-0000-000000000001"
-        apiId:
-          type: string
-          description: Reference to the API this tag belongs to
-          example: "api-1"
-        name:
-          type: string
-          description: Tag name for OpenAPI spec
-          example: "Users"
-        description:
-          type: string
-          description: Tag description
-          example: "User management endpoints"
-
-    # ========================================================================
-    # API Endpoint
-    # ========================================================================
-
-    ApiEndpoint:
-      type: object
-      required:
-        - id
-        - namespaceId
-        - apiId
-        - method
-        - path
-        - description
-        - pathParams
-        - useEnvelope
-        - responseShape
-      properties:
-        id:
-          type: string
-          description: Client-generated unique identifier
-          example: "endpoint-1"
-        namespaceId:
-          type: string
-          description: Namespace this endpoint belongs to
-          example: "00000000-0000-0000-0000-000000000001"
-        apiId:
-          type: string
-          description: Reference to the API this endpoint belongs to
-          example: "api-1"
-        method:
-          type: string
-          enum: [GET, POST, PUT, PATCH, DELETE]
-          description: HTTP method
-          example: "GET"
-        path:
-          type: string
-          description: URL path with optional parameters in {braces}
-          example: "/users/{user_id}"
-        description:
-          type: string
-          description: Endpoint description for OpenAPI spec
-          example: "Retrieve user by ID"
-        tagId:
-          type: string
-          nullable: true
-          description: Reference to EndpointTag.id (optional)
-          example: "tag-1"
-        pathParams:
           type: array
+          title: Parametertypes
+          examples:
+          - - int
+        docsUrl:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Docsurl
+          examples:
+          - https://docs.pydantic.dev/
+        compatibleTypes:
           items:
-            $ref: '#/components/schemas/EndpointParameter'
-          description: Path parameters extracted from URL
-        queryParamsObjectId:
-          type: string
-          nullable: true
-          description: Reference to ObjectDefinition.id for query parameters (optional)
-          example: "object-query-1"
-        requestBodyObjectId:
-          type: string
-          nullable: true
-          description: Reference to ObjectDefinition.id for request body (optional - only for POST/PUT/PATCH)
-          example: "object-2"
-        responseBodyObjectId:
-          type: string
-          nullable: true
-          description: Reference to ObjectDefinition.id for response body (optional)
-          example: "object-1"
-        useEnvelope:
-          type: boolean
-          description: Whether to wrap response in standard envelope (success, data, message)
-          example: true
-        responseShape:
-          type: string
-          enum: [object, list]
-          description: Response data shape - single object or array of objects
-          example: "object"
-        expanded:
-          type: boolean
-          description: UI state - whether endpoint is expanded in frontend (ignored during generation)
-          example: false
-
-    # ========================================================================
-    # Endpoint Parameter
-    # ========================================================================
-
-    EndpointParameter:
+            type: string
+          type: array
+          title: Compatibletypes
+          examples:
+          - - str
+            - uuid
+        usedInFields:
+          type: integer
+          title: Usedinfields
+          default: 0
       type: object
       required:
-        - id
-        - name
-        - type
-        - description
-        - required
+      - id
+      - namespaceId
+      - name
+      - description
+      - parameterTypes
+      - compatibleTypes
+      title: FieldConstraintResponse
+      description: 'Response schema for field constraint data.
+
+
+        :ivar id: Unique identifier for the field constraint.
+
+        :ivar namespace_id: Namespace this field constraint belongs to.
+
+        :ivar name: Constraint name.
+
+        :ivar description: Constraint description.
+
+        :ivar parameter_types: List of types this constraint''s parameter accepts.
+
+        :ivar docs_url: URL to documentation.
+
+        :ivar compatible_types: List of type names this constraint applies to.'
+    FieldConstraintValueInput:
       properties:
-        id:
+        constraintId:
           type: string
-          description: Client-generated unique identifier
-          example: "param-1"
+          format: uuid
+          title: Constraintid
+        value:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Value
+      type: object
+      required:
+      - constraintId
+      title: FieldConstraintValueInput
+      description: 'Request schema for attaching a field constraint to a field.
+
+
+        :ivar constraint_id: Reference to the field constraint definition.
+
+        :ivar value: Parameter value for the constraint (null for parameterless).'
+    FieldConstraintValueResponse:
+      properties:
+        constraintId:
+          type: string
+          format: uuid
+          title: Constraintid
         name:
           type: string
-          description: Parameter name (extracted from path {braces})
-          example: "user_id"
-        type:
-          type: string
-          description: Primitive type name
-          example: "uuid"
-        description:
-          type: string
-          description: Parameter description
-          example: "Unique user identifier"
-        required:
-          type: boolean
-          description: Whether parameter is required (path params always true)
-          example: true
-
-    # ========================================================================
-    # Object Definition
-    # ========================================================================
-
-    ObjectDefinition:
+          title: Name
+        value:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Value
       type: object
       required:
-        - id
-        - namespaceId
-        - name
-        - fields
-        - usedInApis
+      - constraintId
+      - name
+      title: FieldConstraintValueResponse
+      description: 'Response schema for a field constraint value attached to a field.
+
+
+        :ivar constraint_id: Reference to the field constraint definition.
+
+        :ivar name: Constraint name.
+
+        :ivar value: Parameter value for the constraint.'
+    FieldCreate:
       properties:
-        id:
-          type: string
-          description: Client-generated unique identifier
-          example: "object-1"
         namespaceId:
           type: string
-          description: Namespace this object belongs to
-          example: "00000000-0000-0000-0000-000000000001"
+          format: uuid
+          title: Namespaceid
+          examples:
+          - 00000000-0000-0000-0000-000000000002
         name:
           type: string
-          description: Object name (will become Pydantic model class name)
-          example: "User"
-        description:
+          title: Name
+          examples:
+          - email
+        typeId:
           type: string
-          description: Object description
-          example: "User account object"
-        fields:
-          type: array
+          format: uuid
+          title: Typeid
+          examples:
+          - 00000000-0000-0000-0001-000000000001
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - User email address
+        defaultValue:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Defaultvalue
+          examples:
+          - ''
+        constraints:
           items:
-            $ref: '#/components/schemas/ObjectFieldReference'
-          description: Fields that compose this object
+            $ref: '#/components/schemas/FieldConstraintValueInput'
+          type: array
+          title: Constraints
+        validators:
+          items:
+            $ref: '#/components/schemas/FieldValidatorInput'
+          type: array
+          title: Validators
+      type: object
+      required:
+      - namespaceId
+      - name
+      - typeId
+      title: FieldCreate
+      description: 'Request schema for creating a field.
+
+
+        :ivar namespace_id: Namespace this field belongs to.
+
+        :ivar name: Field name.
+
+        :ivar type_id: Reference to the type definition UUID.
+
+        :ivar description: Field description.
+
+        :ivar default_value: Default value expression.
+
+        :ivar constraints: Constraints to attach to this field.
+
+        :ivar validators: Inline validator definitions for this field.'
+    FieldResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+          examples:
+          - 00000000-0000-0000-0003-000000000001
+        namespaceId:
+          type: string
+          format: uuid
+          title: Namespaceid
+          examples:
+          - 00000000-0000-0000-0000-000000000001
+        name:
+          type: string
+          title: Name
+          examples:
+          - email
+        typeId:
+          type: string
+          format: uuid
+          title: Typeid
+          examples:
+          - 00000000-0000-0000-0001-000000000001
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - User email address
+        defaultValue:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Defaultvalue
+          examples:
+          - ''
         usedInApis:
-          type: array
           items:
             type: string
-          description: Array of endpoint IDs that use this object
-          example: ["endpoint-1", "endpoint-2"]
-
-    # ========================================================================
-    # Object Field Reference
-    # ========================================================================
-
-    ObjectFieldReference:
+            format: uuid
+          type: array
+          title: Usedinapis
+          examples:
+          - - 00000000-0000-0000-0004-000000000001
+        constraints:
+          items:
+            $ref: '#/components/schemas/FieldConstraintValueResponse'
+          type: array
+          title: Constraints
+        validators:
+          items:
+            $ref: '#/components/schemas/FieldValidatorResponse'
+          type: array
+          title: Validators
       type: object
       required:
-        - fieldId
-        - required
+      - id
+      - namespaceId
+      - name
+      - typeId
+      title: FieldResponse
+      description: 'Response schema for field data.
+
+
+        :ivar id: Unique identifier for the field.
+
+        :ivar namespace_id: Namespace this field belongs to.
+
+        :ivar name: Field name.
+
+        :ivar type_id: Reference to the type definition UUID.
+
+        :ivar description: Field description.
+
+        :ivar default_value: Default value expression.
+
+        :ivar used_in_apis: Array of endpoint IDs where this field is used.
+
+        :ivar constraints: Constraints attached to this field.
+
+        :ivar validators: Validators attached to this field.'
+    FieldUpdate:
+      properties:
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+          examples:
+          - updated_field_name
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - Updated description
+        defaultValue:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Defaultvalue
+          examples:
+          - new_default
+        constraints:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/FieldConstraintValueInput'
+            type: array
+          - type: 'null'
+          title: Constraints
+        validators:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/FieldValidatorInput'
+            type: array
+          - type: 'null'
+          title: Validators
+      type: object
+      title: FieldUpdate
+      description: 'Request schema for updating a field.
+
+
+        :ivar name: Updated field name.
+
+        :ivar description: Updated description.
+
+        :ivar default_value: Updated default value.
+
+        :ivar constraints: Updated constraints (None = don''t touch, [] = clear all).
+
+        :ivar validators: Updated validators (None = don''t touch, [] = clear all).'
+    FieldValidatorInput:
+      properties:
+        templateId:
+          type: string
+          format: uuid
+          title: Templateid
+        parameters:
+          anyOf:
+          - additionalProperties:
+              type: string
+            type: object
+          - type: 'null'
+          title: Parameters
+      type: object
+      required:
+      - templateId
+      title: FieldValidatorInput
+      description: 'Request schema for attaching a field validator template to a field.
+
+
+        :ivar template_id: Reference to the field validator template.
+
+        :ivar parameters: Template parameter values.'
+    FieldValidatorResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        templateId:
+          type: string
+          format: uuid
+          title: Templateid
+        parameters:
+          anyOf:
+          - additionalProperties:
+              type: string
+            type: object
+          - type: 'null'
+          title: Parameters
+      type: object
+      required:
+      - id
+      - templateId
+      title: FieldValidatorResponse
+      description: 'Response schema for an applied field validator.
+
+
+        :ivar id: Unique identifier for the applied validator.
+
+        :ivar template_id: Reference to the template.
+
+        :ivar parameters: Template parameter values.'
+    FieldValidatorTemplateResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        name:
+          type: string
+          title: Name
+        description:
+          type: string
+          title: Description
+        compatibleTypes:
+          items:
+            type: string
+          type: array
+          title: Compatibletypes
+        mode:
+          type: string
+          title: Mode
+        parameters:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Parameters
+        bodyTemplate:
+          type: string
+          title: Bodytemplate
+      type: object
+      required:
+      - id
+      - name
+      - description
+      - compatibleTypes
+      - mode
+      - parameters
+      - bodyTemplate
+      title: FieldValidatorTemplateResponse
+      description: 'Response schema for a field validator template.
+
+
+        :ivar id: Unique identifier for the template.
+
+        :ivar name: Template display name.
+
+        :ivar description: Template description.
+
+        :ivar compatible_types: List of type names this template applies to.
+
+        :ivar mode: Validator mode (before, after).
+
+        :ivar parameters: Template parameter definitions.
+
+        :ivar body_template: Jinja2 template for the function body.'
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ModelValidatorInput:
+      properties:
+        templateId:
+          type: string
+          format: uuid
+          title: Templateid
+        parameters:
+          anyOf:
+          - additionalProperties:
+              type: string
+            type: object
+          - type: 'null'
+          title: Parameters
+        fieldMappings:
+          additionalProperties:
+            type: string
+          type: object
+          title: Fieldmappings
+      type: object
+      required:
+      - templateId
+      - fieldMappings
+      title: ModelValidatorInput
+      description: 'Request schema for attaching a model validator template to an
+        object.
+
+
+        :ivar template_id: Reference to the model validator template.
+
+        :ivar parameters: Template parameter values.
+
+        :ivar field_mappings: Maps template field mapping keys to actual field names.'
+    ModelValidatorResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        templateId:
+          type: string
+          format: uuid
+          title: Templateid
+        parameters:
+          anyOf:
+          - additionalProperties:
+              type: string
+            type: object
+          - type: 'null'
+          title: Parameters
+        fieldMappings:
+          additionalProperties:
+            type: string
+          type: object
+          title: Fieldmappings
+      type: object
+      required:
+      - id
+      - templateId
+      - fieldMappings
+      title: ModelValidatorResponse
+      description: 'Response schema for an applied model validator.
+
+
+        :ivar id: Unique identifier for the applied validator.
+
+        :ivar template_id: Reference to the template.
+
+        :ivar parameters: Template parameter values.
+
+        :ivar field_mappings: Resolved field name mappings.'
+    ModelValidatorTemplateResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        name:
+          type: string
+          title: Name
+        description:
+          type: string
+          title: Description
+        mode:
+          type: string
+          title: Mode
+        parameters:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Parameters
+        fieldMappings:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Fieldmappings
+        bodyTemplate:
+          type: string
+          title: Bodytemplate
+      type: object
+      required:
+      - id
+      - name
+      - description
+      - mode
+      - parameters
+      - fieldMappings
+      - bodyTemplate
+      title: ModelValidatorTemplateResponse
+      description: 'Response schema for a model validator template.
+
+
+        :ivar id: Unique identifier for the template.
+
+        :ivar name: Template display name.
+
+        :ivar description: Template description.
+
+        :ivar mode: Validator mode (before, after).
+
+        :ivar parameters: Template parameter definitions.
+
+        :ivar field_mappings: Field mapping definitions.
+
+        :ivar body_template: Jinja2 template for the function body.'
+    NamespaceCreate:
+      properties:
+        name:
+          type: string
+          title: Name
+          examples:
+          - my-api-project
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - Custom namespace for my API project
+      type: object
+      required:
+      - name
+      title: NamespaceCreate
+      description: 'Request schema for creating a namespace.
+
+
+        :ivar name: Namespace name.
+
+        :ivar description: Optional namespace description.'
+    NamespaceResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+          examples:
+          - 00000000-0000-0000-0000-000000000001
+        name:
+          type: string
+          title: Name
+          examples:
+          - global
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - Immutable global templates and examples
+        locked:
+          type: boolean
+          title: Locked
+          examples:
+          - true
+        isDefault:
+          type: boolean
+          title: Isdefault
+          examples:
+          - false
+      type: object
+      required:
+      - id
+      - name
+      - locked
+      - isDefault
+      title: NamespaceResponse
+      description: 'Response schema for namespace data.
+
+
+        :ivar id: Unique identifier for the namespace.
+
+        :ivar name: Namespace name.
+
+        :ivar description: Namespace description.
+
+        :ivar locked: Whether this namespace is locked (immutable).
+
+        :ivar is_default: Whether this is the user''s default namespace.'
+    NamespaceUpdate:
+      properties:
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+          examples:
+          - updated-namespace-name
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - Updated description
+      type: object
+      title: NamespaceUpdate
+      description: 'Request schema for updating a namespace.
+
+
+        :ivar name: Updated namespace name.
+
+        :ivar description: Updated namespace description.'
+    ObjectCreate:
+      properties:
+        namespaceId:
+          type: string
+          format: uuid
+          title: Namespaceid
+          examples:
+          - 00000000-0000-0000-0000-000000000002
+        name:
+          type: string
+          title: Name
+          examples:
+          - User
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - User object definition
+        fields:
+          items:
+            $ref: '#/components/schemas/ObjectFieldReferenceSchema'
+          type: array
+          title: Fields
+        validators:
+          items:
+            $ref: '#/components/schemas/ModelValidatorInput'
+          type: array
+          title: Validators
+      type: object
+      required:
+      - namespaceId
+      - name
+      - fields
+      title: ObjectCreate
+      description: 'Request schema for creating an object.
+
+
+        :ivar namespace_id: Namespace this object belongs to.
+
+        :ivar name: Object name.
+
+        :ivar description: Object description.
+
+        :ivar fields: List of field references.
+
+        :ivar validators: Inline model validator definitions for this object.'
+    ObjectFieldReferenceSchema:
       properties:
         fieldId:
           type: string
-          description: Reference to Field.id
-          example: "field-1"
+          format: uuid
+          title: Fieldid
+          examples:
+          - 00000000-0000-0000-0003-000000000001
         required:
           type: boolean
-          description: Whether this field is required in the object
-          example: true
-
-    # ========================================================================
-    # Field Definition
-    # ========================================================================
-
-    Field:
+          title: Required
+          examples:
+          - true
       type: object
       required:
-        - id
-        - namespaceId
-        - name
-        - type
-        - validators
-        - usedInApis
+      - fieldId
+      - required
+      title: ObjectFieldReferenceSchema
+      description: 'Schema for a field reference in an object.
+
+
+        :ivar field_id: Reference to Field.id.
+
+        :ivar required: Whether this field is required in the object.'
+    ObjectResponse:
       properties:
         id:
           type: string
-          description: Client-generated unique identifier
-          example: "field-1"
+          format: uuid
+          title: Id
+          examples:
+          - 00000000-0000-0000-0007-000000000001
         namespaceId:
           type: string
-          description: Namespace this field belongs to
-          example: "00000000-0000-0000-0000-000000000001"
+          format: uuid
+          title: Namespaceid
+          examples:
+          - 00000000-0000-0000-0000-000000000001
         name:
           type: string
-          description: Field name (will become Pydantic field name)
-          example: "email"
-        type:
-          type: string
-          enum: [str, int, float, bool, datetime, uuid]
-          description: Primitive type name
-          example: "str"
+          title: Name
+          examples:
+          - User
         description:
-          type: string
-          description: Field description
-          example: "User email address"
-        defaultValue:
-          type: string
-          description: Default value expression (Python code)
-          example: ""
-        validators:
-          type: array
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - User account object
+        fields:
           items:
-            $ref: '#/components/schemas/FieldValidator'
-          description: Validators applied to this field
-        usedInApis:
+            $ref: '#/components/schemas/ObjectFieldReferenceSchema'
           type: array
+          title: Fields
+        usedInApis:
           items:
             type: string
-          description: Array of endpoint IDs where this field is used
-          example: ["endpoint-1"]
-
-    # ========================================================================
-    # Field Validator
-    # ========================================================================
-
-    FieldValidator:
+            format: uuid
+          type: array
+          title: Usedinapis
+          examples:
+          - - 00000000-0000-0000-0004-000000000001
+        validators:
+          items:
+            $ref: '#/components/schemas/ModelValidatorResponse'
+          type: array
+          title: Validators
       type: object
       required:
-        - name
+      - id
+      - namespaceId
+      - name
+      title: ObjectResponse
+      description: 'Response schema for object data.
+
+
+        :ivar id: Unique identifier for the object.
+
+        :ivar namespace_id: Namespace this object belongs to.
+
+        :ivar name: Object name.
+
+        :ivar description: Object description.
+
+        :ivar fields: List of field references.
+
+        :ivar used_in_apis: Array of endpoint IDs that use this object.
+
+        :ivar validators: Model validators attached to this object.'
+    ObjectUpdate:
+      properties:
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+          examples:
+          - UpdatedObjectName
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - Updated description
+        fields:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ObjectFieldReferenceSchema'
+            type: array
+          - type: 'null'
+          title: Fields
+        validators:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ModelValidatorInput'
+            type: array
+          - type: 'null'
+          title: Validators
+      type: object
+      title: ObjectUpdate
+      description: 'Request schema for updating an object.
+
+
+        :ivar name: Updated object name.
+
+        :ivar description: Updated description.
+
+        :ivar fields: Updated list of field references (None = don''t touch).
+
+        :ivar validators: Updated validators (None = don''t touch, [] = clear all).'
+    PathParamSchema:
       properties:
         name:
           type: string
-          description: Validator name (references ValidatorBase.name)
-          example: "max_length"
-        params:
-          type: object
-          additionalProperties: true
-          description: Validator parameters (optional)
-          example:
-            value: 255
-
-    # ========================================================================
-    # Validator Base
-    # ========================================================================
-
-    ValidatorBase:
+          title: Name
+          examples:
+          - user_id
+        fieldId:
+          type: string
+          format: uuid
+          title: Fieldid
+          examples:
+          - 00000000-0000-0000-0003-000000000001
       type: object
       required:
-        - name
-        - namespaceId
-        - type
-        - description
-        - category
-        - parameterType
-        - exampleUsage
-        - pydanticDocsUrl
+      - name
+      - fieldId
+      title: PathParamSchema
+      description: 'Schema for a path parameter reference.
+
+
+        :ivar name: Parameter name (extracted from path {braces}).
+
+        :ivar field_id: Reference to the field definition.'
+    TypeResponse:
       properties:
-        name:
+        id:
           type: string
-          description: Validator name (unique within namespace)
-          example: "email_format"
+          format: uuid
+          title: Id
+          examples:
+          - 00000000-0000-0000-0001-000000000001
         namespaceId:
           type: string
-          description: Namespace this validator belongs to
-          example: "00000000-0000-0000-0000-000000000001"
-        type:
+          format: uuid
+          title: Namespaceid
+          examples:
+          - 00000000-0000-0000-0000-000000000001
+        name:
           type: string
-          enum: [string, numeric, collection]
-          description: Validator type category
-          example: "string"
+          title: Name
+          examples:
+          - str
+        pythonType:
+          type: string
+          title: Pythontype
+          examples:
+          - str
         description:
           type: string
-          description: Validator description
-          example: "Validates email format"
-        category:
-          type: string
-          enum: [inline, custom]
-          description: Whether this is a Pydantic inline validator or custom
-          example: "inline"
-        parameterType:
-          type: string
-          description: Type of parameter this validator accepts
-          example: "None"
-        exampleUsage:
-          type: string
-          description: Example Pydantic code usage
-          example: "EmailStr"
-        pydanticDocsUrl:
-          type: string
-          description: URL to Pydantic documentation
-          example: "https://docs.pydantic.dev/"
-
-    # ========================================================================
-    # Error Response
-    # ========================================================================
-
-    Error:
+          title: Description
+          examples:
+          - String type for text data
+        importPath:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Importpath
+        parentTypeId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Parenttypeid
+        usedInFields:
+          type: integer
+          title: Usedinfields
+          default: 0
+          examples:
+          - 5
       type: object
       required:
-        - detail
-      properties:
-        detail:
-          type: string
-          description: Error message describing what went wrong
-          example: "Invalid API specification: endpoint path must start with /"
+      - id
+      - namespaceId
+      - name
+      - pythonType
+      - description
+      title: TypeResponse
+      description: 'Response schema for type data.
 
-  responses:
-    Unauthorized:
-      description: Unauthorized - Invalid or missing Clerk JWT token
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            detail: "Not authenticated"
+
+        :ivar id: Unique identifier for the type.
+
+        :ivar namespace_id: Namespace this type belongs to.
+
+        :ivar name: Type name.
+
+        :ivar python_type: Python type representation.
+
+        :ivar description: Type description.
+
+        :ivar import_path: Import statement for this type.
+
+        :ivar parent_type_id: Parent type ID for constrained types.
+
+        :ivar used_in_fields: Count of fields using this type.'
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer
