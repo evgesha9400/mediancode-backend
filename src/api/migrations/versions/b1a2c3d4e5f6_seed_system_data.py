@@ -227,7 +227,6 @@ CONSTRAINTS_DATA = [
 # Fixed UUIDs for field validator templates
 FVT_STRIP_AND_NORMALIZE_ID = UUID("00000000-0000-0000-0003-000000000001")
 FVT_NORMALIZE_WHITESPACE_ID = UUID("00000000-0000-0000-0003-000000000002")
-FVT_DEFAULT_IF_EMPTY_ID = UUID("00000000-0000-0000-0003-000000000003")
 FVT_TRIM_TO_LENGTH_ID = UUID("00000000-0000-0000-0003-000000000004")
 FVT_SANITIZE_HTML_ID = UUID("00000000-0000-0000-0003-000000000005")
 FVT_ROUND_DECIMAL_ID = UUID("00000000-0000-0000-0003-000000000006")
@@ -266,23 +265,6 @@ FIELD_VALIDATOR_TEMPLATES_DATA = [
         "mode": "before",
         "parameters": [],
         "body_template": "    import re\n    v = re.sub(r'\\s+', ' ', v).strip()\n    return v",
-    },
-    {
-        "id": FVT_DEFAULT_IF_EMPTY_ID,
-        "name": "Default If Empty",
-        "description": "Replaces empty or whitespace-only strings with a default value",
-        "compatible_types": ["str"],
-        "mode": "before",
-        "parameters": [
-            {
-                "key": "default_value",
-                "label": "Default value",
-                "type": "text",
-                "placeholder": "N/A",
-                "required": True,
-            }
-        ],
-        "body_template": '    if not v or not v.strip():\n        v = "{{ default_value }}"\n    return v',
     },
     {
         "id": FVT_TRIM_TO_LENGTH_ID,

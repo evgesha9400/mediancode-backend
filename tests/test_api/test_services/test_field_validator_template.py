@@ -16,14 +16,13 @@ async def test_list_all_returns_seeded_templates(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
 ):
-    """All 9 seeded field validator templates are returned."""
+    """All 8 seeded field validator templates are returned."""
     service = FieldValidatorTemplateService(db_session)
     templates = await service.list_all()
-    assert len(templates) == 9
+    assert len(templates) == 8
     names = {t.name for t in templates}
     assert "Strip & Normalize Case" in names
     assert "Normalize Whitespace" in names
-    assert "Default If Empty" in names
     assert "Trim To Length" in names
     assert "Strip HTML Tags" in names
     assert "Round Decimal" in names
