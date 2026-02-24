@@ -1,5 +1,5 @@
 # tests/test_api/test_services/test_object.py
-"""Integration tests for inline model validators on objects."""
+"""Integration tests for template-referenced model validators on objects."""
 
 import pytest
 
@@ -25,6 +25,11 @@ from api.services.field import FieldService
 from api.services.object import ObjectService
 from api.settings import get_settings
 
+# Seed model validator template UUIDs (from b1a2c3d4e5f6 migration)
+MVT_PASSWORD_CONFIRM_ID = "00000000-0000-0000-0004-000000000001"
+MVT_DATE_RANGE_ID = "00000000-0000-0000-0004-000000000002"
+MVT_MUTUAL_EXCLUSIVITY_ID = "00000000-0000-0000-0004-000000000003"
+
 
 # --- Fixtures ---
 
@@ -36,7 +41,7 @@ async def user_namespace(
     """Create a user-owned (unlocked) namespace for object tests."""
     namespace = Namespace(
         name="Object Test Namespace",
-        description="Namespace for inline model validator tests",
+        description="Namespace for template-referenced model validator tests",
         user_id=test_user.id,
     )
     db_session.add(namespace)
@@ -130,7 +135,7 @@ async def _reload_object(
     return loaded
 
 
-# --- Tests: Create with inline model validators ---
+# --- Tests: Create with template-referenced model validators ---
 
 
 @pytest.mark.asyncio
@@ -140,7 +145,7 @@ async def test_create_object_with_validators(
     test_field: FieldModel,
     test_user: UserModel,
 ):
-    """Creating an object with validators creates child validator rows."""
+    """Creating an object with a template-referenced validator creates child validator rows."""
     obj = await _create_object(
         object_service,
         user_namespace,
@@ -149,10 +154,12 @@ async def test_create_object_with_validators(
         name="ValidatedObject",
         validators=[
             {
-                "functionName": "check_consistency",
-                "mode": "after",
-                "functionBody": "def check_consistency(cls, values):\n    return values",
-                "description": "Checks data consistency",
+                "templateId": MVT_PASSWORD_CONFIRM_ID,
+                "parameters": None,
+                "fieldMappings": {
+                    "password_field": "password",
+                    "confirm_field": "password_confirm",
+                },
             }
         ],
     )
@@ -160,10 +167,12 @@ async def test_create_object_with_validators(
 
     assert len(loaded.validators) == 1
     v = loaded.validators[0]
-    assert v.function_name == "check_consistency"
-    assert v.mode == "after"
-    assert v.function_body == "def check_consistency(cls, values):\n    return values"
-    assert v.description == "Checks data consistency"
+    assert v.template_id == UUID(MVT_PASSWORD_CONFIRM_ID)
+    assert v.parameters is None
+    assert v.field_mappings == {
+        "password_field": "password",
+        "confirm_field": "password_confirm",
+    }
     assert v.id is not None
 
 
@@ -194,7 +203,7 @@ async def test_create_object_with_multiple_validators(
     test_field: FieldModel,
     test_user: UserModel,
 ):
-    """Multiple inline model validators are created with correct position ordering."""
+    """Multiple template-referenced model validators are created with correct position ordering."""
     obj = await _create_object(
         object_service,
         user_namespace,
@@ -203,23 +212,29 @@ async def test_create_object_with_multiple_validators(
         name="MultiValObject",
         validators=[
             {
-                "functionName": "check_a",
-                "mode": "before",
-                "functionBody": "def check_a(cls, values):\n    return values",
+                "templateId": MVT_PASSWORD_CONFIRM_ID,
+                "parameters": None,
+                "fieldMappings": {
+                    "password_field": "password",
+                    "confirm_field": "password_confirm",
+                },
             },
             {
-                "functionName": "check_b",
-                "mode": "after",
-                "functionBody": "def check_b(cls, values):\n    return values",
+                "templateId": MVT_MUTUAL_EXCLUSIVITY_ID,
+                "parameters": None,
+                "fieldMappings": {
+                    "field_a": "email",
+                    "field_b": "phone",
+                },
             },
         ],
     )
     loaded = await _reload_object(object_service, obj, test_user.id)
 
     assert len(loaded.validators) == 2
-    assert loaded.validators[0].function_name == "check_a"
+    assert loaded.validators[0].template_id == UUID(MVT_PASSWORD_CONFIRM_ID)
     assert loaded.validators[0].position == 0
-    assert loaded.validators[1].function_name == "check_b"
+    assert loaded.validators[1].template_id == UUID(MVT_MUTUAL_EXCLUSIVITY_ID)
     assert loaded.validators[1].position == 1
 
 
@@ -242,23 +257,29 @@ async def test_update_object_replace_validators(
         name="ReplaceValObject",
         validators=[
             {
-                "functionName": "old_check",
-                "mode": "before",
-                "functionBody": "def old_check(cls, values):\n    return values",
+                "templateId": MVT_PASSWORD_CONFIRM_ID,
+                "parameters": None,
+                "fieldMappings": {
+                    "password_field": "password",
+                    "confirm_field": "password_confirm",
+                },
             }
         ],
     )
     loaded = await _reload_object(object_service, obj, test_user.id)
     assert len(loaded.validators) == 1
-    assert loaded.validators[0].function_name == "old_check"
+    assert loaded.validators[0].template_id == UUID(MVT_PASSWORD_CONFIRM_ID)
 
     update = ObjectUpdate.model_validate(
         {
             "validators": [
                 {
-                    "functionName": "new_check",
-                    "mode": "after",
-                    "functionBody": "def new_check(cls, values):\n    return values",
+                    "templateId": MVT_DATE_RANGE_ID,
+                    "parameters": {"comparison": "<"},
+                    "fieldMappings": {
+                        "start_field": "start_date",
+                        "end_field": "end_date",
+                    },
                 }
             ]
         }
@@ -267,8 +288,12 @@ async def test_update_object_replace_validators(
     reloaded = await _reload_object(object_service, loaded, test_user.id)
 
     assert len(reloaded.validators) == 1
-    assert reloaded.validators[0].function_name == "new_check"
-    assert reloaded.validators[0].mode == "after"
+    assert reloaded.validators[0].template_id == UUID(MVT_DATE_RANGE_ID)
+    assert reloaded.validators[0].parameters == {"comparison": "<"}
+    assert reloaded.validators[0].field_mappings == {
+        "start_field": "start_date",
+        "end_field": "end_date",
+    }
 
 
 @pytest.mark.asyncio
@@ -287,9 +312,12 @@ async def test_update_object_clear_validators(
         name="ClearValObject",
         validators=[
             {
-                "functionName": "to_remove",
-                "mode": "before",
-                "functionBody": "def to_remove(cls, values):\n    return values",
+                "templateId": MVT_MUTUAL_EXCLUSIVITY_ID,
+                "parameters": None,
+                "fieldMappings": {
+                    "field_a": "email",
+                    "field_b": "phone",
+                },
             }
         ],
     )
@@ -319,9 +347,12 @@ async def test_update_object_validators_unchanged_when_omitted(
         name="PreserveValObject",
         validators=[
             {
-                "functionName": "keep_me",
-                "mode": "after",
-                "functionBody": "def keep_me(cls, values):\n    return values",
+                "templateId": MVT_PASSWORD_CONFIRM_ID,
+                "parameters": None,
+                "fieldMappings": {
+                    "password_field": "password",
+                    "confirm_field": "password_confirm",
+                },
             }
         ],
     )
@@ -334,7 +365,11 @@ async def test_update_object_validators_unchanged_when_omitted(
 
     assert reloaded.name == "RenamedObject"
     assert len(reloaded.validators) == 1
-    assert reloaded.validators[0].function_name == "keep_me"
+    assert reloaded.validators[0].template_id == UUID(MVT_PASSWORD_CONFIRM_ID)
+    assert reloaded.validators[0].field_mappings == {
+        "password_field": "password",
+        "confirm_field": "password_confirm",
+    }
 
 
 # --- Tests: Delete cascade ---
@@ -357,9 +392,12 @@ async def test_delete_object_cascades_validators(
         name="CascadeObject",
         validators=[
             {
-                "functionName": "cascade_check",
-                "mode": "before",
-                "functionBody": "def cascade_check(cls, values):\n    return values",
+                "templateId": MVT_PASSWORD_CONFIRM_ID,
+                "parameters": None,
+                "fieldMappings": {
+                    "password_field": "password",
+                    "confirm_field": "password_confirm",
+                },
             }
         ],
     )

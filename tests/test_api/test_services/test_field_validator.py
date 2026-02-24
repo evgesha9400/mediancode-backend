@@ -1,5 +1,5 @@
 # tests/test_api/test_services/test_field_validator.py
-"""Integration tests for inline field validators on fields."""
+"""Integration tests for template-referenced field validators on fields."""
 
 import pytest
 
@@ -22,6 +22,12 @@ from api.schemas.field import FieldCreate, FieldUpdate
 from api.services.field import FieldService
 from api.settings import get_settings
 
+# Seed field validator template UUIDs (from b1a2c3d4e5f6 migration)
+FVT_STRIP_AND_NORMALIZE_ID = "00000000-0000-0000-0003-000000000001"
+FVT_NORMALIZE_WHITESPACE_ID = "00000000-0000-0000-0003-000000000002"
+FVT_DEFAULT_IF_EMPTY_ID = "00000000-0000-0000-0003-000000000003"
+FVT_TRIM_TO_LENGTH_ID = "00000000-0000-0000-0003-000000000004"
+
 
 # --- Fixtures ---
 
@@ -33,7 +39,7 @@ async def user_namespace(
     """Create a user-owned (unlocked) namespace for validator tests."""
     namespace = Namespace(
         name="Validator Test Namespace",
-        description="Namespace for inline field validator tests",
+        description="Namespace for template-referenced field validator tests",
         user_id=test_user.id,
     )
     db_session.add(namespace)
@@ -100,7 +106,7 @@ async def _reload_field(
     return loaded
 
 
-# --- Tests: Create with inline validators ---
+# --- Tests: Create with template-referenced validators ---
 
 
 @pytest.mark.asyncio
@@ -110,7 +116,7 @@ async def test_create_field_with_validators(
     field_service: FieldService,
     test_user: UserModel,
 ):
-    """Creating a field with validators creates child validator rows."""
+    """Creating a field with a template-referenced validator creates child validator rows."""
     field = await _create_field(
         field_service,
         user_namespace,
@@ -119,10 +125,8 @@ async def test_create_field_with_validators(
         name="validated_field",
         validators=[
             {
-                "functionName": "trim_whitespace",
-                "mode": "before",
-                "functionBody": "def trim_whitespace(cls, v):\n    return v.strip()",
-                "description": "Trims whitespace",
+                "templateId": FVT_NORMALIZE_WHITESPACE_ID,
+                "parameters": None,
             }
         ],
     )
@@ -130,10 +134,8 @@ async def test_create_field_with_validators(
 
     assert len(loaded.validators) == 1
     v = loaded.validators[0]
-    assert v.function_name == "trim_whitespace"
-    assert v.mode == "before"
-    assert v.function_body == "def trim_whitespace(cls, v):\n    return v.strip()"
-    assert v.description == "Trims whitespace"
+    assert v.template_id == UUID(FVT_NORMALIZE_WHITESPACE_ID)
+    assert v.parameters is None
     assert v.id is not None
 
 
@@ -144,7 +146,7 @@ async def test_create_field_with_multiple_validators(
     field_service: FieldService,
     test_user: UserModel,
 ):
-    """Multiple inline validators are created with correct position ordering."""
+    """Multiple template-referenced validators are created with correct position ordering."""
     field = await _create_field(
         field_service,
         user_namespace,
@@ -153,23 +155,23 @@ async def test_create_field_with_multiple_validators(
         name="multi_val_field",
         validators=[
             {
-                "functionName": "val_a",
-                "mode": "before",
-                "functionBody": "def val_a(cls, v):\n    return v",
+                "templateId": FVT_STRIP_AND_NORMALIZE_ID,
+                "parameters": {"case": "lower"},
             },
             {
-                "functionName": "val_b",
-                "mode": "after",
-                "functionBody": "def val_b(cls, v):\n    return v",
+                "templateId": FVT_NORMALIZE_WHITESPACE_ID,
+                "parameters": None,
             },
         ],
     )
     loaded = await _reload_field(field_service, field, test_user.id)
 
     assert len(loaded.validators) == 2
-    assert loaded.validators[0].function_name == "val_a"
+    assert loaded.validators[0].template_id == UUID(FVT_STRIP_AND_NORMALIZE_ID)
+    assert loaded.validators[0].parameters == {"case": "lower"}
     assert loaded.validators[0].position == 0
-    assert loaded.validators[1].function_name == "val_b"
+    assert loaded.validators[1].template_id == UUID(FVT_NORMALIZE_WHITESPACE_ID)
+    assert loaded.validators[1].parameters is None
     assert loaded.validators[1].position == 1
 
 
@@ -212,23 +214,21 @@ async def test_update_field_replace_validators(
         name="replace_val_field",
         validators=[
             {
-                "functionName": "val_a",
-                "mode": "before",
-                "functionBody": "def val_a(cls, v):\n    return v",
+                "templateId": FVT_NORMALIZE_WHITESPACE_ID,
+                "parameters": None,
             }
         ],
     )
     loaded = await _reload_field(field_service, field, test_user.id)
     assert len(loaded.validators) == 1
-    assert loaded.validators[0].function_name == "val_a"
+    assert loaded.validators[0].template_id == UUID(FVT_NORMALIZE_WHITESPACE_ID)
 
     update = FieldUpdate.model_validate(
         {
             "validators": [
                 {
-                    "functionName": "val_b",
-                    "mode": "after",
-                    "functionBody": "def val_b(cls, v):\n    return v.lower()",
+                    "templateId": FVT_STRIP_AND_NORMALIZE_ID,
+                    "parameters": {"case": "upper"},
                 }
             ]
         }
@@ -237,8 +237,8 @@ async def test_update_field_replace_validators(
     reloaded = await _reload_field(field_service, loaded, test_user.id)
 
     assert len(reloaded.validators) == 1
-    assert reloaded.validators[0].function_name == "val_b"
-    assert reloaded.validators[0].mode == "after"
+    assert reloaded.validators[0].template_id == UUID(FVT_STRIP_AND_NORMALIZE_ID)
+    assert reloaded.validators[0].parameters == {"case": "upper"}
 
 
 @pytest.mark.asyncio
@@ -257,9 +257,8 @@ async def test_update_field_clear_validators(
         name="clear_val_field",
         validators=[
             {
-                "functionName": "val_x",
-                "mode": "before",
-                "functionBody": "def val_x(cls, v):\n    return v",
+                "templateId": FVT_NORMALIZE_WHITESPACE_ID,
+                "parameters": None,
             }
         ],
     )
@@ -289,9 +288,8 @@ async def test_update_field_validators_unchanged_when_omitted(
         name="preserve_val_field",
         validators=[
             {
-                "functionName": "keep_me",
-                "mode": "before",
-                "functionBody": "def keep_me(cls, v):\n    return v",
+                "templateId": FVT_TRIM_TO_LENGTH_ID,
+                "parameters": {"max_length": "255"},
             }
         ],
     )
@@ -304,7 +302,8 @@ async def test_update_field_validators_unchanged_when_omitted(
 
     assert reloaded.name == "renamed_field"
     assert len(reloaded.validators) == 1
-    assert reloaded.validators[0].function_name == "keep_me"
+    assert reloaded.validators[0].template_id == UUID(FVT_TRIM_TO_LENGTH_ID)
+    assert reloaded.validators[0].parameters == {"max_length": "255"}
 
 
 # --- Tests: Delete cascade ---
@@ -327,9 +326,8 @@ async def test_delete_field_cascades_validators(
         name="cascade_field",
         validators=[
             {
-                "functionName": "cascade_val",
-                "mode": "before",
-                "functionBody": "def cascade_val(cls, v):\n    return v",
+                "templateId": FVT_NORMALIZE_WHITESPACE_ID,
+                "parameters": None,
             }
         ],
     )
