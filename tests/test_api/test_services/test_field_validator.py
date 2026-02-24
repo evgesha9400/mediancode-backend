@@ -23,8 +23,9 @@ from api.services.field import FieldService
 from api.settings import get_settings
 
 # Seed field validator template UUIDs (from b1a2c3d4e5f6 migration)
-FVT_STRIP_AND_NORMALIZE_ID = "00000000-0000-0000-0003-000000000001"
-FVT_NORMALIZE_WHITESPACE_ID = "00000000-0000-0000-0003-000000000002"
+FVT_TRIM_ID = "00000000-0000-0000-0003-000000000001"
+FVT_NORMALIZE_CASE_ID = "00000000-0000-0000-0003-000000000002"
+FVT_NORMALIZE_WHITESPACE_ID = "00000000-0000-0000-0003-000000000003"
 FVT_TRIM_TO_LENGTH_ID = "00000000-0000-0000-0003-000000000004"
 
 
@@ -154,7 +155,7 @@ async def test_create_field_with_multiple_validators(
         name="multi_val_field",
         validators=[
             {
-                "templateId": FVT_STRIP_AND_NORMALIZE_ID,
+                "templateId": FVT_TRIM_ID,
                 "parameters": {"case": "lower"},
             },
             {
@@ -166,7 +167,7 @@ async def test_create_field_with_multiple_validators(
     loaded = await _reload_field(field_service, field, test_user.id)
 
     assert len(loaded.validators) == 2
-    assert loaded.validators[0].template_id == UUID(FVT_STRIP_AND_NORMALIZE_ID)
+    assert loaded.validators[0].template_id == UUID(FVT_TRIM_ID)
     assert loaded.validators[0].parameters == {"case": "lower"}
     assert loaded.validators[0].position == 0
     assert loaded.validators[1].template_id == UUID(FVT_NORMALIZE_WHITESPACE_ID)
@@ -226,7 +227,7 @@ async def test_update_field_replace_validators(
         {
             "validators": [
                 {
-                    "templateId": FVT_STRIP_AND_NORMALIZE_ID,
+                    "templateId": FVT_TRIM_ID,
                     "parameters": {"case": "upper"},
                 }
             ]
@@ -236,7 +237,7 @@ async def test_update_field_replace_validators(
     reloaded = await _reload_field(field_service, loaded, test_user.id)
 
     assert len(reloaded.validators) == 1
-    assert reloaded.validators[0].template_id == UUID(FVT_STRIP_AND_NORMALIZE_ID)
+    assert reloaded.validators[0].template_id == UUID(FVT_TRIM_ID)
     assert reloaded.validators[0].parameters == {"case": "upper"}
 
 

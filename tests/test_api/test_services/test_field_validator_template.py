@@ -21,14 +21,14 @@ async def test_list_all_returns_seeded_templates(
     templates = await service.list_all()
     assert len(templates) == 8
     names = {t.name for t in templates}
-    assert "Strip & Normalize Case" in names
+    assert "Trim" in names
+    assert "Normalize Case" in names
     assert "Normalize Whitespace" in names
     assert "Trim To Length" in names
-    assert "Strip HTML Tags" in names
     assert "Round Decimal" in names
-    assert "Slug Format" in names
-    assert "Future Date Only" in names
-    assert "Past Date Only" in names
+    assert "Empty String to None" in names
+    assert "Clamp to Range" in names
+    assert "Strip Characters" in names
 
 
 @pytest.mark.asyncio

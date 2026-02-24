@@ -225,26 +225,35 @@ CONSTRAINTS_DATA = [
 ]
 
 # Fixed UUIDs for field validator templates
-FVT_STRIP_AND_NORMALIZE_ID = UUID("00000000-0000-0000-0003-000000000001")
-FVT_NORMALIZE_WHITESPACE_ID = UUID("00000000-0000-0000-0003-000000000002")
+FVT_TRIM_ID = UUID("00000000-0000-0000-0003-000000000001")
+FVT_NORMALIZE_CASE_ID = UUID("00000000-0000-0000-0003-000000000002")
+FVT_NORMALIZE_WHITESPACE_ID = UUID("00000000-0000-0000-0003-000000000003")
 FVT_TRIM_TO_LENGTH_ID = UUID("00000000-0000-0000-0003-000000000004")
-FVT_SANITIZE_HTML_ID = UUID("00000000-0000-0000-0003-000000000005")
-FVT_ROUND_DECIMAL_ID = UUID("00000000-0000-0000-0003-000000000006")
-FVT_SLUG_FORMAT_ID = UUID("00000000-0000-0000-0003-000000000007")
-FVT_FUTURE_DATE_ID = UUID("00000000-0000-0000-0003-000000000008")
-FVT_PAST_DATE_ID = UUID("00000000-0000-0000-0003-000000000009")
+FVT_ROUND_DECIMAL_ID = UUID("00000000-0000-0000-0003-000000000005")
+FVT_EMPTY_TO_NONE_ID = UUID("00000000-0000-0000-0003-000000000006")
+FVT_CLAMP_TO_RANGE_ID = UUID("00000000-0000-0000-0003-000000000007")
+FVT_STRIP_CHARACTERS_ID = UUID("00000000-0000-0000-0003-000000000008")
 
 FIELD_VALIDATOR_TEMPLATES_DATA = [
     {
-        "id": FVT_STRIP_AND_NORMALIZE_ID,
-        "name": "Strip & Normalize Case",
-        "description": "Strips whitespace and normalizes text case",
+        "id": FVT_TRIM_ID,
+        "name": "Trim",
+        "description": "Removes leading and trailing whitespace",
+        "compatible_types": ["str"],
+        "mode": "before",
+        "parameters": [],
+        "body_template": "    v = v.strip()\n    return v",
+    },
+    {
+        "id": FVT_NORMALIZE_CASE_ID,
+        "name": "Normalize Case",
+        "description": "Converts text to a consistent case format",
         "compatible_types": ["str"],
         "mode": "before",
         "parameters": [
             {
                 "key": "case",
-                "label": "Case normalization",
+                "label": "Case format",
                 "type": "select",
                 "placeholder": "",
                 "options": [
@@ -255,7 +264,7 @@ FIELD_VALIDATOR_TEMPLATES_DATA = [
                 "required": True,
             }
         ],
-        "body_template": "    v = v.strip().{{ case }}()\n    return v",
+        "body_template": "    v = v.{{ case }}()\n    return v",
     },
     {
         "id": FVT_NORMALIZE_WHITESPACE_ID,
@@ -284,15 +293,6 @@ FIELD_VALIDATOR_TEMPLATES_DATA = [
         "body_template": "    v = v[:{{ max_length }}]\n    return v",
     },
     {
-        "id": FVT_SANITIZE_HTML_ID,
-        "name": "Strip HTML Tags",
-        "description": "Removes HTML tags from string input for security",
-        "compatible_types": ["str"],
-        "mode": "before",
-        "parameters": [],
-        "body_template": "    import re\n    v = re.sub(r'<[^>]+>', '', v)\n    return v",
-    },
-    {
         "id": FVT_ROUND_DECIMAL_ID,
         "name": "Round Decimal",
         "description": "Rounds numeric value to specified decimal places",
@@ -310,31 +310,54 @@ FIELD_VALIDATOR_TEMPLATES_DATA = [
         "body_template": "    v = round(v, {{ places }})\n    return v",
     },
     {
-        "id": FVT_SLUG_FORMAT_ID,
-        "name": "Slug Format",
-        "description": "Validates that string is a valid URL slug (lowercase alphanumeric and hyphens)",
+        "id": FVT_EMPTY_TO_NONE_ID,
+        "name": "Empty String to None",
+        "description": "Converts empty or whitespace-only strings to None for optional fields",
         "compatible_types": ["str"],
-        "mode": "after",
+        "mode": "before",
         "parameters": [],
-        "body_template": "    import re\n    if not re.match(r'^[a-z0-9]+(?:-[a-z0-9]+)*$', v):\n        raise ValueError('Value must be a valid slug (lowercase letters, numbers, and hyphens)')\n    return v",
+        "body_template": "    if isinstance(v, str) and not v.strip():\n        return None\n    return v",
     },
     {
-        "id": FVT_FUTURE_DATE_ID,
-        "name": "Future Date Only",
-        "description": "Validates that date/datetime is in the future",
-        "compatible_types": ["datetime", "date"],
-        "mode": "after",
-        "parameters": [],
-        "body_template": "    from datetime import datetime, date\n    now = datetime.now() if isinstance(v, datetime) else date.today()\n    if v <= now:\n        raise ValueError('Value must be a future date')\n    return v",
+        "id": FVT_CLAMP_TO_RANGE_ID,
+        "name": "Clamp to Range",
+        "description": "Clamps numeric value to min/max bounds instead of rejecting",
+        "compatible_types": ["int", "float", "Decimal"],
+        "mode": "before",
+        "parameters": [
+            {
+                "key": "min_value",
+                "label": "Minimum value",
+                "type": "number",
+                "placeholder": "0",
+                "required": True,
+            },
+            {
+                "key": "max_value",
+                "label": "Maximum value",
+                "type": "number",
+                "placeholder": "100",
+                "required": True,
+            },
+        ],
+        "body_template": "    v = max({{ min_value }}, min({{ max_value }}, v))\n    return v",
     },
     {
-        "id": FVT_PAST_DATE_ID,
-        "name": "Past Date Only",
-        "description": "Validates that date/datetime is in the past",
-        "compatible_types": ["datetime", "date"],
-        "mode": "after",
-        "parameters": [],
-        "body_template": "    from datetime import datetime, date\n    now = datetime.now() if isinstance(v, datetime) else date.today()\n    if v >= now:\n        raise ValueError('Value must be a past date')\n    return v",
+        "id": FVT_STRIP_CHARACTERS_ID,
+        "name": "Strip Characters",
+        "description": "Removes specified characters from the entire string",
+        "compatible_types": ["str"],
+        "mode": "before",
+        "parameters": [
+            {
+                "key": "characters",
+                "label": "Characters to remove",
+                "type": "text",
+                "placeholder": "()-+ ",
+                "required": True,
+            }
+        ],
+        "body_template": '    v = v.translate(str.maketrans("", "", "{{ characters }}"))\n    return v',
     },
 ]
 
