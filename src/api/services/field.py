@@ -10,9 +10,10 @@ from sqlalchemy.orm import selectinload
 
 from api.models.database import (
     ApiEndpoint,
+    AppliedFieldValidatorModel,
     FieldConstraintValueAssociation,
     FieldModel,
-    FieldValidatorModel,
+    FieldValidatorTemplateModel,
     Namespace,
     ObjectFieldAssociation,
 )
@@ -40,7 +41,9 @@ class FieldService(BaseService[FieldModel]):
             selectinload(FieldModel.constraint_values).selectinload(
                 FieldConstraintValueAssociation.constraint
             ),
-            selectinload(FieldModel.validators),
+            selectinload(FieldModel.validators).selectinload(
+                AppliedFieldValidatorModel.template
+            ),
         ]
 
     async def list_for_user(
@@ -171,15 +174,19 @@ class FieldService(BaseService[FieldModel]):
         :param validators: New validator inputs (empty list clears all).
         """
         await self.db.execute(
-            delete(FieldValidatorModel).where(FieldValidatorModel.field_id == field.id)
+            delete(AppliedFieldValidatorModel).where(
+                AppliedFieldValidatorModel.field_id == field.id
+            )
         )
         for position, v in enumerate(validators):
-            validator = FieldValidatorModel(
+            # Validate template exists
+            template = await self.db.get(FieldValidatorTemplateModel, v.template_id)
+            if not template:
+                raise ValueError(f"Field validator template not found: {v.template_id}")
+            validator = AppliedFieldValidatorModel(
                 field_id=field.id,
-                function_name=v.function_name,
-                mode=v.mode,
-                function_body=v.function_body,
-                description=v.description,
+                template_id=v.template_id,
+                parameters=v.parameters,
                 position=position,
             )
             self.db.add(validator)

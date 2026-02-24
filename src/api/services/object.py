@@ -10,7 +10,8 @@ from sqlalchemy.orm import selectinload
 
 from api.models.database import (
     ApiEndpoint,
-    ModelValidatorModel,
+    AppliedModelValidatorModel,
+    ModelValidatorTemplateModel,
     Namespace,
     ObjectDefinition,
     ObjectFieldAssociation,
@@ -36,7 +37,9 @@ class ObjectService(BaseService[ObjectDefinition]):
         """Standard eager-load options for object queries."""
         return [
             selectinload(ObjectDefinition.field_associations),
-            selectinload(ObjectDefinition.validators),
+            selectinload(ObjectDefinition.validators).selectinload(
+                AppliedModelValidatorModel.template
+            ),
         ]
 
     async def list_for_user(
@@ -200,15 +203,19 @@ class ObjectService(BaseService[ObjectDefinition]):
         :param validators: New validator inputs (empty list clears all).
         """
         await self.db.execute(
-            delete(ModelValidatorModel).where(ModelValidatorModel.object_id == obj.id)
+            delete(AppliedModelValidatorModel).where(
+                AppliedModelValidatorModel.object_id == obj.id
+            )
         )
         for position, v in enumerate(validators):
-            validator = ModelValidatorModel(
+            template = await self.db.get(ModelValidatorTemplateModel, v.template_id)
+            if not template:
+                raise ValueError(f"Model validator template not found: {v.template_id}")
+            validator = AppliedModelValidatorModel(
                 object_id=obj.id,
-                function_name=v.function_name,
-                mode=v.mode,
-                function_body=v.function_body,
-                description=v.description,
+                template_id=v.template_id,
+                parameters=v.parameters,
+                field_mappings=v.field_mappings,
                 position=position,
             )
             self.db.add(validator)
