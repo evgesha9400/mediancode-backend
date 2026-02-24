@@ -22,37 +22,33 @@ class ObjectFieldReferenceSchema(BaseModel):
 
 
 class ModelValidatorInput(BaseModel):
-    """Request schema for an inline model validator definition.
+    """Request schema for attaching a model validator template to an object.
 
-    :ivar function_name: Python function name for the validator.
-    :ivar mode: Validator mode (before, after).
-    :ivar function_body: Python source code of the validator function.
-    :ivar description: Optional description.
+    :ivar template_id: Reference to the model validator template.
+    :ivar parameters: Template parameter values.
+    :ivar field_mappings: Maps template field mapping keys to actual field names.
     """
 
-    function_name: str = Field(..., alias="functionName")
-    mode: str
-    function_body: str = Field(..., alias="functionBody")
-    description: str | None = None
+    template_id: UUID = Field(..., alias="templateId")
+    parameters: dict[str, str] | None = Field(default=None)
+    field_mappings: dict[str, str] = Field(..., alias="fieldMappings")
 
     model_config = ConfigDict(populate_by_name=True)
 
 
 class ModelValidatorResponse(BaseModel):
-    """Response schema for a model validator attached to an object.
+    """Response schema for an applied model validator.
 
-    :ivar id: Unique identifier for the validator.
-    :ivar function_name: Python function name.
-    :ivar mode: Validator mode.
-    :ivar function_body: Python source code.
-    :ivar description: Optional description.
+    :ivar id: Unique identifier for the applied validator.
+    :ivar template_id: Reference to the template.
+    :ivar parameters: Template parameter values.
+    :ivar field_mappings: Resolved field name mappings.
     """
 
     id: UUID
-    function_name: str = Field(..., alias="functionName")
-    mode: str
-    function_body: str = Field(..., alias="functionBody")
-    description: str | None = None
+    template_id: UUID = Field(..., alias="templateId")
+    parameters: dict[str, str] | None = Field(default=None)
+    field_mappings: dict[str, str] = Field(..., alias="fieldMappings")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
