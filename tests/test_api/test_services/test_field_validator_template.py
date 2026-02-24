@@ -16,10 +16,10 @@ async def test_list_all_returns_seeded_templates(
     db_session: AsyncSession,
     provisioned_namespace: Namespace,
 ):
-    """All 8 seeded field validator templates are returned."""
+    """All 10 seeded field validator templates are returned."""
     service = FieldValidatorTemplateService(db_session)
     templates = await service.list_all()
-    assert len(templates) == 8
+    assert len(templates) == 10
     names = {t.name for t in templates}
     assert "Trim" in names
     assert "Normalize Case" in names
@@ -29,6 +29,8 @@ async def test_list_all_returns_seeded_templates(
     assert "Empty String to None" in names
     assert "Clamp to Range" in names
     assert "Strip Characters" in names
+    assert "Replace Substring" in names
+    assert "Regex Replace" in names
 
 
 @pytest.mark.asyncio

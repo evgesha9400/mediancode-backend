@@ -233,6 +233,8 @@ FVT_ROUND_DECIMAL_ID = UUID("00000000-0000-0000-0003-000000000005")
 FVT_EMPTY_TO_NONE_ID = UUID("00000000-0000-0000-0003-000000000006")
 FVT_CLAMP_TO_RANGE_ID = UUID("00000000-0000-0000-0003-000000000007")
 FVT_STRIP_CHARACTERS_ID = UUID("00000000-0000-0000-0003-000000000008")
+FVT_REPLACE_SUBSTRING_ID = UUID("00000000-0000-0000-0003-000000000009")
+FVT_REGEX_REPLACE_ID = UUID("00000000-0000-0000-0003-00000000000a")
 
 FIELD_VALIDATOR_TEMPLATES_DATA = [
     {
@@ -358,6 +360,54 @@ FIELD_VALIDATOR_TEMPLATES_DATA = [
             }
         ],
         "body_template": '    v = v.translate(str.maketrans("", "", "{{ characters }}"))\n    return v',
+    },
+    {
+        "id": FVT_REPLACE_SUBSTRING_ID,
+        "name": "Replace Substring",
+        "description": "Replaces all occurrences of a literal string with another",
+        "compatible_types": ["str"],
+        "mode": "before",
+        "parameters": [
+            {
+                "key": "old",
+                "label": "Find",
+                "type": "text",
+                "placeholder": ",",
+                "required": True,
+            },
+            {
+                "key": "new",
+                "label": "Replace with",
+                "type": "text",
+                "placeholder": ".",
+                "required": True,
+            },
+        ],
+        "body_template": '    v = v.replace("{{ old }}", "{{ new }}")\n    return v',
+    },
+    {
+        "id": FVT_REGEX_REPLACE_ID,
+        "name": "Regex Replace",
+        "description": "Replaces all matches of a regex pattern with a replacement string",
+        "compatible_types": ["str"],
+        "mode": "before",
+        "parameters": [
+            {
+                "key": "pattern",
+                "label": "Regex pattern",
+                "type": "text",
+                "placeholder": "[^a-zA-Z0-9]",
+                "required": True,
+            },
+            {
+                "key": "replacement",
+                "label": "Replace with",
+                "type": "text",
+                "placeholder": "",
+                "required": True,
+            },
+        ],
+        "body_template": "    import re\n    v = re.sub(r'{{ pattern }}', '{{ replacement }}', v)\n    return v",
     },
 ]
 
