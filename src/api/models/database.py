@@ -214,6 +214,56 @@ class FieldConstraintModel(Base):
     namespace: Mapped["Namespace"] = relationship(back_populates="field_constraints")
 
 
+class FieldValidatorTemplateModel(Base):
+    """Field validator template definition (system-seeded catalogue).
+
+    :ivar id: Unique identifier for the template.
+    :ivar name: Template display name.
+    :ivar description: Template description.
+    :ivar compatible_types: List of type names this template applies to.
+    :ivar mode: Validator mode (before, after).
+    :ivar parameters: Template parameter definitions (JSONB array).
+    :ivar body_template: Jinja2 template for the function body.
+    """
+
+    __tablename__ = "field_validator_templates"
+
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    compatible_types: Mapped[list] = mapped_column(ARRAY(Text), nullable=False)
+    mode: Mapped[str] = mapped_column(Text, nullable=False)
+    parameters: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    body_template: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ModelValidatorTemplateModel(Base):
+    """Model validator template definition (system-seeded catalogue).
+
+    :ivar id: Unique identifier for the template.
+    :ivar name: Template display name.
+    :ivar description: Template description.
+    :ivar mode: Validator mode (before, after).
+    :ivar parameters: Template parameter definitions (JSONB array).
+    :ivar field_mappings: Field mapping definitions (JSONB array).
+    :ivar body_template: Jinja2 template for the function body.
+    """
+
+    __tablename__ = "model_validator_templates"
+
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    mode: Mapped[str] = mapped_column(Text, nullable=False)
+    parameters: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    field_mappings: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    body_template: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class ApiModel(Base):
     """API definition containing endpoints.
 
@@ -300,26 +350,24 @@ class FieldModel(Base):
     constraint_values: Mapped[list["FieldConstraintValueAssociation"]] = relationship(
         back_populates="field", cascade="all, delete-orphan"
     )
-    validators: Mapped[list["FieldValidatorModel"]] = relationship(
+    validators: Mapped[list["AppliedFieldValidatorModel"]] = relationship(
         back_populates="field",
         cascade="all, delete-orphan",
-        order_by="FieldValidatorModel.position",
+        order_by="AppliedFieldValidatorModel.position",
     )
 
 
-class FieldValidatorModel(Base):
-    """Field validator function owned by a specific field.
+class AppliedFieldValidatorModel(Base):
+    """Applied field validator referencing a template.
 
-    :ivar id: Unique identifier for the validator.
+    :ivar id: Unique identifier for the applied validator.
     :ivar field_id: Reference to the parent field.
-    :ivar function_name: Name of the validation function.
-    :ivar mode: Validator mode ("before", "after", "wrap", "plain").
-    :ivar function_body: Python source code of the validator function.
-    :ivar description: Optional description of the validator.
-    :ivar position: Display order position.
+    :ivar template_id: Reference to the field validator template.
+    :ivar parameters: User-configured template parameter values.
+    :ivar position: Display/execution order position.
     """
 
-    __tablename__ = "field_validators"
+    __tablename__ = "applied_field_validators"
 
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
@@ -330,14 +378,18 @@ class FieldValidatorModel(Base):
         nullable=False,
         index=True,
     )
-    function_name: Mapped[str] = mapped_column(Text, nullable=False)
-    mode: Mapped[str] = mapped_column(Text, nullable=False)
-    function_body: Mapped[str] = mapped_column(Text, nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    template_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("field_validator_templates.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    parameters: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     position: Mapped[int] = mapped_column(default=0, nullable=False)
 
     # Relationships
     field: Mapped["FieldModel"] = relationship(back_populates="validators")
+    template: Mapped["FieldValidatorTemplateModel"] = relationship()
 
 
 class ObjectDefinition(Base):
@@ -370,10 +422,10 @@ class ObjectDefinition(Base):
     field_associations: Mapped[list["ObjectFieldAssociation"]] = relationship(
         back_populates="object", cascade="all, delete-orphan"
     )
-    validators: Mapped[list["ModelValidatorModel"]] = relationship(
+    validators: Mapped[list["AppliedModelValidatorModel"]] = relationship(
         back_populates="object",
         cascade="all, delete-orphan",
-        order_by="ModelValidatorModel.position",
+        order_by="AppliedModelValidatorModel.position",
     )
 
 
@@ -387,7 +439,7 @@ class ObjectFieldAssociation(Base):
     :ivar position: Order position for field display.
     """
 
-    __tablename__ = "object_field_associations"
+    __tablename__ = "fields_on_objects"
 
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
@@ -411,19 +463,18 @@ class ObjectFieldAssociation(Base):
     field: Mapped["FieldModel"] = relationship(back_populates="object_associations")
 
 
-class ModelValidatorModel(Base):
-    """Model validator function owned by a specific object.
+class AppliedModelValidatorModel(Base):
+    """Applied model validator referencing a template.
 
-    :ivar id: Unique identifier for the validator.
+    :ivar id: Unique identifier for the applied validator.
     :ivar object_id: Reference to the parent object.
-    :ivar function_name: Name of the validation function.
-    :ivar mode: Validator mode ("before", "after").
-    :ivar function_body: Python source code of the validator function.
-    :ivar description: Optional description of the validator.
-    :ivar position: Display order position.
+    :ivar template_id: Reference to the model validator template.
+    :ivar parameters: User-configured template parameter values.
+    :ivar field_mappings: Maps template field mapping keys to actual field names.
+    :ivar position: Display/execution order position.
     """
 
-    __tablename__ = "model_validators"
+    __tablename__ = "applied_model_validators"
 
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
@@ -434,14 +485,19 @@ class ModelValidatorModel(Base):
         nullable=False,
         index=True,
     )
-    function_name: Mapped[str] = mapped_column(Text, nullable=False)
-    mode: Mapped[str] = mapped_column(Text, nullable=False)
-    function_body: Mapped[str] = mapped_column(Text, nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    template_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("model_validator_templates.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    parameters: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    field_mappings: Mapped[dict] = mapped_column(JSONB, nullable=False)
     position: Mapped[int] = mapped_column(default=0, nullable=False)
 
     # Relationships
     object: Mapped["ObjectDefinition"] = relationship(back_populates="validators")
+    template: Mapped["ModelValidatorTemplateModel"] = relationship()
 
 
 class FieldConstraintValueAssociation(Base):
@@ -453,7 +509,7 @@ class FieldConstraintValueAssociation(Base):
     :ivar value: Parameter value for the constraint (null for parameterless constraints).
     """
 
-    __tablename__ = "field_constraint_field_associations"
+    __tablename__ = "applied_constraints"
 
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
