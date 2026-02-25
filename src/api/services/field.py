@@ -106,6 +106,7 @@ class FieldService(BaseService[FieldModel]):
             type_id=data.type_id,
             description=data.description,
             default_value=data.default_value,
+            container=data.container,
         )
         self.db.add(field)
         await self.db.flush()
@@ -132,6 +133,8 @@ class FieldService(BaseService[FieldModel]):
             field.description = data.description
         if data.default_value is not None:
             field.default_value = data.default_value
+        if "container" in data.model_fields_set:
+            field.container = data.container
 
         if data.constraints is not None:
             await self._set_constraint_associations(field, data.constraints)
