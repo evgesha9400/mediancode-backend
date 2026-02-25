@@ -714,6 +714,49 @@ async def test_can_set_global_as_default(
 
 
 @pytest.mark.asyncio
+async def test_cannot_send_same_name_on_global_namespace(
+    provisioned_namespace: Namespace,
+    namespace_service: NamespaceService,
+):
+    """Sending name field on Global namespace is rejected even if value matches."""
+    data = NamespaceUpdate(name="Global")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await namespace_service.update_namespace(provisioned_namespace, data)
+
+    assert exc_info.value.status_code == 400
+    assert "Cannot modify the Global namespace name" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_cannot_send_same_description_on_global_namespace(
+    provisioned_namespace: Namespace,
+    namespace_service: NamespaceService,
+):
+    """Sending description field on Global namespace is rejected even if value matches."""
+    data = NamespaceUpdate(description="")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await namespace_service.update_namespace(provisioned_namespace, data)
+
+    assert exc_info.value.status_code == 400
+    assert "Cannot modify the Global namespace description" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_global_namespace_update_only_is_default(
+    provisioned_namespace: Namespace,
+    namespace_service: NamespaceService,
+):
+    """Global namespace accepts isDefault-only update."""
+    data = NamespaceUpdate(is_default=True)
+    updated = await namespace_service.update_namespace(provisioned_namespace, data)
+
+    assert updated.is_default is True
+    assert updated.name == "Global"
+
+
+@pytest.mark.asyncio
 async def test_cannot_delete_global_namespace(
     namespace_service: NamespaceService,
     provisioned_namespace: Namespace,
