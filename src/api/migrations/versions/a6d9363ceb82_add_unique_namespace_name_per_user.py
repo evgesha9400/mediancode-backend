@@ -12,15 +12,17 @@ from alembic import op
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'a6d9363ceb82'
-down_revision: str | None = 'b1a2c3d4e5f6'
+revision: str = "a6d9363ceb82"
+down_revision: str | None = "b1a2c3d4e5f6"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.create_unique_constraint('uq_namespaces_user_name', 'namespaces', ['user_id', 'name'])
+    op.create_unique_constraint(
+        "uq_namespaces_user_name", "namespaces", ["user_id", "name"]
+    )
 
 
 def downgrade() -> None:
-    op.drop_constraint('uq_namespaces_user_name', 'namespaces', type_='unique')
+    op.drop_constraint("uq_namespaces_user_name", "namespaces", type_="unique")
