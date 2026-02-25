@@ -306,7 +306,7 @@ def upgrade() -> None:
         ),
         sa.Column("object_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("field_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("required", sa.Boolean(), nullable=False),
+        sa.Column("optional", sa.Boolean(), nullable=False),
         sa.Column("position", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["field_id"], ["fields.id"]),
         sa.ForeignKeyConstraint(["object_id"], ["objects.id"], ondelete="CASCADE"),

@@ -444,12 +444,12 @@ class ObjectDefinition(Base):
 
 
 class ObjectFieldAssociation(Base):
-    """Association between objects and fields with required flag.
+    """Association between objects and fields with optional flag.
 
     :ivar id: Unique identifier for the association.
     :ivar object_id: Reference to the parent object.
     :ivar field_id: Reference to the field.
-    :ivar required: Whether this field is required in the object.
+    :ivar optional: Whether this field is optional in the object (default False = required).
     :ivar position: Order position for field display.
     """
 
@@ -467,7 +467,7 @@ class ObjectFieldAssociation(Base):
     field_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("fields.id"), nullable=False, index=True
     )
-    required: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    optional: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     position: Mapped[int] = mapped_column(default=0, nullable=False)
 
     # Relationships
