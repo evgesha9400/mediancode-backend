@@ -29,6 +29,9 @@ dist/
 # Claude Code
 .claude/
 
+# Git worktrees
+.worktrees/
+
 # Unit test reports
 TEST*.xml
 
