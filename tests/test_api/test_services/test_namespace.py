@@ -19,7 +19,7 @@ from api.models.database import (
     ObjectDefinition,
     UserModel,
 )
-from api.schemas.namespace import NamespaceCreate, NamespaceUpdate
+from api.schemas.namespace import NamespaceCreate, NamespaceResponse, NamespaceUpdate
 from api.services.namespace import NamespaceService
 
 
@@ -464,13 +464,19 @@ async def test_update_namespace_unset_default_raises_error(
 @pytest.mark.asyncio
 async def test_delete_empty_namespace(
     db_session: AsyncSession,
-    user_namespace: Namespace,
+    provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
+    test_user: UserModel,
 ):
     """Deleting an empty namespace succeeds."""
-    namespace_id = user_namespace.id
+    # Create a fresh namespace instead of using user_namespace fixture
+    # to avoid teardown trying to delete an already-deleted namespace.
+    ns = await namespace_service.create_for_user(
+        test_user.id, NamespaceCreate(name="To Delete")
+    )
+    namespace_id = ns.id
 
-    await namespace_service.delete_namespace(user_namespace)
+    await namespace_service.delete_namespace(ns)
     await db_session.flush()
 
     result = await db_session.execute(
@@ -652,3 +658,197 @@ async def test_user_cannot_get_other_users_namespace_by_id(
     await db_session.execute(delete(Namespace).where(Namespace.id == other_ns.id))
     await db_session.execute(delete(UserModel).where(UserModel.id == other_user.id))
     await db_session.flush()
+
+
+# --- Tests: Global namespace protection ---
+
+
+@pytest.mark.asyncio
+async def test_cannot_rename_global_namespace(
+    namespace_service: NamespaceService,
+    provisioned_namespace: Namespace,
+):
+    """Global namespace name cannot be changed."""
+    with pytest.raises(HTTPException) as exc_info:
+        await namespace_service.update_namespace(
+            provisioned_namespace, NamespaceUpdate(name="New Name")
+        )
+    assert exc_info.value.status_code == 400
+    assert "Cannot rename the Global namespace" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_cannot_modify_global_description(
+    namespace_service: NamespaceService,
+    provisioned_namespace: Namespace,
+):
+    """Global namespace description cannot be changed."""
+    with pytest.raises(HTTPException) as exc_info:
+        await namespace_service.update_namespace(
+            provisioned_namespace, NamespaceUpdate(description="new desc")
+        )
+    assert exc_info.value.status_code == 400
+    assert "Cannot modify the Global namespace description" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_can_set_global_as_default(
+    namespace_service: NamespaceService,
+    provisioned_namespace: Namespace,
+    test_user: UserModel,
+):
+    """Global namespace can still be set as default."""
+    # Create another namespace and make it default
+    other = await namespace_service.create_for_user(
+        provisioned_namespace.user_id, NamespaceCreate(name="Other")
+    )
+    await namespace_service.update_namespace(other, NamespaceUpdate(is_default=True))
+    # Now set Global back as default — should succeed
+    refreshed_global = await namespace_service.get_by_id_for_user(
+        str(provisioned_namespace.id), provisioned_namespace.user_id
+    )
+    result = await namespace_service.update_namespace(
+        refreshed_global, NamespaceUpdate(is_default=True)
+    )
+    assert result.is_default is True
+
+
+@pytest.mark.asyncio
+async def test_cannot_delete_global_namespace(
+    namespace_service: NamespaceService,
+    provisioned_namespace: Namespace,
+    test_user: UserModel,
+):
+    """Global namespace cannot be deleted regardless of default status."""
+    # First make another namespace default so Global is not default
+    other = await namespace_service.create_for_user(
+        provisioned_namespace.user_id, NamespaceCreate(name="Other")
+    )
+    await namespace_service.update_namespace(other, NamespaceUpdate(is_default=True))
+    # Try to delete Global — should still fail
+    refreshed_global = await namespace_service.get_by_id_for_user(
+        str(provisioned_namespace.id), provisioned_namespace.user_id
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        await namespace_service.delete_namespace(refreshed_global)
+    assert exc_info.value.status_code == 400
+    assert "Cannot delete the Global namespace" in exc_info.value.detail
+
+
+# --- Tests: Reserved name ---
+
+
+@pytest.mark.asyncio
+async def test_cannot_create_namespace_named_global(
+    namespace_service: NamespaceService,
+    provisioned_namespace: Namespace,
+    test_user: UserModel,
+):
+    """Cannot create another namespace named Global."""
+    with pytest.raises(HTTPException) as exc_info:
+        await namespace_service.create_for_user(
+            test_user.id, NamespaceCreate(name="Global")
+        )
+    assert exc_info.value.status_code == 400
+    assert "reserved" in exc_info.value.detail
+
+
+# --- Tests: Create with is_default ---
+
+
+@pytest.mark.asyncio
+async def test_create_namespace_with_is_default(
+    namespace_service: NamespaceService,
+    provisioned_namespace: Namespace,
+    test_user: UserModel,
+):
+    """Creating with is_default=True clears default on others."""
+    new_ns = await namespace_service.create_for_user(
+        test_user.id,
+        NamespaceCreate(name="New Default", is_default=True),
+    )
+    assert new_ns.is_default is True
+    # Global should no longer be default
+    refreshed_global = await namespace_service.get_by_id_for_user(
+        str(provisioned_namespace.id), test_user.id
+    )
+    assert refreshed_global.is_default is False
+
+
+@pytest.mark.asyncio
+async def test_create_namespace_without_is_default(
+    namespace_service: NamespaceService,
+    provisioned_namespace: Namespace,
+    test_user: UserModel,
+):
+    """Creating without is_default leaves existing default unchanged."""
+    new_ns = await namespace_service.create_for_user(
+        test_user.id, NamespaceCreate(name="Non-Default")
+    )
+    assert new_ns.is_default is False
+    refreshed_global = await namespace_service.get_by_id_for_user(
+        str(provisioned_namespace.id), test_user.id
+    )
+    assert refreshed_global.is_default is True
+
+
+# --- Tests: Duplicate name ---
+
+
+@pytest.mark.asyncio
+async def test_cannot_create_duplicate_name(
+    namespace_service: NamespaceService,
+    provisioned_namespace: Namespace,
+    test_user: UserModel,
+):
+    """Cannot create two namespaces with the same name."""
+    await namespace_service.create_for_user(
+        test_user.id, NamespaceCreate(name="Unique")
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        await namespace_service.create_for_user(
+            test_user.id, NamespaceCreate(name="Unique")
+        )
+    assert exc_info.value.status_code == 400
+    assert "already exists" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_cannot_rename_to_existing_name(
+    namespace_service: NamespaceService,
+    provisioned_namespace: Namespace,
+    test_user: UserModel,
+):
+    """Cannot rename a namespace to another existing name."""
+    other = await namespace_service.create_for_user(
+        test_user.id, NamespaceCreate(name="Other")
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        await namespace_service.update_namespace(other, NamespaceUpdate(name="Global"))
+    assert exc_info.value.status_code == 400
+
+
+# --- Tests: Locked field in response ---
+
+
+@pytest.mark.asyncio
+async def test_global_namespace_response_locked_true(
+    provisioned_namespace: Namespace,
+):
+    """Global namespace response has locked=True."""
+    response = NamespaceResponse.model_validate(provisioned_namespace)
+    assert response.locked is True
+
+
+@pytest.mark.asyncio
+async def test_user_namespace_response_locked_false(
+    namespace_service: NamespaceService,
+    provisioned_namespace: Namespace,
+    test_user: UserModel,
+):
+    """User-created namespace response has locked=False."""
+    ns = await namespace_service.create_for_user(
+        test_user.id, NamespaceCreate(name="Custom")
+    )
+    response = NamespaceResponse.model_validate(ns)
+    assert response.locked is False
