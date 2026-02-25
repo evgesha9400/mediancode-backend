@@ -17,6 +17,9 @@ class NamespaceCreate(BaseModel):
     description: str | None = Field(
         default=None, examples=["Custom namespace for my API project"]
     )
+    is_default: bool | None = Field(default=None, alias="isDefault")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class NamespaceUpdate(BaseModel):
