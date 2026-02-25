@@ -46,12 +46,12 @@ def render_field(field):
 
     if constraints:
         field_args = ', '.join(constraints)
-        if field.required:
+        if not field.optional:
             return f'{field.name}: {type_annotation} = Field({field_args})'
         else:
             return f'{field.name}: {type_annotation} | None = Field(default=None, {field_args})'
     else:
-        if field.required:
+        if not field.optional:
             return f'{field.name}: {type_annotation}'
         else:
             return f'{field.name}: {type_annotation} | None = None'

@@ -14,7 +14,7 @@ objects:
     fields:
       - name: id
         type: int
-        required: true
+        optional: false
         description: Unique item identifier
         validators:
           - name: ge
@@ -22,7 +22,7 @@ objects:
 
       - name: sku
         type: str
-        required: true
+        optional: false
         description: Stock keeping unit (alphanumeric code)
         validators:
           - name: min_length
@@ -34,7 +34,7 @@ objects:
 
       - name: name
         type: str
-        required: true
+        optional: false
         description: Item display name
         validators:
           - name: min_length
@@ -44,7 +44,7 @@ objects:
 
       - name: description
         type: str
-        required: false
+        optional: true
         description: Detailed item description
         validators:
           - name: max_length
@@ -52,7 +52,7 @@ objects:
 
       - name: price
         type: float
-        required: true
+        optional: false
         description: Item price in dollars (must be positive, max 1M)
         validators:
           - name: gt
@@ -62,7 +62,7 @@ objects:
 
       - name: quantity
         type: int
-        required: true
+        optional: false
         description: Available stock quantity
         validators:
           - name: ge
@@ -72,7 +72,7 @@ objects:
 
       - name: discount_percent
         type: int
-        required: false
+        optional: true
         description: Discount percentage (0-100, multiples of 5)
         validators:
           - name: ge
@@ -84,7 +84,7 @@ objects:
 
       - name: rating
         type: float
-        required: false
+        optional: true
         description: Average customer rating (0.0 to 5.0)
         validators:
           - name: ge
@@ -98,12 +98,12 @@ objects:
     fields:
       - name: items
         type: List[Item]
-        required: true
+        optional: false
         description: List of item objects
 
       - name: total
         type: int
-        required: true
+        optional: false
         description: Total number of items available
         validators:
           - name: ge
@@ -115,7 +115,7 @@ objects:
     fields:
       - name: sku
         type: str
-        required: true
+        optional: false
         description: Stock keeping unit
         validators:
           - name: min_length
@@ -127,7 +127,7 @@ objects:
 
       - name: name
         type: str
-        required: true
+        optional: false
         description: Item name
         validators:
           - name: min_length
@@ -137,7 +137,7 @@ objects:
 
       - name: description
         type: str
-        required: false
+        optional: true
         description: Item description
         validators:
           - name: max_length
@@ -145,7 +145,7 @@ objects:
 
       - name: price
         type: float
-        required: true
+        optional: false
         description: Item price
         validators:
           - name: gt
@@ -155,7 +155,7 @@ objects:
 
       - name: quantity
         type: int
-        required: true
+        optional: false
         description: Initial stock quantity
         validators:
           - name: ge
@@ -165,7 +165,7 @@ objects:
 
       - name: discount_percent
         type: int
-        required: false
+        optional: true
         description: Discount percentage
         validators:
           - name: ge
@@ -181,7 +181,7 @@ objects:
     fields:
       - name: name
         type: str
-        required: false
+        optional: true
         description: New item name
         validators:
           - name: min_length
@@ -191,7 +191,7 @@ objects:
 
       - name: description
         type: str
-        required: false
+        optional: true
         description: New item description
         validators:
           - name: max_length
@@ -199,7 +199,7 @@ objects:
 
       - name: price
         type: float
-        required: false
+        optional: true
         description: New price
         validators:
           - name: gt
@@ -209,7 +209,7 @@ objects:
 
       - name: quantity
         type: int
-        required: false
+        optional: true
         description: New stock quantity
         validators:
           - name: ge
@@ -219,7 +219,7 @@ objects:
 
       - name: discount_percent
         type: int
-        required: false
+        optional: true
         description: New discount percentage
         validators:
           - name: ge
@@ -254,23 +254,23 @@ endpoints:
     query_params:
       - name: limit
         type: int
-        required: false
+        optional: true
         description: Maximum number of items to return (1-100)
       - name: offset
         type: int
-        required: false
+        optional: true
         description: Number of items to skip for pagination
       - name: min_price
         type: float
-        required: false
+        optional: true
         description: Filter by minimum price
       - name: max_price
         type: float
-        required: false
+        optional: true
         description: Filter by maximum price
       - name: search
         type: str
-        required: false
+        optional: true
         description: Search term for name/description
 
   - name: CreateItem

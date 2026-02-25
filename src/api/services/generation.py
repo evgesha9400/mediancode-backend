@@ -193,7 +193,7 @@ def _convert_to_input_api(
                 input_field = InputField(
                     name=field.name,
                     type=_map_field_type(field.field_type.name, field.container),
-                    required=assoc.required,
+                    optional=assoc.optional,
                     description=field.description,
                     default_value=field.default_value,
                     validators=_build_field_validators(field),
@@ -262,7 +262,7 @@ def _convert_to_input_api(
                             InputQueryParam(
                                 name=field.name,
                                 type=_map_field_type(field.field_type.name),
-                                required=assoc.required,
+                                optional=assoc.optional,
                                 description=field.description,
                             )
                         )

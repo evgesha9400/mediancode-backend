@@ -36,7 +36,7 @@ api_router = APIRouter()
     if view.request_model:
         signature_lines.append(f"    request: {view.request_model},")
     for q_param in (view.query_params or []):
-        suffix = "" if q_param.required else " = None"
+        suffix = " = None" if q_param.optional else ""
         signature_lines.append(
             f"    {q_param.snake_name}: query.{q_param.camel_name}{suffix},"
         )

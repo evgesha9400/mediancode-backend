@@ -33,7 +33,7 @@ class TemplateField(BaseModel):
 
     type: str
     name: str
-    required: bool
+    optional: bool
     description: str | None = None
     default_value: str | None = None
     validators: list[TemplateValidator] = []
@@ -56,7 +56,7 @@ class TemplateQueryParam(BaseModel):
     snake_name: str
     type: str
     title: str
-    required: bool
+    optional: bool
     description: str | None = None
 
 

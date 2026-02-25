@@ -154,7 +154,7 @@ class PlaceholderGenerator:
         result: dict[str, Any] = {}
 
         for offset, field in enumerate(fields, start=1):
-            if not field.required:
+            if field.optional:
                 continue
 
             constraints = extract_constraints(field.validators)

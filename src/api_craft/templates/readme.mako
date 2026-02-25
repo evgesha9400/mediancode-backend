@@ -122,7 +122,7 @@ ${model.description}
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 % for field in model.fields:
-| `${field.name}` | `${field.type}` | ${"Yes" if field.required else "No"} | ${field.description or "-"} |
+| `${field.name}` | `${field.type}` | ${"No" if field.optional else "Yes"} | ${field.description or "-"} |
 % endfor
 % endfor
 

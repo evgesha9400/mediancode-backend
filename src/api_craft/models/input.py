@@ -53,7 +53,7 @@ class InputField(BaseModel):
 
     :ivar type: Declared field type, supporting primitive values and object references.
     :ivar name: Field identifier within the object.
-    :ivar required: Flag indicating whether the field must be provided.
+    :ivar optional: Whether this field is optional (default False = required).
     :ivar description: Human-readable description of the field.
     :ivar default_value: Default value expression (Python code).
     :ivar validators: List of validators applied to this field.
@@ -62,7 +62,7 @@ class InputField(BaseModel):
 
     type: str
     name: str
-    required: bool = False
+    optional: bool = False
     description: str | None = None
     default_value: str | None = None
     validators: list[InputValidator] = Field(default_factory=list)
@@ -89,13 +89,13 @@ class InputQueryParam(BaseModel):
 
     :ivar name: Snake_case identifier exposed to consumers.
     :ivar type: Declared type string compatible with FastAPI annotations.
-    :ivar required: Flag indicating whether the parameter is mandatory.
+    :ivar optional: Whether this parameter is optional (default False = required).
     :ivar description: Human-readable description of the parameter.
     """
 
     name: str
     type: str
-    required: bool = False
+    optional: bool = False
     description: str | None = None
 
 

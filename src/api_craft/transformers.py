@@ -88,7 +88,7 @@ def transform_field(input_field: InputField) -> TemplateField:
     return TemplateField(
         type=input_field.type,
         name=input_field.name,
-        required=input_field.required,
+        optional=input_field.optional,
         description=input_field.description,
         default_value=input_field.default_value,
         validators=validators,
@@ -125,7 +125,7 @@ def transform_query_params(
                 snake_name=param.name,
                 camel_name=snake_to_camel(param.name),
                 title=snake_to_camel(param.name),
-                required=param.required,
+                optional=param.optional,
                 description=param.description,
             )
             for param in input_query_params
