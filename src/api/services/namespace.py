@@ -58,12 +58,28 @@ class NamespaceService(BaseService[Namespace]):
         :param user_id: The authenticated user's ID.
         :param data: Namespace creation data.
         :returns: The created namespace.
+        :raises HTTPException: If name is reserved or duplicate.
         """
+        if data.name == "Global":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Cannot create a namespace named "Global" — this name is reserved',
+            )
+
         namespace = Namespace(
             user_id=user_id,
             name=data.name,
             description=data.description,
         )
+
+        if data.is_default is True:
+            await self.db.execute(
+                update(Namespace)
+                .where(Namespace.user_id == user_id, Namespace.id != namespace.id)
+                .values(is_default=False)
+            )
+            namespace.is_default = True
+
         self.db.add(namespace)
         await self.db.flush()
         await self.db.refresh(namespace)
