@@ -128,6 +128,12 @@ class NamespaceService(BaseService[Namespace]):
         :param namespace: The namespace to delete.
         :raises HTTPException: If namespace is default or has entities.
         """
+        if namespace.name == "Global":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete the Global namespace",
+            )
+
         if namespace.is_default:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

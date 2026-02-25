@@ -484,12 +484,12 @@ async def test_delete_default_namespace_raises_error(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
 ):
-    """Deleting the default namespace raises an HTTPException."""
+    """Deleting the Global namespace raises an HTTPException (Global guard first)."""
     with pytest.raises(HTTPException) as exc_info:
         await namespace_service.delete_namespace(provisioned_namespace)
 
     assert exc_info.value.status_code == 400
-    assert "Cannot delete the default namespace" in exc_info.value.detail
+    assert "Cannot delete the Global namespace" in exc_info.value.detail
 
 
 @pytest.mark.asyncio
