@@ -66,6 +66,12 @@ class NamespaceService(BaseService[Namespace]):
                 detail='Cannot create a namespace named "Global" — this name is reserved',
             )
 
+        if await self._name_exists_for_user(user_id, data.name):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f'Namespace "{data.name}" already exists',
+            )
+
         namespace = Namespace(
             user_id=user_id,
             name=data.name,
@@ -111,6 +117,15 @@ class NamespaceService(BaseService[Namespace]):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Cannot modify the Global namespace description",
+                )
+
+        if data.name is not None and data.name != namespace.name:
+            if await self._name_exists_for_user(
+                namespace.user_id, data.name, exclude_id=namespace.id
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f'Namespace "{data.name}" already exists',
                 )
 
         if data.name is not None:
@@ -178,6 +193,18 @@ class NamespaceService(BaseService[Namespace]):
 
         await self.db.delete(namespace)
         await self.db.flush()
+
+    async def _name_exists_for_user(
+        self, user_id: UUID, name: str, exclude_id: UUID | None = None
+    ) -> bool:
+        """Check if a namespace name already exists for a user."""
+        query = select(Namespace.id).where(
+            Namespace.user_id == user_id, Namespace.name == name
+        )
+        if exclude_id:
+            query = query.where(Namespace.id != exclude_id)
+        result = await self.db.execute(query)
+        return result.scalar() is not None
 
     async def _count_entities(self, namespace_id: str) -> dict[str, int]:
         """Count all entity types in a namespace.
