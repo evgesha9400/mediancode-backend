@@ -98,7 +98,6 @@ class Namespace(Base):
     :ivar user_id: Owner user ID from Clerk (null for system namespace).
     :ivar name: Namespace display name.
     :ivar description: Optional description.
-    :ivar locked: Whether namespace metadata is immutable (system ns and user's Global ns).
     :ivar is_default: Whether this is the user's default namespace.
     """
 
@@ -120,7 +119,6 @@ class Namespace(Base):
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships

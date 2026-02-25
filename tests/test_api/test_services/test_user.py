@@ -40,7 +40,7 @@ async def test_provisioning_creates_default_namespace(
     db_session: AsyncSession,
     cleanup_users,
 ):
-    """Test that provisioning creates a locked default namespace."""
+    """Test that provisioning creates a default namespace."""
     service = UserService(db_session)
     user = await service.ensure_provisioned(PROVISION_USER_A)
     await db_session.commit()
@@ -57,7 +57,6 @@ async def test_provisioning_creates_default_namespace(
     namespace = result.scalar_one()
 
     assert namespace.name == "Global"
-    assert namespace.locked is True
     assert namespace.is_default is True
     assert namespace.user_id == user.id
 

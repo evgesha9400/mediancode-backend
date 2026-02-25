@@ -158,7 +158,7 @@ async def update_endpoint(
     if not api or api.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot modify endpoint in locked namespace",
+            detail="Cannot modify this endpoint",
         )
 
     updated = await service.update_endpoint(endpoint, data)
@@ -197,7 +197,7 @@ async def delete_endpoint(
     if not api or api.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete endpoint in locked namespace",
+            detail="Cannot delete this endpoint",
         )
 
     await service.delete_endpoint(endpoint)

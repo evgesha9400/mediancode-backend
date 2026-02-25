@@ -97,7 +97,7 @@ async def get_namespace(
     "/{namespace_id}",
     response_model=NamespaceResponse,
     summary="Update namespace",
-    description="Update an existing namespace. Locked namespaces cannot be modified.",
+    description="Update an existing namespace.",
 )
 async def update_namespace(
     namespace_id: str,
@@ -112,7 +112,7 @@ async def update_namespace(
     :param user: Authenticated user.
     :param db: Database session.
     :returns: Updated namespace response.
-    :raises HTTPException: If namespace not found or locked.
+    :raises HTTPException: If namespace not found or not owned by user.
     """
     service = get_service(db)
     namespace = await service.get_by_id_for_user(namespace_id, user.id)
@@ -126,7 +126,7 @@ async def update_namespace(
     if namespace.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot modify locked namespace",
+            detail="Cannot modify this namespace",
         )
 
     updated = await service.update_namespace(namespace, data)
@@ -149,7 +149,7 @@ async def delete_namespace(
     :param namespace_id: Namespace unique identifier.
     :param user: Authenticated user.
     :param db: Database session.
-    :raises HTTPException: If namespace not found, locked, or has entities.
+    :raises HTTPException: If namespace not found, not owned, or has entities.
     """
     service = get_service(db)
     namespace = await service.get_by_id_for_user(namespace_id, user.id)
@@ -163,7 +163,7 @@ async def delete_namespace(
     if namespace.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete locked namespace",
+            detail="Cannot delete this namespace",
         )
 
     await service.delete_namespace(namespace)

@@ -13,7 +13,6 @@ There are exactly three kinds of namespaces. No other kinds exist.
 | `id` | `00000000-0000-0000-0000-000000000001` (fixed) |
 | `user_id` | `NULL` |
 | `name` | `"Global"` |
-| `locked` | `True` |
 | `is_default` | `False` |
 
 The system namespace is the single source of truth for seed data (types and field constraints). It is never duplicated, never visible in user-facing namespace listings, and fully immutable.
@@ -25,7 +24,6 @@ The system namespace is the single source of truth for seed data (types and fiel
 | `id` | Auto-generated UUID |
 | `user_id` | Clerk user ID |
 | `name` | `"Global"` |
-| `locked` | `True` |
 | `is_default` | `True` |
 
 Created lazily on the user's first authenticated request. Starts empty. Each user has exactly one (enforced by partial unique index `ix_namespaces_one_default_per_user`).
@@ -37,7 +35,6 @@ Created lazily on the user's first authenticated request. Starts empty. Each use
 | `id` | Auto-generated UUID |
 | `user_id` | Clerk user ID |
 | `name` | User-chosen name |
-| `locked` | `False` |
 | `is_default` | `False` |
 
 Regular namespaces created by users to organize project work. No limit on count.
@@ -107,8 +104,8 @@ When a user queries **fields, objects, APIs, endpoints, validators**, they see o
 | Target namespace | Create entities inside it? | Why |
 |------------------|---------------------------|-----|
 | System namespace (`user_id=NULL`) | **Forbidden** | Seed data is immutable |
-| User's Global namespace (`locked=True`, `user_id=<uid>`) | **Allowed** | `locked` only protects namespace metadata |
-| Project namespace (`locked=False`, `user_id=<uid>`) | **Allowed** | Normal user namespace |
+| User's Global namespace (`is_default=True`, `user_id=<uid>`) | **Allowed** | Default namespace is fully mutable |
+| Project namespace (`is_default=False`, `user_id=<uid>`) | **Allowed** | Normal user namespace |
 
 The ownership filter `Namespace.user_id == user_id` implicitly excludes the system namespace (where `user_id IS NULL`). No separate system namespace check is needed.
 
@@ -116,9 +113,10 @@ The ownership filter `Namespace.user_id == user_id` implicitly excludes the syst
 
 | Action | System namespace | User's Global namespace | Project namespace |
 |--------|-----------------|------------------------|-------------------|
-| Rename | Forbidden (`locked`) | Forbidden (`locked`) | Allowed |
-| Delete | Forbidden (`locked`) | Forbidden (`locked`) | Allowed |
-| Change description | Forbidden (`locked`) | Forbidden (`locked`) | Allowed |
+| Rename | Forbidden (no `user_id`) | Allowed | Allowed |
+| Delete | Forbidden (no `user_id`) | Forbidden (`is_default`) | Allowed |
+| Change description | Forbidden (no `user_id`) | Allowed | Allowed |
+| Change default | N/A | Can reassign to another namespace | Can be set as default |
 
 ### Seed data immutability
 

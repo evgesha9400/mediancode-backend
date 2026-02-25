@@ -126,8 +126,7 @@ class BaseService(Generic[ModelT]):
 
         The ``Namespace.user_id == user_id`` filter implicitly excludes the
         system namespace (where ``user_id IS NULL``), so no explicit system
-        namespace check is needed. Locked user namespaces (the Global
-        namespace) allow entity creation.
+        namespace check is needed.
 
         :param namespace_id: The namespace ID to validate.
         :param user_id: The authenticated user's ID.

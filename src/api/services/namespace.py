@@ -4,7 +4,7 @@
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import (
@@ -63,7 +63,6 @@ class NamespaceService(BaseService[Namespace]):
             user_id=user_id,
             name=data.name,
             description=data.description,
-            locked=False,
         )
         self.db.add(namespace)
         await self.db.flush()
@@ -80,33 +79,43 @@ class NamespaceService(BaseService[Namespace]):
         :param namespace: The namespace to update.
         :param data: Update data.
         :returns: The updated namespace.
-        :raises HTTPException: If namespace is locked.
+        :raises HTTPException: If attempting to unset default.
         """
-        if namespace.locked:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot modify locked namespace",
-            )
-
         if data.name is not None:
             namespace.name = data.name
         if data.description is not None:
             namespace.description = data.description
+
+        if data.is_default is True:
+            # Clear is_default on all other namespaces for this user
+            await self.db.execute(
+                update(Namespace)
+                .where(
+                    Namespace.user_id == namespace.user_id, Namespace.id != namespace.id
+                )
+                .values(is_default=False)
+            )
+            namespace.is_default = True
+        elif data.is_default is False:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot unset default namespace. Set another namespace as default instead.",
+            )
 
         await self.db.flush()
         await self.db.refresh(namespace)
         return namespace
 
     async def delete_namespace(self, namespace: Namespace) -> None:
-        """Delete a namespace if empty and not locked.
+        """Delete a namespace if empty and not the default.
 
         :param namespace: The namespace to delete.
-        :raises HTTPException: If namespace is locked or has entities.
+        :raises HTTPException: If namespace is default or has entities.
         """
-        if namespace.locked:
+        if namespace.is_default:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot delete locked namespace",
+                detail="Cannot delete the default namespace",
             )
 
         # Count entities in namespace

@@ -24,10 +24,14 @@ class NamespaceUpdate(BaseModel):
 
     :ivar name: Updated namespace name.
     :ivar description: Updated namespace description.
+    :ivar is_default: Set this namespace as the user's default.
     """
 
     name: str | None = Field(default=None, examples=["updated-namespace-name"])
     description: str | None = Field(default=None, examples=["Updated description"])
+    is_default: bool | None = Field(default=None, alias="isDefault")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class NamespaceResponse(BaseModel):
@@ -36,7 +40,6 @@ class NamespaceResponse(BaseModel):
     :ivar id: Unique identifier for the namespace.
     :ivar name: Namespace name.
     :ivar description: Namespace description.
-    :ivar locked: Whether this namespace is locked (immutable).
     :ivar is_default: Whether this is the user's default namespace.
     """
 
@@ -45,7 +48,6 @@ class NamespaceResponse(BaseModel):
     description: str | None = Field(
         default=None, examples=["Immutable global templates and examples"]
     )
-    locked: bool = Field(..., examples=[True])
     is_default: bool = Field(..., alias="isDefault", examples=[False])
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

@@ -84,7 +84,7 @@ paths:
       tags:
       - Namespaces
       summary: Update namespace
-      description: Update an existing namespace. Locked namespaces cannot be modified.
+      description: Update an existing namespace.
       operationId: update_namespace_v1_namespaces__namespace_id__put
       security:
       - HTTPBearer: []
@@ -2033,11 +2033,6 @@ components:
           title: Description
           examples:
           - Immutable global templates and examples
-        locked:
-          type: boolean
-          title: Locked
-          examples:
-          - true
         isDefault:
           type: boolean
           title: Isdefault
@@ -2047,7 +2042,6 @@ components:
       required:
       - id
       - name
-      - locked
       - isDefault
       title: NamespaceResponse
       description: 'Response schema for namespace data.
@@ -2058,8 +2052,6 @@ components:
         :ivar name: Namespace name.
 
         :ivar description: Namespace description.
-
-        :ivar locked: Whether this namespace is locked (immutable).
 
         :ivar is_default: Whether this is the user''s default namespace.'
     NamespaceUpdate:
@@ -2078,6 +2070,11 @@ components:
           title: Description
           examples:
           - Updated description
+        isDefault:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Isdefault
       type: object
       title: NamespaceUpdate
       description: 'Request schema for updating a namespace.
@@ -2085,7 +2082,9 @@ components:
 
         :ivar name: Updated namespace name.
 
-        :ivar description: Updated namespace description.'
+        :ivar description: Updated namespace description.
+
+        :ivar is_default: Set this namespace as the user''s default.'
     ObjectCreate:
       properties:
         namespaceId:

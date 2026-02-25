@@ -142,7 +142,7 @@ async def update_api(
     if api.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot modify API in locked namespace",
+            detail="Cannot modify this API",
         )
 
     updated = await service.update_api(api, data)
@@ -179,7 +179,7 @@ async def delete_api(
     if api.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete API in locked namespace",
+            detail="Cannot delete this API",
         )
 
     await service.delete_api(api)

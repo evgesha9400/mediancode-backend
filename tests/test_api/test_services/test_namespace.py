@@ -36,7 +36,7 @@ async def namespace_service(db_session: AsyncSession):
 async def user_namespace(
     db_session: AsyncSession, provisioned_namespace: Namespace, test_user: UserModel
 ):
-    """Create a user-owned (unlocked) namespace for namespace tests."""
+    """Create a user-owned namespace for namespace tests."""
     namespace = Namespace(
         name="Custom Namespace",
         description="User-owned namespace for testing",
@@ -167,7 +167,6 @@ async def test_list_namespaces_includes_default_namespace(
     default_namespaces = [ns for ns in namespaces if ns.is_default]
     assert len(default_namespaces) == 1
     assert default_namespaces[0].name == "Global"
-    assert default_namespaces[0].locked is True
 
 
 @pytest.mark.asyncio
@@ -273,7 +272,6 @@ async def test_get_default_namespace_by_id(
 
     assert result is not None
     assert result.is_default is True
-    assert result.locked is True
     assert result.name == "Global"
 
 
@@ -293,7 +291,6 @@ async def test_create_namespace(
     assert namespace.name == "New Project"
     assert namespace.description == "A new project namespace"
     assert namespace.user_id == test_user.id
-    assert namespace.locked is False
     assert namespace.is_default is False
     assert namespace.id is not None
 
@@ -310,20 +307,6 @@ async def test_create_namespace_without_description(
 
     assert namespace.name == "No Description"
     assert namespace.description is None
-    assert namespace.locked is False
-
-
-@pytest.mark.asyncio
-async def test_create_namespace_is_not_locked(
-    provisioned_namespace: Namespace,
-    namespace_service: NamespaceService,
-    test_user: UserModel,
-):
-    """User-created namespaces are never locked."""
-    data = NamespaceCreate(name="Unlocked Namespace")
-    namespace = await namespace_service.create_for_user(test_user.id, data)
-
-    assert namespace.locked is False
 
 
 @pytest.mark.asyncio
@@ -430,18 +413,51 @@ async def test_update_namespace_no_changes(
 
 
 @pytest.mark.asyncio
-async def test_update_locked_namespace_raises_error(
+async def test_update_default_namespace_name(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
 ):
-    """Updating a locked namespace raises an HTTPException."""
-    data = NamespaceUpdate(name="Hacked Name")
+    """Updating name/description on a default namespace works."""
+    data = NamespaceUpdate(name="My Workspace", description="Custom desc")
+    updated = await namespace_service.update_namespace(provisioned_namespace, data)
+
+    assert updated.name == "My Workspace"
+    assert updated.description == "Custom desc"
+    assert updated.is_default is True
+
+
+@pytest.mark.asyncio
+async def test_update_namespace_set_default(
+    db_session: AsyncSession,
+    user_namespace: Namespace,
+    provisioned_namespace: Namespace,
+    namespace_service: NamespaceService,
+    test_user: UserModel,
+):
+    """Setting is_default=True on a non-default namespace clears the old default."""
+    data = NamespaceUpdate(is_default=True)
+    updated = await namespace_service.update_namespace(user_namespace, data)
+
+    assert updated.is_default is True
+
+    # Old default should no longer be default
+    await db_session.refresh(provisioned_namespace)
+    assert provisioned_namespace.is_default is False
+
+
+@pytest.mark.asyncio
+async def test_update_namespace_unset_default_raises_error(
+    provisioned_namespace: Namespace,
+    namespace_service: NamespaceService,
+):
+    """Setting is_default=False raises 400."""
+    data = NamespaceUpdate(is_default=False)
 
     with pytest.raises(HTTPException) as exc_info:
         await namespace_service.update_namespace(provisioned_namespace, data)
 
     assert exc_info.value.status_code == 400
-    assert "Cannot modify locked namespace" in exc_info.value.detail
+    assert "Cannot unset default namespace" in exc_info.value.detail
 
 
 # --- Tests: Delete namespace ---
@@ -466,16 +482,16 @@ async def test_delete_empty_namespace(
 
 
 @pytest.mark.asyncio
-async def test_delete_locked_namespace_raises_error(
+async def test_delete_default_namespace_raises_error(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
 ):
-    """Deleting the locked default namespace raises an HTTPException."""
+    """Deleting the default namespace raises an HTTPException."""
     with pytest.raises(HTTPException) as exc_info:
         await namespace_service.delete_namespace(provisioned_namespace)
 
     assert exc_info.value.status_code == 400
-    assert "Cannot delete locked namespace" in exc_info.value.detail
+    assert "Cannot delete the default namespace" in exc_info.value.detail
 
 
 @pytest.mark.asyncio
@@ -524,11 +540,10 @@ async def test_delete_namespace_with_api_raises_error(
 
 
 @pytest.mark.asyncio
-async def test_default_namespace_is_locked(
+async def test_default_namespace_is_default(
     provisioned_namespace: Namespace,
 ):
-    """The provisioned default namespace is locked."""
-    assert provisioned_namespace.locked is True
+    """The provisioned default namespace has is_default=True."""
     assert provisioned_namespace.is_default is True
 
 

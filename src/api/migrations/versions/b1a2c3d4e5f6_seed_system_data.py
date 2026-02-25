@@ -550,8 +550,8 @@ def upgrade() -> None:
     # Seed system namespace (required for FK constraints on types/constraints)
     op.execute(
         f"""
-        INSERT INTO namespaces (id, user_id, name, description, locked, is_default)
-        VALUES ('{SYSTEM_NAMESPACE_ID}'::uuid, NULL, 'Global', 'Built-in types and field constraints', true, false)
+        INSERT INTO namespaces (id, user_id, name, description, is_default)
+        VALUES ('{SYSTEM_NAMESPACE_ID}'::uuid, NULL, 'Global', 'Built-in types and field constraints', false)
         """
     )
 

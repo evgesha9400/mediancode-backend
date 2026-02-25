@@ -168,7 +168,7 @@ async def update_object(
     if obj.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot modify object in locked namespace",
+            detail="Cannot modify this object",
         )
 
     updated = await service.update_object(obj, data)
@@ -207,7 +207,7 @@ async def delete_object(
     if obj.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete object in locked namespace",
+            detail="Cannot delete this object",
         )
 
     await service.delete_object(obj)

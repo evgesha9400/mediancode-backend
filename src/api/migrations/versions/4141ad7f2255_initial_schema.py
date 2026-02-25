@@ -52,7 +52,6 @@ def upgrade() -> None:
         sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("locked", sa.Boolean(), nullable=False),
         sa.Column(
             "is_default", sa.Boolean(), nullable=False, server_default=sa.text("false")
         ),

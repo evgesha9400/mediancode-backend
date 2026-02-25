@@ -82,7 +82,7 @@ class ApiService(BaseService[ApiModel]):
         :param user_id: The authenticated user's ID.
         :param data: API creation data.
         :returns: The created API.
-        :raises HTTPException: If namespace not owned by user or is locked.
+        :raises HTTPException: If namespace not owned by user.
         """
         await self.validate_namespace_for_creation(data.namespace_id, user_id)
 

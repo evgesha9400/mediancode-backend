@@ -95,7 +95,7 @@ class FieldService(BaseService[FieldModel]):
         :param user_id: The authenticated user's ID.
         :param data: Field creation data.
         :returns: The created field.
-        :raises HTTPException: If namespace not owned by user or is locked.
+        :raises HTTPException: If namespace not owned by user.
         """
         await self.validate_namespace_for_creation(data.namespace_id, user_id)
 

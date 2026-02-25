@@ -173,7 +173,7 @@ async def update_field(
     if field.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot modify field in locked namespace",
+            detail="Cannot modify this field",
         )
 
     updated = await service.update_field(field, data)
@@ -212,7 +212,7 @@ async def delete_field(
     if field.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete field in locked namespace",
+            detail="Cannot delete this field",
         )
 
     await service.delete_field(field)

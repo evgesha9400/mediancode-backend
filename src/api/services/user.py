@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class UserService:
     """Manages user lifecycle: provisioning and generation tracking.
 
-    On first authenticated request, creates a user row and a locked default
+    On first authenticated request, creates a user row and a default
     namespace. Seed data (types and constraints) lives in the system namespace
     and is shared read-only across all users via OR clauses in service queries.
 
@@ -66,7 +66,6 @@ class UserService:
                 namespace = Namespace(
                     user_id=user.id,
                     name="Global",
-                    locked=True,
                     is_default=True,
                 )
                 self.db.add(namespace)
