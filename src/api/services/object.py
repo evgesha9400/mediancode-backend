@@ -187,7 +187,7 @@ class ObjectService(BaseService[ObjectDefinition]):
             assoc = ObjectFieldAssociation(
                 object_id=obj.id,
                 field_id=field_ref.field_id,
-                required=field_ref.required,
+                optional=field_ref.optional,
                 position=position,
             )
             self.db.add(assoc)
