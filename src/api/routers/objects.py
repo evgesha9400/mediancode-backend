@@ -33,7 +33,7 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
     :returns: ObjectResponse schema.
     """
     fields = [
-        ObjectFieldReferenceSchema(field_id=fa.field_id, required=fa.required)
+        ObjectFieldReferenceSchema(field_id=fa.field_id, optional=fa.optional)
         for fa in sorted(obj.field_associations, key=lambda x: x.position)
     ]
     validators = [

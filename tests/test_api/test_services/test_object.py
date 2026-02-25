@@ -118,7 +118,7 @@ async def _create_object(
         {
             "namespaceId": namespace.id,
             "name": name,
-            "fields": [{"fieldId": str(field_id), "required": True}],
+            "fields": [{"fieldId": str(field_id), "optional": False}],
             "validators": validators or [],
         }
     )
