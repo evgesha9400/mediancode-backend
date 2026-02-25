@@ -5,7 +5,18 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, Text, text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    text,
+)
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -337,6 +348,11 @@ class FieldModel(Base):
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     default_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    container: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
+
+    __table_args__ = (
+        CheckConstraint("container IN ('List')", name="ck_fields_container"),
+    )
 
     # Relationships
     user: Mapped["UserModel"] = relationship(back_populates="fields")

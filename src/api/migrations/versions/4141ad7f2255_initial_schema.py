@@ -228,6 +228,8 @@ def upgrade() -> None:
         sa.Column("type_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("default_value", sa.Text(), nullable=True),
+        sa.Column("container", sa.String(), nullable=True),
+        sa.CheckConstraint("container IN ('List')", name="ck_fields_container"),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
         sa.ForeignKeyConstraint(["type_id"], ["types.id"]),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
