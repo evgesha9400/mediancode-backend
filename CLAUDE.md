@@ -94,9 +94,4 @@ To extend api_craft:
 
 ## Commit Messages
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/). Use scopes: `api`, `generation`, `models`, `config`, `deps`.
-
-When commits are AI-assisted, include:
-```
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
+Follow [Conventional Commits](https://www.conventionalcommits.org/) as specified in `docs/COMMIT_MESSAGE_STANDARD.md`. Use scopes: `api`, `generation`, `models`, `config`, `deps`. Body must be sequential bullet points. Do NOT include Co-Authored-By lines.

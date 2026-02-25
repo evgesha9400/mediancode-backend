@@ -98,8 +98,4 @@ large generated projects.
 
 ## Co-authorship
 
-When commits are made with AI assistance, include:
-
-```
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
+Do NOT include any Co-Authored-By lines in commit messages.
