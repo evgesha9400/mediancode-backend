@@ -339,22 +339,19 @@ async def test_create_namespace_appears_in_list(
 
 
 @pytest.mark.asyncio
-async def test_create_namespace_with_duplicate_name(
+async def test_create_namespace_with_duplicate_name_raises_error(
+    db_session: AsyncSession,
     user_namespace: Namespace,
     namespace_service: NamespaceService,
     test_user: UserModel,
 ):
-    """Creating a namespace with the same name as an existing one is allowed.
-
-    No unique constraint on name per user, so duplicate names are permitted.
-    """
+    """Creating a namespace with the same name as an existing one raises an error."""
     data = NamespaceCreate(
         name="Custom Namespace", description="Another namespace with same name"
     )
-    namespace = await namespace_service.create_for_user(test_user.id, data)
-
-    assert namespace.name == "Custom Namespace"
-    assert namespace.id != user_namespace.id
+    async with db_session.begin_nested():
+        with pytest.raises(Exception):
+            await namespace_service.create_for_user(test_user.id, data)
 
 
 # --- Tests: Update namespace ---

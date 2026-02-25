@@ -15,6 +15,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID as PgUUID
@@ -120,6 +121,7 @@ class Namespace(Base):
             unique=True,
             postgresql_where=text("is_default = true"),
         ),
+        UniqueConstraint("user_id", "name", name="uq_namespaces_user_name"),
     )
 
     id: Mapped[UUID] = mapped_column(
