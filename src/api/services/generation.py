@@ -192,7 +192,7 @@ def _convert_to_input_api(
             if field:
                 input_field = InputField(
                     name=field.name,
-                    type=_map_field_type(field.field_type.name),
+                    type=_map_field_type(field.field_type.name, field.container),
                     required=assoc.required,
                     description=field.description,
                     default_value=field.default_value,
@@ -313,11 +313,12 @@ def _convert_to_input_api(
     )
 
 
-def _map_field_type(field_type: str) -> str:
-    """Map API field type to Python type string.
+def _map_field_type(field_type: str, container: str | None = None) -> str:
+    """Map API field type to Python type string, optionally wrapped in a container.
 
     :param field_type: The field type from the database.
-    :returns: Python type string.
+    :param container: Optional container type (e.g. 'List').
+    :returns: Python type string, e.g. 'str' or 'List[str]'.
     """
     type_mapping = {
         "str": "str",
@@ -329,7 +330,10 @@ def _map_field_type(field_type: str) -> str:
         "EmailStr": "EmailStr",
         "HttpUrl": "HttpUrl",
     }
-    return type_mapping.get(field_type, "str")
+    base = type_mapping.get(field_type, "str")
+    if container:
+        return f"{container}[{base}]"
+    return base
 
 
 def _to_pascal_case(name: str) -> str:
