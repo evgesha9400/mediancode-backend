@@ -3,7 +3,7 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class NamespaceCreate(BaseModel):
@@ -49,5 +49,11 @@ class NamespaceResponse(BaseModel):
         default=None, examples=["Immutable global templates and examples"]
     )
     is_default: bool = Field(..., alias="isDefault", examples=[False])
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def locked(self) -> bool:
+        """True for the provisioned Global namespace (fully read-only)."""
+        return self.name == "Global"
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
