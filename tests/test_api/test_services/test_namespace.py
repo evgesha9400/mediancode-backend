@@ -421,7 +421,7 @@ async def test_update_default_namespace_name(
         await namespace_service.update_namespace(provisioned_namespace, data)
 
     assert exc_info.value.status_code == 400
-    assert "Cannot rename the Global namespace" in exc_info.value.detail
+    assert "Cannot modify the Global namespace name" in exc_info.value.detail
 
 
 @pytest.mark.asyncio
@@ -674,7 +674,7 @@ async def test_cannot_rename_global_namespace(
             provisioned_namespace, NamespaceUpdate(name="New Name")
         )
     assert exc_info.value.status_code == 400
-    assert "Cannot rename the Global namespace" in exc_info.value.detail
+    assert "Cannot modify the Global namespace name" in exc_info.value.detail
 
 
 @pytest.mark.asyncio
