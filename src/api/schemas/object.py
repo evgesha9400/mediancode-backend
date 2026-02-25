@@ -10,13 +10,13 @@ class ObjectFieldReferenceSchema(BaseModel):
     """Schema for a field reference in an object.
 
     :ivar field_id: Reference to Field.id.
-    :ivar required: Whether this field is required in the object.
+    :ivar optional: Whether this field is optional in the object.
     """
 
     field_id: UUID = Field(
         ..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"]
     )
-    required: bool = Field(..., examples=[True])
+    optional: bool = Field(default=False, examples=[False])
 
     model_config = ConfigDict(populate_by_name=True)
 
