@@ -81,6 +81,22 @@ class NamespaceService(BaseService[Namespace]):
         :returns: The updated namespace.
         :raises HTTPException: If attempting to unset default.
         """
+        # Global namespace is read-only (name and description cannot be changed)
+        if namespace.name == "Global":
+            if data.name is not None and data.name != namespace.name:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot rename the Global namespace",
+                )
+            if (
+                data.description is not None
+                and data.description != namespace.description
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot modify the Global namespace description",
+                )
+
         if data.name is not None:
             namespace.name = data.name
         if data.description is not None:

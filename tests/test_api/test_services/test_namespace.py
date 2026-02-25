@@ -414,13 +414,14 @@ async def test_update_default_namespace_name(
     provisioned_namespace: Namespace,
     namespace_service: NamespaceService,
 ):
-    """Updating name/description on a default namespace works."""
-    data = NamespaceUpdate(name="My Workspace", description="Custom desc")
-    updated = await namespace_service.update_namespace(provisioned_namespace, data)
+    """Updating name on the Global namespace is rejected."""
+    data = NamespaceUpdate(name="My Workspace")
 
-    assert updated.name == "My Workspace"
-    assert updated.description == "Custom desc"
-    assert updated.is_default is True
+    with pytest.raises(HTTPException) as exc_info:
+        await namespace_service.update_namespace(provisioned_namespace, data)
+
+    assert exc_info.value.status_code == 400
+    assert "Cannot rename the Global namespace" in exc_info.value.detail
 
 
 @pytest.mark.asyncio
