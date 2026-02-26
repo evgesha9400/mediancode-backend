@@ -139,6 +139,10 @@ def upgrade() -> None:
         ),
         sa.Column("body_template", sa.Text(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
+        sa.CheckConstraint(
+            "mode IN ('before', 'after')",
+            name="ck_field_validator_templates_mode",
+        ),
     )
 
     # Create model_validator_templates table (catalogue of reusable model validators)
@@ -161,6 +165,10 @@ def upgrade() -> None:
         ),
         sa.Column("body_template", sa.Text(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
+        sa.CheckConstraint(
+            "mode IN ('before', 'after')",
+            name="ck_model_validator_templates_mode",
+        ),
     )
 
     # Create apis table
@@ -401,11 +409,7 @@ def upgrade() -> None:
             server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("api_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column(
-            "method",
-            sa.Enum("GET", "POST", "PUT", "PATCH", "DELETE", name="http_method"),
-            nullable=False,
-        ),
+        sa.Column("method", sa.String(), nullable=False),
         sa.Column("path", sa.Text(), nullable=False),
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("tag_name", sa.Text(), nullable=True),
@@ -425,16 +429,20 @@ def upgrade() -> None:
             "response_body_object_id", postgresql.UUID(as_uuid=True), nullable=True
         ),
         sa.Column("use_envelope", sa.Boolean(), nullable=False),
-        sa.Column(
-            "response_shape",
-            sa.Enum("object", "list", name="response_shape"),
-            nullable=False,
-        ),
+        sa.Column("response_shape", sa.String(), nullable=False),
         sa.ForeignKeyConstraint(["api_id"], ["apis.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["query_params_object_id"], ["objects.id"]),
         sa.ForeignKeyConstraint(["request_body_object_id"], ["objects.id"]),
         sa.ForeignKeyConstraint(["response_body_object_id"], ["objects.id"]),
         sa.PrimaryKeyConstraint("id"),
+        sa.CheckConstraint(
+            "method IN ('GET', 'POST', 'PUT', 'PATCH', 'DELETE')",
+            name="ck_api_endpoints_method",
+        ),
+        sa.CheckConstraint(
+            "response_shape IN ('object', 'list')",
+            name="ck_api_endpoints_response_shape",
+        ),
     )
     op.create_index(
         op.f("ix_api_endpoints_api_id"), "api_endpoints", ["api_id"], unique=False
@@ -507,10 +515,6 @@ def downgrade() -> None:
     op.drop_table("namespaces")
     op.drop_index(op.f("ix_users_clerk_id"), table_name="users")
     op.drop_table("users")
-
-    # Drop enums
-    op.execute("DROP TYPE IF EXISTS http_method")
-    op.execute("DROP TYPE IF EXISTS response_shape")
 
     # Drop extension
     op.execute("DROP EXTENSION IF EXISTS pgcrypto")
