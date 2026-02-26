@@ -9,7 +9,6 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
-    Enum,
     ForeignKey,
     Index,
     Integer,
@@ -577,10 +576,7 @@ class ApiEndpoint(Base):
         nullable=False,
         index=True,
     )
-    method: Mapped[str] = mapped_column(
-        Enum("GET", "POST", "PUT", "PATCH", "DELETE", name="http_method"),
-        nullable=False,
-    )
+    method: Mapped[str] = mapped_column(String, nullable=False)
     path: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     tag_name: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -596,9 +592,7 @@ class ApiEndpoint(Base):
     )
     use_envelope: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     response_shape: Mapped[str] = mapped_column(
-        Enum("object", "list", name="response_shape"),
-        default="object",
-        nullable=False,
+        String, default="object", nullable=False
     )
 
     # Relationships
