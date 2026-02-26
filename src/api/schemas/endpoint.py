@@ -1,10 +1,11 @@
 # src/api/schemas/endpoint.py
 """Pydantic schemas for ApiEndpoint entity."""
 
-from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from api.schemas.literals import HttpMethod, ResponseShape
 
 
 class PathParamSchema(BaseModel):
@@ -41,9 +42,7 @@ class ApiEndpointCreate(BaseModel):
     api_id: UUID = Field(
         ..., alias="apiId", examples=["00000000-0000-0000-0005-000000000001"]
     )
-    method: Literal["GET", "POST", "PUT", "PATCH", "DELETE"] = Field(
-        ..., examples=["GET"]
-    )
+    method: HttpMethod = Field(..., examples=["GET"])
     path: str = Field(..., examples=["/users/{user_id}"])
     description: str = Field(..., examples=["Get user by ID"])
     tag_name: str | None = Field(default=None, alias="tagName", examples=["Users"])
@@ -64,7 +63,7 @@ class ApiEndpointCreate(BaseModel):
         examples=["00000000-0000-0000-0007-000000000001"],
     )
     use_envelope: bool = Field(..., alias="useEnvelope", examples=[True])
-    response_shape: Literal["object", "list"] = Field(
+    response_shape: ResponseShape = Field(
         ..., alias="responseShape", examples=["object"]
     )
 
@@ -88,9 +87,7 @@ class ApiEndpointUpdate(BaseModel):
     api_id: UUID | None = Field(
         default=None, alias="apiId", examples=["00000000-0000-0000-0005-000000000001"]
     )
-    method: Literal["GET", "POST", "PUT", "PATCH", "DELETE"] | None = Field(
-        default=None, examples=["POST"]
-    )
+    method: HttpMethod | None = Field(default=None, examples=["POST"])
     path: str | None = Field(default=None, examples=["/users"])
     description: str | None = Field(
         default=None, examples=["Updated endpoint description"]
@@ -107,9 +104,7 @@ class ApiEndpointUpdate(BaseModel):
         default=None, alias="responseBodyObjectId"
     )
     use_envelope: bool | None = Field(default=None, alias="useEnvelope")
-    response_shape: Literal["object", "list"] | None = Field(
-        default=None, alias="responseShape"
-    )
+    response_shape: ResponseShape | None = Field(default=None, alias="responseShape")
 
 
 class ApiEndpointResponse(BaseModel):
@@ -133,7 +128,7 @@ class ApiEndpointResponse(BaseModel):
     api_id: UUID = Field(
         ..., alias="apiId", examples=["00000000-0000-0000-0005-000000000001"]
     )
-    method: str = Field(..., examples=["GET"])
+    method: HttpMethod = Field(..., examples=["GET"])
     path: str = Field(..., examples=["/users/{user_id}"])
     description: str = Field(..., examples=["Retrieve user by ID"])
     tag_name: str | None = Field(default=None, alias="tagName", examples=["Users"])
@@ -154,6 +149,8 @@ class ApiEndpointResponse(BaseModel):
         examples=["00000000-0000-0000-0007-000000000001"],
     )
     use_envelope: bool = Field(..., alias="useEnvelope", examples=[True])
-    response_shape: str = Field(..., alias="responseShape", examples=["object"])
+    response_shape: ResponseShape = Field(
+        ..., alias="responseShape", examples=["object"]
+    )
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
