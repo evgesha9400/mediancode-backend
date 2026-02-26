@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from api.schemas.literals import ValidatorMode
+
 
 class ModelValidatorTemplateResponse(BaseModel):
     """Response schema for a model validator template.
@@ -21,7 +23,7 @@ class ModelValidatorTemplateResponse(BaseModel):
     id: UUID
     name: str
     description: str
-    mode: str
+    mode: ValidatorMode
     parameters: list[dict]
     field_mappings: list[dict] = Field(..., alias="fieldMappings")
     body_template: str = Field(..., alias="bodyTemplate")

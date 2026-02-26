@@ -12,7 +12,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    String,
     Text,
     UniqueConstraint,
     text,
@@ -349,7 +348,7 @@ class FieldModel(Base):
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     default_value: Mapped[str | None] = mapped_column(Text, nullable=True)
-    container: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
+    container: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
 
     __table_args__ = (
         CheckConstraint("container IN ('List')", name="ck_fields_container"),
@@ -576,7 +575,7 @@ class ApiEndpoint(Base):
         nullable=False,
         index=True,
     )
-    method: Mapped[str] = mapped_column(String, nullable=False)
+    method: Mapped[str] = mapped_column(Text, nullable=False)
     path: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     tag_name: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -591,9 +590,7 @@ class ApiEndpoint(Base):
         PgUUID(as_uuid=True), ForeignKey("objects.id"), nullable=True
     )
     use_envelope: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    response_shape: Mapped[str] = mapped_column(
-        String, default="object", nullable=False
-    )
+    response_shape: Mapped[str] = mapped_column(Text, default="object", nullable=False)
 
     # Relationships
     api: Mapped["ApiModel"] = relationship(back_populates="endpoints")
