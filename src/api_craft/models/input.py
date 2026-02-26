@@ -1,7 +1,8 @@
-from typing import Any, Literal, Self
+from typing import Any, Self
 
 from pydantic import BaseModel, Field, model_validator
 
+from api.schemas.literals import HttpMethod, ResponseShape, ValidatorMode
 from api_craft.models.types import Name
 from api_craft.models.validators import (
     validate_endpoint_references,
@@ -31,7 +32,7 @@ class InputResolvedFieldValidator(BaseModel):
     """
 
     function_name: str
-    mode: str
+    mode: ValidatorMode
     function_body: str
 
 
@@ -44,7 +45,7 @@ class InputResolvedModelValidator(BaseModel):
     """
 
     function_name: str
-    mode: str
+    mode: ValidatorMode
     function_body: str
 
 
@@ -130,7 +131,7 @@ class InputEndpoint(BaseModel):
 
     name: Name
     path: str
-    method: str
+    method: HttpMethod
     tag: str | None = None
     response: str | None = None
     request: str | None = None
@@ -138,7 +139,7 @@ class InputEndpoint(BaseModel):
     path_params: list[InputPathParam] | None = None
     description: str | None = None
     use_envelope: bool = True
-    response_shape: Literal["object", "list"] = "object"
+    response_shape: ResponseShape = "object"
 
     @model_validator(mode="after")
     def _validate_path_parameters(self) -> Self:

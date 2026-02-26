@@ -1,8 +1,10 @@
 """Pydantic models used by the Mako templates that generate the FastAPI code."""
 
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel
+
+from api.schemas.literals import ResponseShape, ValidatorMode
 
 
 class TemplateValidator(BaseModel):
@@ -16,7 +18,7 @@ class TemplateResolvedFieldValidator(BaseModel):
     """Resolved field validator for template rendering."""
 
     function_name: str
-    mode: str
+    mode: ValidatorMode
     function_body: str
 
 
@@ -24,7 +26,7 @@ class TemplateResolvedModelValidator(BaseModel):
     """Resolved model validator for template rendering."""
 
     function_name: str
-    mode: str
+    mode: ValidatorMode
     function_body: str
 
 
@@ -92,7 +94,7 @@ class TemplateView(BaseModel):
     tag: str | None = None
     description: str | None = None
     use_envelope: bool = True
-    response_shape: Literal["object", "list"] = "object"
+    response_shape: ResponseShape = "object"
 
 
 class TemplateAPIConfig(BaseModel):
