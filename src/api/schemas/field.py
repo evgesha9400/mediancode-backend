@@ -3,7 +3,9 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
+
+from api.schemas.literals import Container
 
 
 class FieldConstraintValueInput(BaseModel):
@@ -83,16 +85,9 @@ class FieldCreate(BaseModel):
     )
     description: str | None = Field(default=None, examples=["User email address"])
     default_value: str | None = Field(default=None, alias="defaultValue", examples=[""])
-    container: str | None = Field(default=None, examples=["List"])
+    container: Container | None = Field(default=None, examples=["List"])
     constraints: list[FieldConstraintValueInput] = Field(default_factory=list)
     validators: list[FieldValidatorInput] = Field(default_factory=list)
-
-    @field_validator("container")
-    @classmethod
-    def validate_container(cls, v: str | None) -> str | None:
-        if v is not None and v not in ("List",):
-            raise ValueError(f'Invalid container "{v}". Must be null or "List".')
-        return v
 
 
 class FieldUpdate(BaseModel):
@@ -110,16 +105,9 @@ class FieldUpdate(BaseModel):
     default_value: str | None = Field(
         default=None, alias="defaultValue", examples=["new_default"]
     )
-    container: str | None = Field(default=None, examples=["List"])
+    container: Container | None = Field(default=None, examples=["List"])
     constraints: list[FieldConstraintValueInput] | None = Field(default=None)
     validators: list[FieldValidatorInput] | None = Field(default=None)
-
-    @field_validator("container")
-    @classmethod
-    def validate_container(cls, v: str | None) -> str | None:
-        if v is not None and v not in ("List",):
-            raise ValueError(f'Invalid container "{v}". Must be null or "List".')
-        return v
 
 
 class FieldResponse(BaseModel):
@@ -146,7 +134,7 @@ class FieldResponse(BaseModel):
     )
     description: str | None = Field(default=None, examples=["User email address"])
     default_value: str | None = Field(default=None, alias="defaultValue", examples=[""])
-    container: str | None = Field(default=None)
+    container: Container | None = Field(default=None)
     used_in_apis: list[UUID] = Field(
         default_factory=list,
         alias="usedInApis",
