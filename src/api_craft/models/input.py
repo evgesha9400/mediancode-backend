@@ -3,7 +3,7 @@ from typing import Any, Self
 from pydantic import BaseModel, Field, model_validator
 
 from api.schemas.literals import HttpMethod, ResponseShape, ValidatorMode
-from api_craft.models.types import PascalCaseName
+from api_craft.models.types import PascalCaseName, SnakeCaseName
 from api_craft.models.validators import (
     validate_endpoint_references,
     validate_model_field_types,
@@ -62,7 +62,7 @@ class InputField(BaseModel):
     """
 
     type: str
-    name: str
+    name: SnakeCaseName
     optional: bool = False
     description: str | None = None
     default_value: str | None = None
@@ -94,7 +94,7 @@ class InputQueryParam(BaseModel):
     :ivar description: Human-readable description of the parameter.
     """
 
-    name: str
+    name: SnakeCaseName
     type: str
     optional: bool = False
     description: str | None = None
@@ -108,7 +108,7 @@ class InputPathParam(BaseModel):
     :ivar description: Human-readable description of the parameter.
     """
 
-    name: str
+    name: SnakeCaseName
     type: str
     description: str | None = None
 

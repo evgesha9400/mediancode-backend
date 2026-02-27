@@ -121,3 +121,38 @@ class TestPascalCaseName:
     def test_is_str_subclass(self):
         name = PascalCaseName("User")
         assert isinstance(name, str)
+
+
+from api_craft.models.input import InputField, InputQueryParam, InputPathParam
+
+
+class TestInputModelCaseEnforcement:
+    """Tests that api_craft input models enforce case rules."""
+
+    def test_input_field_accepts_snake_case(self):
+        field = InputField(type="str", name="user_email")
+        assert field.name == "user_email"
+
+    def test_input_field_rejects_camel_case(self):
+        with pytest.raises(ValueError):
+            InputField(type="str", name="userEmail")
+
+    def test_input_field_rejects_pascal_case(self):
+        with pytest.raises(ValueError):
+            InputField(type="str", name="UserEmail")
+
+    def test_input_query_param_accepts_snake_case(self):
+        param = InputQueryParam(name="page_size", type="int")
+        assert param.name == "page_size"
+
+    def test_input_query_param_rejects_camel_case(self):
+        with pytest.raises(ValueError):
+            InputQueryParam(name="pageSize", type="int")
+
+    def test_input_path_param_accepts_snake_case(self):
+        param = InputPathParam(name="item_id", type="int")
+        assert param.name == "item_id"
+
+    def test_input_path_param_rejects_camel_case(self):
+        with pytest.raises(ValueError):
+            InputPathParam(name="itemId", type="int")
