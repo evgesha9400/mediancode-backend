@@ -487,7 +487,53 @@ class TestShopApiErrors:
         resp = await client.delete(f"/objects/{FAKE_OBJECT_ID}")
         assert resp.status_code == 404
 
-    # --- Phases 8–11: Error tests (added in subsequent tasks) ---
+    # --- Phase 8: API errors ---
+
+    async def test_phase_08_api_errors(self, client: AsyncClient):
+        """Bogus namespace and 404 on non-existent APIs."""
+        cls = TestShopApiErrors
+
+        # Create in non-existent namespace → 400
+        resp = await client.post(
+            "/apis",
+            json={
+                "namespaceId": FAKE_NAMESPACE_ID,
+                "title": "Phantom API",
+                "version": "1.0.0",
+            },
+        )
+        assert resp.status_code == 400
+        assert "not found or not owned" in resp.json()["detail"].lower()
+
+        # GET non-existent API → 404
+        resp = await client.get(f"/apis/{FAKE_API_ID}")
+        assert resp.status_code == 404
+
+        # DELETE non-existent API → 404
+        resp = await client.delete(f"/apis/{FAKE_API_ID}")
+        assert resp.status_code == 404
+
+    # --- Phase 9: Endpoint errors ---
+
+    async def test_phase_09_endpoint_errors(self, client: AsyncClient):
+        """404 on non-existent endpoints."""
+
+        # GET non-existent endpoint → 404
+        resp = await client.get(f"/endpoints/{FAKE_ENDPOINT_ID}")
+        assert resp.status_code == 404
+
+        # PUT non-existent endpoint → 404
+        resp = await client.put(
+            f"/endpoints/{FAKE_ENDPOINT_ID}",
+            json={"description": "Updated"},
+        )
+        assert resp.status_code == 404
+
+        # DELETE non-existent endpoint → 404
+        resp = await client.delete(f"/endpoints/{FAKE_ENDPOINT_ID}")
+        assert resp.status_code == 404
+
+    # --- Phases 10–11: Error tests (added in subsequent tasks) ---
 
     # --- Phase 12: Cleanup ---
 
