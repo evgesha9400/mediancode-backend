@@ -22,7 +22,7 @@ from httpx import AsyncClient
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.asyncio(loop_scope="module"),
+    pytest.mark.asyncio(loop_scope="session"),
 ]
 
 # ---------------------------------------------------------------------------

@@ -19,7 +19,7 @@ from api.models.database import (
 TEST_CLERK_ID = "test_user_e2e_shop"
 
 
-@pytest_asyncio.fixture(scope="module", loop_scope="module")
+@pytest_asyncio.fixture(scope="module", loop_scope="session")
 async def client():
     """Module-scoped HTTP client with auth override and DB cleanup.
 
@@ -40,7 +40,7 @@ async def client():
     ) as c:
         yield c
 
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_current_user, None)
 
     # --- DB cleanup (handles both success and partial-failure cases) ---
     from api.settings import get_settings

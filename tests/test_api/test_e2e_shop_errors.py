@@ -40,7 +40,7 @@ from api.models.database import (
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.asyncio(loop_scope="module"),
+    pytest.mark.asyncio(loop_scope="session"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ FAKE_MV_TEMPLATE_ID = "00000000-0000-0000-0009-ffffffffffff"
 # ---------------------------------------------------------------------------
 
 
-@pytest_asyncio.fixture(scope="module", loop_scope="module")
+@pytest_asyncio.fixture(scope="module", loop_scope="session")
 async def client():
     """Module-scoped HTTP client with auth override and DB cleanup."""
     app.dependency_overrides[get_current_user] = lambda: TEST_CLERK_ID
@@ -80,7 +80,7 @@ async def client():
     ) as c:
         yield c
 
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_current_user, None)
 
     # --- DB cleanup (handles both success and partial-failure cases) ---
     from api.settings import get_settings
@@ -388,9 +388,7 @@ class TestShopApiErrors:
                     "namespaceId": cls.blog_namespace_id,
                     "name": "phantom",
                     "typeId": cls.type_ids["str"],
-                    "constraints": [
-                        {"constraintId": FAKE_CONSTRAINT_ID, "value": "1"}
-                    ],
+                    "constraints": [{"constraintId": FAKE_CONSTRAINT_ID, "value": "1"}],
                 },
             )
             status = resp.status_code
