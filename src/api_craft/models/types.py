@@ -9,16 +9,21 @@ from api_craft.models.validators import (
 )
 
 
-class Name(str):
+class PascalCaseName(str):
     """A string that must be in PascalCase and provides derived naming variants.
 
     This type validates that the input is a valid PascalCase identifier and
     automatically provides snake_case, camelCase, and kebab-case variants.
     """
 
-    def __new__(cls, value: str) -> "Name":
+    def __new__(cls, value: str) -> "PascalCaseName":
         validate_pascal_case_name(value)
         return super().__new__(cls, value)
+
+    @property
+    def pascal_name(self) -> str:
+        """Return self (already PascalCase), for symmetry with SnakeCaseName."""
+        return str(self)
 
     @property
     def camel_name(self) -> str:

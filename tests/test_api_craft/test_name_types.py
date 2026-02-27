@@ -36,7 +36,7 @@ class TestValidateSnakeCaseName:
             validate_snake_case_name(value)
 
 
-from api_craft.models.types import SnakeCaseName
+from api_craft.models.types import PascalCaseName, SnakeCaseName
 
 
 class TestSnakeCaseName:
@@ -84,4 +84,40 @@ class TestSnakeCaseName:
 
     def test_is_str_subclass(self):
         name = SnakeCaseName("email")
+        assert isinstance(name, str)
+
+
+class TestPascalCaseName:
+    """Regression tests for PascalCaseName (renamed from Name)."""
+
+    def test_valid_creation(self):
+        name = PascalCaseName("UserEmail")
+        assert name == "UserEmail"
+
+    def test_snake_name(self):
+        name = PascalCaseName("UserEmail")
+        assert name.snake_name == "user_email"
+
+    def test_camel_name(self):
+        name = PascalCaseName("UserEmail")
+        assert name.camel_name == "userEmail"
+
+    def test_kebab_name(self):
+        name = PascalCaseName("UserEmail")
+        assert name.kebab_name == "user-email"
+
+    def test_pascal_name_returns_self(self):
+        name = PascalCaseName("UserEmail")
+        assert name.pascal_name == "UserEmail"
+
+    def test_rejects_snake_case(self):
+        with pytest.raises(ValueError):
+            PascalCaseName("user_email")
+
+    def test_rejects_lowercase_start(self):
+        with pytest.raises(ValueError):
+            PascalCaseName("userEmail")
+
+    def test_is_str_subclass(self):
+        name = PascalCaseName("User")
         assert isinstance(name, str)
