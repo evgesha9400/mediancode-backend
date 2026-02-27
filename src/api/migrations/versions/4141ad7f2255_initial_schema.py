@@ -57,6 +57,7 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("user_id", "name", name="uq_namespaces_user_name"),
     )
     op.create_index(
         op.f("ix_namespaces_user_id"), "namespaces", ["user_id"], unique=False
