@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from api.schemas.literals import HttpMethod, ResponseShape
+from api_craft.models.types import SnakeCaseName
 
 
 class PathParamSchema(BaseModel):
@@ -15,7 +16,7 @@ class PathParamSchema(BaseModel):
     :ivar field_id: Reference to the field definition.
     """
 
-    name: str = Field(..., examples=["user_id"])
+    name: SnakeCaseName = Field(..., examples=["user_id"])
     field_id: UUID = Field(
         ..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"]
     )

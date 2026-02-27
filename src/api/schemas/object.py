@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from api_craft.models.types import PascalCaseName
+
 
 class ObjectFieldReferenceSchema(BaseModel):
     """Schema for a field reference in an object.
@@ -66,7 +68,7 @@ class ObjectCreate(BaseModel):
     namespace_id: UUID = Field(
         ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"]
     )
-    name: str = Field(..., examples=["User"])
+    name: PascalCaseName = Field(..., examples=["User"])
     description: str | None = Field(default=None, examples=["User object definition"])
     fields: list[ObjectFieldReferenceSchema] = Field(...)
     validators: list[ModelValidatorInput] = Field(default_factory=list)
@@ -81,7 +83,7 @@ class ObjectUpdate(BaseModel):
     :ivar validators: Updated validators (None = don't touch, [] = clear all).
     """
 
-    name: str | None = Field(default=None, examples=["UpdatedObjectName"])
+    name: PascalCaseName | None = Field(default=None, examples=["UpdatedObjectName"])
     description: str | None = Field(default=None, examples=["Updated description"])
     fields: list[ObjectFieldReferenceSchema] | None = Field(default=None)
     validators: list[ModelValidatorInput] | None = Field(default=None)

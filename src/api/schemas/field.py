@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from api.schemas.literals import Container
+from api_craft.models.types import SnakeCaseName
 
 
 class FieldConstraintValueInput(BaseModel):
@@ -79,7 +80,7 @@ class FieldCreate(BaseModel):
     namespace_id: UUID = Field(
         ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"]
     )
-    name: str = Field(..., examples=["email"])
+    name: SnakeCaseName = Field(..., examples=["email"])
     type_id: UUID = Field(
         ..., alias="typeId", examples=["00000000-0000-0000-0001-000000000001"]
     )
@@ -100,7 +101,7 @@ class FieldUpdate(BaseModel):
     :ivar validators: Updated validators (None = don't touch, [] = clear all).
     """
 
-    name: str | None = Field(default=None, examples=["updated_field_name"])
+    name: SnakeCaseName | None = Field(default=None, examples=["updated_field_name"])
     description: str | None = Field(default=None, examples=["Updated description"])
     default_value: str | None = Field(
         default=None, alias="defaultValue", examples=["new_default"]
