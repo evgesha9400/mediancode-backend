@@ -38,7 +38,7 @@ jobs:
         run: poetry install --no-interaction --no-ansi
 
       - name: Check Formatting (Black)
-        run: poetry run black --check src/
+        run: poetry run black --check src/ tests/
 
   test:
     name: Test
