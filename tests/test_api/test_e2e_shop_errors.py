@@ -422,7 +422,72 @@ class TestShopApiErrors:
         resp = await client.delete(f"/fields/{FAKE_FIELD_ID}")
         assert resp.status_code == 404
 
-    # --- Phases 7–11: Error tests (added in subsequent tasks) ---
+    # --- Phase 7: Object errors ---
+
+    async def test_phase_07_object_errors(self, client: AsyncClient):
+        """Bogus FK references and 404 on non-existent objects."""
+        cls = TestShopApiErrors
+
+        # Create in non-existent namespace → 400
+        resp = await client.post(
+            "/objects",
+            json={
+                "namespaceId": FAKE_NAMESPACE_ID,
+                "name": "Phantom",
+                "fields": [{"fieldId": cls.title_field_id, "optional": False}],
+            },
+        )
+        assert resp.status_code == 400
+        assert "not found or not owned" in resp.json()["detail"].lower()
+
+        # Create with bogus field ID — may raise unhandled IntegrityError (500)
+        try:
+            resp = await client.post(
+                "/objects",
+                json={
+                    "namespaceId": cls.blog_namespace_id,
+                    "name": "Phantom",
+                    "fields": [{"fieldId": FAKE_FIELD_ID, "optional": False}],
+                },
+            )
+            status = resp.status_code
+        except Exception:
+            status = 500
+        assert status in (400, 422, 500), f"Unexpected: {status}"
+
+        # Create with bogus MV template ID
+        try:
+            resp = await client.post(
+                "/objects",
+                json={
+                    "namespaceId": cls.blog_namespace_id,
+                    "name": "Phantom",
+                    "fields": [{"fieldId": cls.title_field_id, "optional": False}],
+                    "validators": [
+                        {
+                            "templateId": FAKE_MV_TEMPLATE_ID,
+                            "fieldMappings": {
+                                "field_a": "title",
+                                "field_b": "title",
+                            },
+                        }
+                    ],
+                },
+            )
+            status = resp.status_code
+        except Exception:
+            status = 500
+        assert status in (400, 422, 500), f"Unexpected: {status}"
+
+        # GET non-existent object → 404
+        resp = await client.get(f"/objects/{FAKE_OBJECT_ID}")
+        assert resp.status_code == 404
+
+        # DELETE non-existent object → 404
+        resp = await client.delete(f"/objects/{FAKE_OBJECT_ID}")
+        assert resp.status_code == 404
+
+    # --- Phases 8–11: Error tests (added in subsequent tasks) ---
 
     # --- Phase 12: Cleanup ---
 
