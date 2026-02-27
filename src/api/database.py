@@ -3,10 +3,16 @@
 
 from collections.abc import AsyncGenerator
 
+import orjson
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from api.settings import get_settings
+
+
+def _json_serializer(obj: object) -> str:
+    """JSON serializer for JSONB columns. Handles UUID, datetime, Decimal, etc."""
+    return orjson.dumps(obj).decode("utf-8")
 
 
 class Base(DeclarativeBase):
@@ -21,6 +27,7 @@ engine = create_async_engine(
     settings.database_url,
     echo=False,
     pool_pre_ping=True,
+    json_serializer=_json_serializer,
     connect_args={"prepared_statement_cache_size": 0},
 )
 
