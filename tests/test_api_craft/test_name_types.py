@@ -34,3 +34,54 @@ class TestValidateSnakeCaseName:
     def test_invalid_snake_case(self, value: str, reason: str):
         with pytest.raises(ValueError):
             validate_snake_case_name(value)
+
+
+from api_craft.models.types import SnakeCaseName
+
+
+class TestSnakeCaseName:
+    """Tests for SnakeCaseName type."""
+
+    def test_valid_creation(self):
+        name = SnakeCaseName("user_email")
+        assert name == "user_email"
+
+    def test_single_word(self):
+        name = SnakeCaseName("email")
+        assert name == "email"
+
+    def test_camel_name_single_word(self):
+        name = SnakeCaseName("email")
+        assert name.camel_name == "Email"
+
+    def test_camel_name_multi_word(self):
+        name = SnakeCaseName("user_email")
+        assert name.camel_name == "UserEmail"
+
+    def test_pascal_name(self):
+        name = SnakeCaseName("user_email")
+        assert name.pascal_name == "UserEmail"
+
+    def test_kebab_name(self):
+        name = SnakeCaseName("user_email")
+        assert name.kebab_name == "user-email"
+
+    def test_kebab_name_single_word(self):
+        name = SnakeCaseName("email")
+        assert name.kebab_name == "email"
+
+    def test_rejects_camel_case(self):
+        with pytest.raises(ValueError):
+            SnakeCaseName("userEmail")
+
+    def test_rejects_pascal_case(self):
+        with pytest.raises(ValueError):
+            SnakeCaseName("UserEmail")
+
+    def test_rejects_empty(self):
+        with pytest.raises(ValueError):
+            SnakeCaseName("")
+
+    def test_is_str_subclass(self):
+        name = SnakeCaseName("email")
+        assert isinstance(name, str)
