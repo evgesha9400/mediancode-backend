@@ -261,7 +261,53 @@ class TestShopApiErrors:
         assert resp.status_code == 400
         assert "reserved" in resp.json()["detail"].lower()
 
-    # --- Phases 4–11: Error tests (added in subsequent tasks) ---
+    # --- Phase 4: Namespace update errors ---
+
+    async def test_phase_04_namespace_update_errors(self, client: AsyncClient):
+        """Global namespace is immutable; cannot unset default; duplicate name blocked."""
+        cls = TestShopApiErrors
+
+        # Cannot rename Global namespace
+        resp = await client.put(
+            f"/namespaces/{cls.global_namespace_id}",
+            json={"name": "Renamed"},
+        )
+        assert resp.status_code == 400
+        assert "Global namespace name" in resp.json()["detail"]
+
+        # Cannot change Global namespace description
+        resp = await client.put(
+            f"/namespaces/{cls.global_namespace_id}",
+            json={"description": "Hacked"},
+        )
+        assert resp.status_code == 400
+        assert "Global namespace description" in resp.json()["detail"]
+
+        # Cannot unset default
+        resp = await client.put(
+            f"/namespaces/{cls.global_namespace_id}",
+            json={"isDefault": False},
+        )
+        assert resp.status_code == 400
+        assert "unset default" in resp.json()["detail"].lower()
+
+        # Cannot rename to duplicate name — create temp namespace, try to rename to "Blog"
+        resp = await client.post("/namespaces", json={"name": "Draft"})
+        assert resp.status_code == 201
+        draft_id = resp.json()["id"]
+
+        resp = await client.put(
+            f"/namespaces/{draft_id}",
+            json={"name": "Blog"},
+        )
+        assert resp.status_code == 400
+        assert "already exists" in resp.json()["detail"]
+
+        # Clean up temp namespace
+        resp = await client.delete(f"/namespaces/{draft_id}")
+        assert resp.status_code == 204
+
+    # --- Phases 5–11: Error tests (added in subsequent tasks) ---
 
     # --- Phase 12: Cleanup ---
 
