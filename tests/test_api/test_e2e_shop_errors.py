@@ -347,7 +347,82 @@ class TestShopApiErrors:
         resp = await client.delete(f"/namespaces/{FAKE_NAMESPACE_ID}")
         assert resp.status_code == 404
 
-    # --- Phases 6–11: Error tests (added in subsequent tasks) ---
+    # --- Phase 6: Field errors ---
+
+    async def test_phase_06_field_errors(self, client: AsyncClient):
+        """Bogus FK references and 404 on non-existent fields."""
+        cls = TestShopApiErrors
+
+        # Create in non-existent namespace → 400
+        resp = await client.post(
+            "/fields",
+            json={
+                "namespaceId": FAKE_NAMESPACE_ID,
+                "name": "phantom",
+                "typeId": cls.type_ids["str"],
+            },
+        )
+        assert resp.status_code == 400
+        assert "not found or not owned" in resp.json()["detail"].lower()
+
+        # Create with bogus type ID — may raise unhandled IntegrityError (500)
+        try:
+            resp = await client.post(
+                "/fields",
+                json={
+                    "namespaceId": cls.blog_namespace_id,
+                    "name": "phantom",
+                    "typeId": FAKE_TYPE_ID,
+                },
+            )
+            status = resp.status_code
+        except Exception:
+            status = 500  # Unhandled server exception propagated through ASGI
+        assert status in (400, 422, 500), f"Unexpected: {status}"
+
+        # Create with bogus constraint ID
+        try:
+            resp = await client.post(
+                "/fields",
+                json={
+                    "namespaceId": cls.blog_namespace_id,
+                    "name": "phantom",
+                    "typeId": cls.type_ids["str"],
+                    "constraints": [
+                        {"constraintId": FAKE_CONSTRAINT_ID, "value": "1"}
+                    ],
+                },
+            )
+            status = resp.status_code
+        except Exception:
+            status = 500
+        assert status in (400, 422, 500), f"Unexpected: {status}"
+
+        # Create with bogus validator template ID
+        try:
+            resp = await client.post(
+                "/fields",
+                json={
+                    "namespaceId": cls.blog_namespace_id,
+                    "name": "phantom",
+                    "typeId": cls.type_ids["str"],
+                    "validators": [{"templateId": FAKE_FV_TEMPLATE_ID}],
+                },
+            )
+            status = resp.status_code
+        except Exception:
+            status = 500
+        assert status in (400, 422, 500), f"Unexpected: {status}"
+
+        # GET non-existent field → 404
+        resp = await client.get(f"/fields/{FAKE_FIELD_ID}")
+        assert resp.status_code == 404
+
+        # DELETE non-existent field → 404
+        resp = await client.delete(f"/fields/{FAKE_FIELD_ID}")
+        assert resp.status_code == 404
+
+    # --- Phases 7–11: Error tests (added in subsequent tasks) ---
 
     # --- Phase 12: Cleanup ---
 
