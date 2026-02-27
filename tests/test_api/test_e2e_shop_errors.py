@@ -245,7 +245,23 @@ class TestShopApiErrors:
         assert resp.status_code == 201, f"Failed to create endpoint: {resp.text}"
         cls.get_posts_endpoint_id = resp.json()["id"]
 
-    # --- Phases 3–11: Error tests (added in subsequent tasks) ---
+    # --- Phase 3: Namespace creation errors ---
+
+    async def test_phase_03_namespace_creation_errors(self, client: AsyncClient):
+        """Duplicate name and reserved 'Global' name are rejected."""
+        cls = TestShopApiErrors
+
+        # Duplicate name
+        resp = await client.post("/namespaces", json={"name": "Blog"})
+        assert resp.status_code == 400
+        assert "already exists" in resp.json()["detail"]
+
+        # Reserved name
+        resp = await client.post("/namespaces", json={"name": "Global"})
+        assert resp.status_code == 400
+        assert "reserved" in resp.json()["detail"].lower()
+
+    # --- Phases 4–11: Error tests (added in subsequent tasks) ---
 
     # --- Phase 12: Cleanup ---
 
