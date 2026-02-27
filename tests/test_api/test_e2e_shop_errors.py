@@ -533,7 +533,41 @@ class TestShopApiErrors:
         resp = await client.delete(f"/endpoints/{FAKE_ENDPOINT_ID}")
         assert resp.status_code == 404
 
-    # --- Phases 10–11: Error tests (added in subsequent tasks) ---
+    # --- Phase 10: Blocked deletes ---
+
+    async def test_phase_10_blocked_deletes(self, client: AsyncClient):
+        """Cannot delete field used by object or object used by endpoint."""
+        cls = TestShopApiErrors
+
+        # Cannot delete title field — used by Post object
+        resp = await client.delete(f"/fields/{cls.title_field_id}")
+        assert resp.status_code == 400
+        assert "used in" in resp.json()["detail"].lower()
+        assert "object" in resp.json()["detail"].lower()
+
+        # Cannot delete Post object — used by GET /posts endpoint
+        resp = await client.delete(f"/objects/{cls.post_object_id}")
+        assert resp.status_code == 400
+        assert "used in" in resp.json()["detail"].lower()
+        assert "endpoint" in resp.json()["detail"].lower()
+
+    # --- Phase 11: Cascade delete ---
+
+    async def test_phase_11_cascade_delete(self, client: AsyncClient):
+        """Deleting an API cascades to its endpoints."""
+        cls = TestShopApiErrors
+
+        # Verify endpoint exists before cascade
+        resp = await client.get(f"/endpoints/{cls.get_posts_endpoint_id}")
+        assert resp.status_code == 200
+
+        # Delete the Blog API — should cascade to endpoints
+        resp = await client.delete(f"/apis/{cls.blog_api_id}")
+        assert resp.status_code == 204
+
+        # Endpoint should be gone
+        resp = await client.get(f"/endpoints/{cls.get_posts_endpoint_id}")
+        assert resp.status_code == 404
 
     # --- Phase 12: Cleanup ---
 
