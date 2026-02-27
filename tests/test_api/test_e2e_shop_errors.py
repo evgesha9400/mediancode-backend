@@ -307,7 +307,47 @@ class TestShopApiErrors:
         resp = await client.delete(f"/namespaces/{draft_id}")
         assert resp.status_code == 204
 
-    # --- Phases 5–11: Error tests (added in subsequent tasks) ---
+    # --- Phase 5: Namespace deletion errors ---
+
+    async def test_phase_05_namespace_deletion_errors(self, client: AsyncClient):
+        """Cannot delete Global, default, non-empty, or non-existent namespace."""
+        cls = TestShopApiErrors
+
+        # Cannot delete Global namespace
+        resp = await client.delete(f"/namespaces/{cls.global_namespace_id}")
+        assert resp.status_code == 400
+        assert "Global namespace" in resp.json()["detail"]
+
+        # Cannot delete default namespace — make a temp namespace default, then try to delete it
+        resp = await client.post(
+            "/namespaces", json={"name": "Scratch", "isDefault": True}
+        )
+        assert resp.status_code == 201
+        scratch_id = resp.json()["id"]
+
+        resp = await client.delete(f"/namespaces/{scratch_id}")
+        assert resp.status_code == 400
+        assert "default namespace" in resp.json()["detail"].lower()
+
+        # Restore Global as default and delete Scratch
+        resp = await client.put(
+            f"/namespaces/{cls.global_namespace_id}",
+            json={"isDefault": True},
+        )
+        assert resp.status_code == 200
+        resp = await client.delete(f"/namespaces/{scratch_id}")
+        assert resp.status_code == 204
+
+        # Cannot delete namespace with entities (Blog has field, object, API, endpoint)
+        resp = await client.delete(f"/namespaces/{cls.blog_namespace_id}")
+        assert resp.status_code == 400
+        assert "contains" in resp.json()["detail"].lower()
+
+        # Cannot delete non-existent namespace
+        resp = await client.delete(f"/namespaces/{FAKE_NAMESPACE_ID}")
+        assert resp.status_code == 404
+
+    # --- Phases 6–11: Error tests (added in subsequent tasks) ---
 
     # --- Phase 12: Cleanup ---
 
