@@ -162,6 +162,24 @@ def validate_unique_object_names(objects: Iterable["InputModel"]) -> None:
         )
 
 
+SNAKE_CASE_PATTERN = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
+
+
+def validate_snake_case_name(value: str) -> None:
+    """Validate that ``value`` is a snake_case identifier.
+
+    :param value: Candidate identifier to validate.
+    :raises ValueError: If ``value`` is empty or not valid snake_case.
+    """
+    if not value:
+        raise ValueError("SnakeCaseName cannot be empty")
+
+    if not SNAKE_CASE_PATTERN.match(value):
+        raise ValueError(
+            f"SnakeCaseName must be lowercase letters, digits, and single underscores, got: {value}"
+        )
+
+
 def validate_pascal_case_name(value: str) -> None:
     """Validate that ``value`` is a PascalCase identifier.
 
