@@ -580,14 +580,14 @@ class TestShopApiE2E:
             "/apis",
             json={
                 "namespaceId": cls.namespace_id,
-                "title": "Shop API",
+                "title": "ShopApi",
                 "version": "1.0.0",
                 "description": "Online shop with products and customers",
             },
         )
         assert resp.status_code == 201, f"Failed to create API: {resp.text}"
         api = resp.json()
-        assert api["title"] == "Shop API"
+        assert api["title"] == "ShopApi"
         assert api["version"] == "1.0.0"
         cls.api_id = api["id"]
 

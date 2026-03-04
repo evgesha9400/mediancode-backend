@@ -219,7 +219,7 @@ class TestShopApiErrors:
             "/apis",
             json={
                 "namespaceId": cls.blog_namespace_id,
-                "title": "Blog API",
+                "title": "BlogApi",
                 "version": "1.0.0",
                 "description": "Simple blog",
             },
@@ -496,7 +496,7 @@ class TestShopApiErrors:
             "/apis",
             json={
                 "namespaceId": FAKE_NAMESPACE_ID,
-                "title": "Phantom API",
+                "title": "PhantomApi",
                 "version": "1.0.0",
             },
         )

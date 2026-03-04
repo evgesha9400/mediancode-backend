@@ -6,12 +6,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from api_craft.models.types import PascalCaseName
+
 
 class ApiCreate(BaseModel):
     """Request schema for creating an API.
 
     :ivar namespace_id: Namespace this API belongs to.
-    :ivar title: API title for OpenAPI spec.
+    :ivar title: API title in PascalCase (used as project identifier).
     :ivar version: Semantic version string.
     :ivar description: API description.
     :ivar base_url: Base path for all endpoints.
@@ -21,7 +23,7 @@ class ApiCreate(BaseModel):
     namespace_id: UUID = Field(
         ..., alias="namespaceId", examples=["00000000-0000-0000-0000-000000000002"]
     )
-    title: str = Field(..., examples=["User Management API"])
+    title: PascalCaseName = Field(..., examples=["UserManagementApi"])
     version: str = Field(..., examples=["1.0.0"])
     description: str | None = Field(
         default="", examples=["API for managing user accounts"]
@@ -35,14 +37,14 @@ class ApiCreate(BaseModel):
 class ApiUpdate(BaseModel):
     """Request schema for updating an API.
 
-    :ivar title: Updated API title.
+    :ivar title: Updated API title in PascalCase.
     :ivar version: Updated version string.
     :ivar description: Updated API description.
     :ivar base_url: Updated base path.
     :ivar server_url: Updated server URL.
     """
 
-    title: str | None = Field(default=None, examples=["Updated API Title"])
+    title: PascalCaseName | None = Field(default=None, examples=["UpdatedApiTitle"])
     version: str | None = Field(default=None, examples=["2.0.0"])
     description: str | None = Field(default=None, examples=["Updated API description"])
     base_url: str | None = Field(default=None, alias="baseUrl", examples=["/api/v2"])
