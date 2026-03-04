@@ -3,7 +3,7 @@
 
 import pytest
 
-from api.services.generation import _build_field_type
+from api.services.generation import _build_endpoint_name, _build_field_type
 
 
 class TestBuildFieldType:
@@ -31,3 +31,25 @@ class TestBuildFieldType:
     )
     def test_type_mapping(self, python_type: str, container: str | None, expected: str):
         assert _build_field_type(python_type, container) == expected
+
+
+class TestBuildEndpointName:
+    """Tests for _build_endpoint_name with path sanitization."""
+
+    @pytest.mark.parametrize(
+        "method,path,expected",
+        [
+            ("GET", "/users", "GetUsers"),
+            ("POST", "/users", "PostUsers"),
+            ("GET", "/users/{user_id}", "GetUsers"),
+            ("DELETE", "/users/{user_id}", "DeleteUsers"),
+            ("GET", "/users/{user_id}/orders", "GetUsersOrders"),
+            ("GET", "/user-profiles/{profile_id}", "GetUserProfiles"),
+            ("GET", "/api/v1/users", "GetApiV1Users"),
+            ("PUT", "/order-items/{item_id}/status", "PutOrderItemsStatus"),
+            ("GET", "/", "GetRoot"),
+            ("GET", "/{id}", "GetRoot"),
+        ],
+    )
+    def test_endpoint_name(self, method: str, path: str, expected: str):
+        assert _build_endpoint_name(method, path) == expected

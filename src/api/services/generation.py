@@ -206,8 +206,7 @@ def _convert_to_input_api(
                 )
                 fields.append(input_field)
 
-        # Ensure object name is PascalCase
-        obj_name = _to_pascal_case(obj.name)
+        obj_name = obj.name
         input_objects.append(
             InputModel(
                 name=obj_name,
@@ -276,13 +275,13 @@ def _convert_to_input_api(
         if endpoint.request_body_object_id:
             req_obj = objects_map.get(endpoint.request_body_object_id)
             if req_obj:
-                request_name = _to_pascal_case(req_obj.name)
+                request_name = req_obj.name
 
         response_name = None
         if endpoint.response_body_object_id:
             resp_obj = objects_map.get(endpoint.response_body_object_id)
             if resp_obj:
-                response_name = _to_pascal_case(resp_obj.name)
+                response_name = resp_obj.name
 
         input_endpoint = InputEndpoint(
             name=endpoint_name,
@@ -299,8 +298,7 @@ def _convert_to_input_api(
         )
         input_endpoints.append(input_endpoint)
 
-    # Build API name in PascalCase
-    api_name = _to_pascal_case(api.title.replace(" ", ""))
+    api_name = api.title
 
     return InputAPI(
         name=api_name,
@@ -329,51 +327,30 @@ def _build_field_type(python_type: str, container: str | None = None) -> str:
     return python_type
 
 
-def _to_pascal_case(name: str) -> str:
-    """Convert a name to PascalCase.
-
-    :param name: The name to convert.
-    :returns: PascalCase name.
-    """
-    # Remove non-alphanumeric characters and capitalize each word
-    words = []
-    current_word = []
-    for char in name:
-        if char.isalnum():
-            current_word.append(char)
-        else:
-            if current_word:
-                words.append("".join(current_word))
-                current_word = []
-    if current_word:
-        words.append("".join(current_word))
-
-    # Capitalize each word
-    return "".join(word.capitalize() for word in words)
-
-
 def _build_endpoint_name(method: str, path: str) -> str:
-    """Build an endpoint name from HTTP method and path.
+    """Build a PascalCase endpoint name from HTTP method and path.
+
+    Splits path segments on non-alphanumeric characters and capitalizes
+    each word to produce valid PascalCase names.
 
     :param method: HTTP method (GET, POST, etc.).
     :param path: URL path.
     :returns: PascalCase endpoint name.
     """
-    # Extract path segments, excluding parameters
+    import re
+
     segments = []
     for segment in path.strip("/").split("/"):
         if not segment.startswith("{"):
-            segments.append(segment)
+            # Split segment on non-alphanumeric boundaries
+            words = re.split(r"[^a-zA-Z0-9]+", segment)
+            segments.extend(w for w in words if w)
 
-    # Build name from method and segments
     method_prefix = method.lower().capitalize()
     if segments:
         path_part = "".join(word.capitalize() for word in segments)
-        name = f"{method_prefix}{path_part}"
-    else:
-        name = f"{method_prefix}Root"
-
-    return name
+        return f"{method_prefix}{path_part}"
+    return f"{method_prefix}Root"
 
 
 def _build_field_validators(field: FieldModel) -> list[InputValidator]:
