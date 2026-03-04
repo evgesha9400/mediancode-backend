@@ -123,6 +123,49 @@ class TestPascalCaseName:
         assert isinstance(name, str)
 
 
+from api_craft.models.validators import validate_type_annotation
+
+
+class TestValidateTypeAnnotation:
+    """Tests that type annotation validator accepts all supported types."""
+
+    @pytest.mark.parametrize(
+        "type_str",
+        [
+            "str",
+            "int",
+            "float",
+            "bool",
+            "datetime.datetime",
+            "datetime.date",
+            "datetime.time",
+            "uuid.UUID",
+            "EmailStr",
+            "HttpUrl",
+            "Decimal",
+            "List[str]",
+            "List[datetime.date]",
+            "List[uuid.UUID]",
+        ],
+    )
+    def test_accepts_supported_type(self, type_str: str):
+        """All DB-seeded types must pass validation."""
+        validate_type_annotation(type_str, set(), context="test")
+
+    @pytest.mark.parametrize(
+        "type_str",
+        ["UnknownType", "FooBar", "numpy.ndarray"],
+    )
+    def test_rejects_unknown_type(self, type_str: str):
+        """Unknown types must be rejected unless declared as objects."""
+        with pytest.raises(ValueError, match="Unknown type reference"):
+            validate_type_annotation(type_str, set(), context="test")
+
+    def test_accepts_declared_object_name(self):
+        """Declared object names pass validation."""
+        validate_type_annotation("MyObject", {"MyObject"}, context="test")
+
+
 from api_craft.models.input import InputField, InputQueryParam, InputPathParam
 
 

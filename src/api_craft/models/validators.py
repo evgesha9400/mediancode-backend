@@ -11,20 +11,26 @@ if TYPE_CHECKING:  # pragma: no cover - imports used for type checking only
 
 TYPE_IDENTIFIER_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
-# Restrict to the actually supported identifiers in this project.
-# Primitive types are defined by transformers.type_mapping (str, int, bool, float, datetime.datetime).
-# Complex types are limited to List[primitive] or List[object], and object references themselves.
-# For validation, identifiers are tokenized by TYPE_IDENTIFIER_PATTERN, so
+# Supported type identifiers for validation. These are the tokens that appear
+# when type annotation strings are tokenized by TYPE_IDENTIFIER_PATTERN:
 #   - "datetime.datetime" becomes tokens {"datetime"}
+#   - "datetime.date" becomes tokens {"datetime", "date"}
+#   - "uuid.UUID" becomes tokens {"uuid", "UUID"}
 #   - "List[T]" becomes tokens {"List", "T"}
-# Therefore we only need to allow: primitives (str, int, bool, float), the token "datetime",
-# and the generic container token "List". All other identifiers must be declared object names.
+# Includes all primitive types, module names, and pydantic special types.
 SUPPORTED_TYPE_IDENTIFIERS = {
     "str",
     "int",
     "bool",
     "float",
     "datetime",
+    "date",
+    "time",
+    "uuid",
+    "UUID",
+    "EmailStr",
+    "HttpUrl",
+    "Decimal",
     "List",
 }
 
