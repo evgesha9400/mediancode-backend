@@ -81,3 +81,17 @@ def items_api_client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
     app = load_app(src_path)
 
     return TestClient(app)
+
+
+@pytest.fixture(scope="session")
+def shop_api_client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
+    """Generate Shop API once per test session and return TestClient."""
+    tmp_path = tmp_path_factory.mktemp("shop_api")
+
+    api_input = load_input("shop_api.yaml")
+    APIGenerator().generate(api_input, path=str(tmp_path))
+
+    src_path = tmp_path / "shop-api" / "src"
+    app = load_app(src_path)
+
+    return TestClient(app)

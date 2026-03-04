@@ -269,6 +269,14 @@ class PlaceholderGenerator:
                 return generate_date(index)
             case "UUID" | "uuid.UUID":
                 return generate_uuid(index)
+            case "decimal.Decimal" | "Decimal":
+                return generate_decimal(index, constraints)
+            case "datetime.time" | "time":
+                return generate_time(index)
+            case "EmailStr":
+                return generate_email(index)
+            case "HttpUrl":
+                return generate_url(index)
             case _:
                 # Unknown type, return a string placeholder
                 return f"example_{type_name.lower()}_{index}"
@@ -422,3 +430,27 @@ def generate_uuid(index: int) -> str:
     """Generate a deterministic UUID-like string."""
     hex_index = f"{index:032x}"
     return f"{hex_index[:8]}-{hex_index[8:12]}-{hex_index[12:16]}-{hex_index[16:20]}-{hex_index[20:32]}"
+
+
+def generate_decimal(index: int, constraints: dict[str, Any]) -> str:
+    """Generate a decimal string value respecting constraints."""
+    value = generate_float(index, constraints)
+    return str(value)
+
+
+def generate_time(index: int) -> str:
+    """Generate an ISO format time string."""
+    seconds = index % 86400
+    hours, remainder = divmod(seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def generate_email(index: int) -> str:
+    """Generate a placeholder email address."""
+    return f"user{index}@example.com"
+
+
+def generate_url(index: int) -> str:
+    """Generate a placeholder HTTP URL."""
+    return f"https://example.com/resource/{index}"

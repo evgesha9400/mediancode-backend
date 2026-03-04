@@ -28,9 +28,10 @@ SUPPORTED_TYPE_IDENTIFIERS = {
     "time",
     "uuid",
     "UUID",
+    "decimal",
+    "Decimal",
     "EmailStr",
     "HttpUrl",
-    "Decimal",
     "List",
 }
 

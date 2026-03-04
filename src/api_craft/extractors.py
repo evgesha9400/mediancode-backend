@@ -11,9 +11,15 @@ from api_craft.models.template import (
 MODULE_TYPE_IMPORTS = {
     "datetime": "import datetime",
     "uuid": "import uuid",
-    "decimal": "from decimal import Decimal",
+    "decimal": "import decimal",
     "pathlib": "from pathlib import Path",
     "enum": "from enum import Enum",
+}
+
+# Mapping of standalone pydantic types to their import statements
+PYDANTIC_TYPE_IMPORTS = {
+    "EmailStr": "from pydantic import EmailStr",
+    "HttpUrl": "from pydantic import HttpUrl",
 }
 
 # Mapping of typing generics to their import from typing module
@@ -69,6 +75,8 @@ def collect_imports(types: list[str]) -> set[str]:
         for word in words:
             if word in TYPING_GENERICS and word not in generic_patterns:
                 typing_imports.add(word)
+            elif word in PYDANTIC_TYPE_IMPORTS:
+                imports.add(PYDANTIC_TYPE_IMPORTS[word])
 
     # Combine typing imports into a single import statement if any exist
     if typing_imports:
