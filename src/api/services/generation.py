@@ -192,7 +192,9 @@ def _convert_to_input_api(
             if field:
                 input_field = InputField(
                     name=field.name,
-                    type=_map_field_type(field.field_type.name, field.container),
+                    type=_build_field_type(
+                        field.field_type.python_type, field.container
+                    ),
                     optional=assoc.optional,
                     description=field.description,
                     default_value=field.default_value,
@@ -237,7 +239,9 @@ def _convert_to_input_api(
             path_params = []
             for p in endpoint.path_params:
                 field = fields_map.get(p.get("fieldId"))
-                field_type = _map_field_type(field.field_type.name) if field else "str"
+                field_type = (
+                    _build_field_type(field.field_type.python_type) if field else "str"
+                )
                 description = field.description or "" if field else ""
                 path_params.append(
                     InputPathParam(
@@ -261,7 +265,7 @@ def _convert_to_input_api(
                         query_params.append(
                             InputQueryParam(
                                 name=field.name,
-                                type=_map_field_type(field.field_type.name),
+                                type=_build_field_type(field.field_type.python_type),
                                 optional=assoc.optional,
                                 description=field.description,
                             )
@@ -313,27 +317,16 @@ def _convert_to_input_api(
     )
 
 
-def _map_field_type(field_type: str, container: str | None = None) -> str:
-    """Map API field type to Python type string, optionally wrapped in a container.
+def _build_field_type(python_type: str, container: str | None = None) -> str:
+    """Build a Python type annotation from the DB python_type and optional container.
 
-    :param field_type: The field type from the database.
+    :param python_type: The python_type value from the TypeModel (e.g. 'str', 'datetime.datetime').
     :param container: Optional container type (e.g. 'List').
-    :returns: Python type string, e.g. 'str' or 'List[str]'.
+    :returns: Python type string, e.g. 'str' or 'List[datetime.datetime]'.
     """
-    type_mapping = {
-        "str": "str",
-        "int": "int",
-        "float": "float",
-        "bool": "bool",
-        "datetime": "datetime.datetime",
-        "uuid": "str",  # UUIDs are typically strings in API inputs
-        "EmailStr": "EmailStr",
-        "HttpUrl": "HttpUrl",
-    }
-    base = type_mapping.get(field_type, "str")
     if container:
-        return f"{container}[{base}]"
-    return base
+        return f"{container}[{python_type}]"
+    return python_type
 
 
 def _to_pascal_case(name: str) -> str:
