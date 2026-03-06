@@ -387,6 +387,41 @@ def test_field_validator_body_indentation(tmp_path):
             assert indent >= 8, f"Insufficient indent ({indent}): {line!r}"
 
 
+def test_decimal_type_generates_import(tmp_path):
+    """Decimal fields must produce 'from decimal import Decimal' import."""
+    from api_craft.models.input import (
+        InputAPI,
+        InputApiConfig,
+        InputEndpoint,
+        InputField,
+        InputModel,
+    )
+
+    api = InputAPI(
+        name="DecimalTest",
+        endpoints=[
+            InputEndpoint(name="GetItems", path="/items", method="GET", response="Item")
+        ],
+        objects=[
+            InputModel(
+                name="Item",
+                fields=[InputField(name="price", type="decimal.Decimal")],
+            )
+        ],
+        config=InputApiConfig(
+            response_placeholders=False,
+            format_code=False,
+            generate_swagger=False,
+        ),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    models_py = (tmp_path / "decimal-test" / "src" / "models.py").read_text()
+
+    assert "import decimal" in models_py or "from decimal import Decimal" in models_py
+    compile(models_py, "models.py", "exec")
+
+
 class TestUpdateItemValidation:
     """Tests for UpdateItemRequest validators."""
 

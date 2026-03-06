@@ -118,7 +118,7 @@ TYPES_DATA = [
         "id": TYPE_DECIMAL_ID,
         "namespace_id": SYSTEM_NAMESPACE_ID,
         "name": "Decimal",
-        "python_type": "Decimal",
+        "python_type": "decimal.Decimal",
         "description": "Decimal type for precise financial values",
         "import_path": "from decimal import Decimal",
         "user_id": None,
