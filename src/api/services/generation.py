@@ -75,6 +75,7 @@ async def generate_api_zip(api: ApiModel, db: AsyncSession) -> io.BytesIO:
 
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
             for root, dirs, files in os.walk(project_dir):
+                dirs[:] = [d for d in dirs if d != "__pycache__"]
                 for file in files:
                     file_path = os.path.join(root, file)
                     arc_name = os.path.relpath(file_path, project_dir)

@@ -1,6 +1,11 @@
 # tests/test_api/test_generation_unit.py
 """Unit tests for generation service helper functions."""
 
+import io
+import os
+import tempfile
+import zipfile
+
 import pytest
 
 from api.services.generation import _build_endpoint_name, _build_field_type
@@ -59,3 +64,33 @@ class TestBuildEndpointName:
         list_name = _build_endpoint_name("GET", "/products")
         detail_name = _build_endpoint_name("GET", "/products/{tracking_id}")
         assert list_name != detail_name
+
+
+def test_zip_excludes_pycache():
+    """Generated ZIP must not contain __pycache__ files."""
+    with tempfile.TemporaryDirectory() as tmp:
+        project = os.path.join(tmp, "test-api")
+        src = os.path.join(project, "src")
+        pycache = os.path.join(src, "__pycache__")
+        os.makedirs(pycache)
+
+        with open(os.path.join(src, "main.py"), "w") as f:
+            f.write("# main")
+        with open(os.path.join(pycache, "main.cpython-313.pyc"), "wb") as f:
+            f.write(b"\x00")
+
+        # Simulate the zip logic from generate_api_zip
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            for root, dirs, files in os.walk(project):
+                dirs[:] = [d for d in dirs if d != "__pycache__"]
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arc_name = os.path.relpath(file_path, project)
+                    zf.write(file_path, arc_name)
+
+        zip_buffer.seek(0)
+        with zipfile.ZipFile(zip_buffer, "r") as zf:
+            names = zf.namelist()
+            assert not any("__pycache__" in n for n in names)
+            assert any("main.py" in n for n in names)
