@@ -86,7 +86,7 @@ class TemplateView(BaseModel):
     camel_name: str
     path: str
     method: str
-    response_model: str
+    response_model: str | None = None
     request_model: str | None
     response_placeholders: dict[str, Any] | None
     query_params: list[TemplateQueryParam]

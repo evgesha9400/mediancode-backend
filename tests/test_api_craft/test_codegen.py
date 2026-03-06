@@ -510,6 +510,55 @@ def test_list_response_shape_generates_list_type(tmp_path):
     assert "return [Item(" in views_py or "return []" in views_py
 
 
+def test_delete_endpoint_without_response_object(tmp_path):
+    """DELETE endpoints should work without a response object."""
+    from api_craft.models.input import (
+        InputAPI,
+        InputApiConfig,
+        InputEndpoint,
+        InputField,
+        InputModel,
+        InputPathParam,
+    )
+
+    api = InputAPI(
+        name="DeleteTest",
+        endpoints=[
+            InputEndpoint(
+                name="GetItems",
+                path="/items",
+                method="GET",
+                response="Item",
+            ),
+            InputEndpoint(
+                name="DeleteItem",
+                path="/items/{item_id}",
+                method="DELETE",
+                path_params=[InputPathParam(name="item_id", type="str")],
+            ),
+        ],
+        objects=[
+            InputModel(
+                name="Item",
+                fields=[InputField(name="name", type="str")],
+            )
+        ],
+        config=InputApiConfig(
+            response_placeholders=False,
+            format_code=False,
+            generate_swagger=False,
+        ),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    views_py = (tmp_path / "delete-test" / "src" / "views.py").read_text()
+
+    assert "async def delete_item" in views_py
+    assert "status_code=204" in views_py
+    assert "Response" in views_py
+    compile(views_py, "views.py", "exec")
+
+
 class TestUpdateItemValidation:
     """Tests for UpdateItemRequest validators."""
 

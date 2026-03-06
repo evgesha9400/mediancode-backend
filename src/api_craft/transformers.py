@@ -167,12 +167,7 @@ def transform_endpoint(
     :returns: Template-ready view definition.
     """
     response_name = input_endpoint.response
-    if not response_name:
-        raise ValueError(
-            f"Endpoint at path '{input_endpoint.path}' must declare a response object"
-        )
-
-    if response_name not in placeholder_generator.models:
+    if response_name and response_name not in placeholder_generator.models:
         raise ValueError(f"Response object '{response_name}' is not declared")
 
     request_name = input_endpoint.request
@@ -187,7 +182,7 @@ def transform_endpoint(
     snake_name = camel_to_snake(camel_name)
 
     response_placeholders = None
-    if generate_placeholders:
+    if generate_placeholders and response_name:
         response_placeholders = placeholder_generator.generate_for_model(response_name)
 
     return TemplateView(

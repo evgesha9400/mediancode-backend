@@ -12,12 +12,18 @@ for view in views:
         model_names.append(view.request_model)
 has_path_params = any(view.path_params for view in views)
 has_query_params = any(view.query_params for view in views)
+has_no_response = any(not view.response_model for view in views)
 %>
+% if has_no_response:
+from starlette.responses import Response
+% endif
+% if model_names:
 from models import (
 % for index, name in enumerate(model_names):
     ${name}${"," if index < len(model_names) - 1 else ""}
 % endfor
 )
+% endif
 % if has_path_params:
 import path
 % endif
@@ -44,10 +50,14 @@ api_router = APIRouter()
 %>
 @api_router.${view.method}(
     path="${view.path}",
+% if view.response_model:
 % if view.response_shape == "list":
     response_model=list[${view.response_model}],
 % else:
     response_model=${view.response_model},
+% endif
+% else:
+    status_code=204,
 % endif
 % if view.tag:
     tags=["${view.tag}"],
@@ -63,7 +73,9 @@ ${line}
 async def ${view.snake_name}():
 % endif
     # TODO: implement your view
-% if view.response_shape == "list":
+% if not view.response_model:
+    return Response(status_code=204)
+% elif view.response_shape == "list":
 % if view.response_placeholders:
     return [${view.response_model}(
 %     for field_name, value in view.response_placeholders.items():
