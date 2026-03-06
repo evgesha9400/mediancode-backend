@@ -559,6 +559,50 @@ def test_delete_endpoint_without_response_object(tmp_path):
     compile(views_py, "views.py", "exec")
 
 
+def test_path_param_uses_field_type(tmp_path):
+    """Path params should use the field's type, not always str."""
+    from api_craft.models.input import (
+        InputAPI,
+        InputApiConfig,
+        InputEndpoint,
+        InputField,
+        InputModel,
+        InputPathParam,
+    )
+
+    api = InputAPI(
+        name="PathTypeTest",
+        endpoints=[
+            InputEndpoint(
+                name="GetItem",
+                path="/items/{item_id}",
+                method="GET",
+                response="Item",
+                path_params=[
+                    InputPathParam(name="item_id", type="uuid.UUID"),
+                ],
+            ),
+        ],
+        objects=[
+            InputModel(
+                name="Item",
+                fields=[InputField(name="name", type="str")],
+            )
+        ],
+        config=InputApiConfig(
+            response_placeholders=False,
+            format_code=False,
+            generate_swagger=False,
+        ),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    path_py = (tmp_path / "path-type-test" / "src" / "path.py").read_text()
+
+    assert "uuid.UUID" in path_py
+    assert "import uuid" in path_py
+
+
 class TestUpdateItemValidation:
     """Tests for UpdateItemRequest validators."""
 
