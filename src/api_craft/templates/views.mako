@@ -44,7 +44,11 @@ api_router = APIRouter()
 %>
 @api_router.${view.method}(
     path="${view.path}",
+% if view.response_shape == "list":
+    response_model=list[${view.response_model}],
+% else:
     response_model=${view.response_model},
+% endif
 % if view.tag:
     tags=["${view.tag}"],
 % endif
@@ -59,6 +63,17 @@ ${line}
 async def ${view.snake_name}():
 % endif
     # TODO: implement your view
+% if view.response_shape == "list":
+% if view.response_placeholders:
+    return [${view.response_model}(
+%     for field_name, value in view.response_placeholders.items():
+        ${field_name}=${value.__repr__()},
+%     endfor
+    )]
+% else:
+    return [${view.response_model}()]
+% endif
+% else:
 % if view.response_placeholders:
     return ${view.response_model}(
 %     for field_name, value in view.response_placeholders.items():
@@ -67,5 +82,6 @@ async def ${view.snake_name}():
     )
 % else:
     return ${view.response_model}()
+% endif
 % endif
 % endfor

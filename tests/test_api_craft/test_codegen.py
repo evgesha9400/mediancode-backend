@@ -469,6 +469,47 @@ def test_clamp_to_range_renders_values(tmp_path):
     assert "max(, min(, v))" not in models_py
 
 
+def test_list_response_shape_generates_list_type(tmp_path):
+    """Endpoints with response_shape='list' must use list[Model] as response_model."""
+    from api_craft.models.input import (
+        InputAPI,
+        InputApiConfig,
+        InputEndpoint,
+        InputField,
+        InputModel,
+    )
+
+    api = InputAPI(
+        name="ListTest",
+        endpoints=[
+            InputEndpoint(
+                name="GetItems",
+                path="/items",
+                method="GET",
+                response="Item",
+                response_shape="list",
+            )
+        ],
+        objects=[
+            InputModel(
+                name="Item",
+                fields=[InputField(name="name", type="str")],
+            )
+        ],
+        config=InputApiConfig(
+            response_placeholders=False,
+            format_code=False,
+            generate_swagger=False,
+        ),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    views_py = (tmp_path / "list-test" / "src" / "views.py").read_text()
+
+    assert "response_model=list[Item]" in views_py
+    assert "return [Item(" in views_py or "return []" in views_py
+
+
 class TestUpdateItemValidation:
     """Tests for UpdateItemRequest validators."""
 
