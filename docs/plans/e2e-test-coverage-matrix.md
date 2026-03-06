@@ -109,7 +109,29 @@ Which error conditions are tested per entity?
 | Delete non-existent endpoint | 404 | ✅ |
 | Get non-existent endpoint | 404 | ✅ |
 
-**Current error path coverage: ~32 / ~40 error paths tested.**
+### Name Validation (Cross-Entity)
+
+| Error Path | Status | Tested |
+|------------|:------:|:------:|
+| Object create with snake_case name | 422 | ✅ |
+| Object create with camelCase name | 422 | ✅ |
+| Object create with consecutive uppercase | 422 | ✅ |
+| Object create with empty name | 422 | ✅ |
+| Object update with invalid name | 422 | ✅ |
+| API create with snake_case title | 422 | ✅ |
+| API create with spaces in title | 422 | ✅ |
+| API create with consecutive uppercase | 422 | ✅ |
+| API update with invalid title | 422 | ✅ |
+| Field create with PascalCase name | 422 | ✅ |
+| Field create with camelCase name | 422 | ✅ |
+| Field create with leading underscore | 422 | ✅ |
+| Field create with double underscore | 422 | ✅ |
+| Field create with hyphenated name | 422 | ✅ |
+| Field update with invalid name | 422 | ✅ |
+
+*Covered in `test_name_validation.py`.*
+
+**Current error path coverage: ~47 / ~55 error paths tested.**
 
 ---
 
@@ -309,7 +331,7 @@ What gets updated vs what's available to update?
 | Dimension | Covered | Total | % |
 |-----------|:-------:|:-----:|:-:|
 | CRUD operations (on mutable entities) | 21 | 26 | 81% |
-| Error/validation paths | ~32 | ~40 | 80% |
+| Error/validation paths | ~47 | ~55 | 85% |
 | Type usage in fields | 11 | 11 | 100% |
 | Constraint usage | 8 | 8 | 100% |
 | FV template usage | 6 | 10 | 60% |
