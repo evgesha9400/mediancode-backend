@@ -339,16 +339,19 @@ def _build_endpoint_name(method: str, path: str) -> str:
     """
     import re
 
-    segments = []
+    parts = []
     for segment in path.strip("/").split("/"):
-        if not segment.startswith("{"):
-            # Split segment on non-alphanumeric boundaries
+        if segment.startswith("{") and segment.endswith("}"):
+            param_name = segment[1:-1]
+            words = re.split(r"[^a-zA-Z0-9]+", param_name)
+            parts.append("By" + "".join(w.capitalize() for w in words if w))
+        else:
             words = re.split(r"[^a-zA-Z0-9]+", segment)
-            segments.extend(w for w in words if w)
+            parts.append("".join(w.capitalize() for w in words if w))
 
     method_prefix = method.lower().capitalize()
-    if segments:
-        path_part = "".join(word.capitalize() for word in segments)
+    path_part = "".join(parts)
+    if path_part:
         return f"{method_prefix}{path_part}"
     return f"{method_prefix}Root"
 

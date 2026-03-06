@@ -41,15 +41,21 @@ class TestBuildEndpointName:
         [
             ("GET", "/users", "GetUsers"),
             ("POST", "/users", "PostUsers"),
-            ("GET", "/users/{user_id}", "GetUsers"),
-            ("DELETE", "/users/{user_id}", "DeleteUsers"),
-            ("GET", "/users/{user_id}/orders", "GetUsersOrders"),
-            ("GET", "/user-profiles/{profile_id}", "GetUserProfiles"),
+            ("GET", "/users/{user_id}", "GetUsersByUserId"),
+            ("DELETE", "/users/{user_id}", "DeleteUsersByUserId"),
+            ("GET", "/users/{user_id}/orders", "GetUsersByUserIdOrders"),
+            ("GET", "/user-profiles/{profile_id}", "GetUserProfilesByProfileId"),
             ("GET", "/api/v1/users", "GetApiV1Users"),
-            ("PUT", "/order-items/{item_id}/status", "PutOrderItemsStatus"),
+            ("PUT", "/order-items/{item_id}/status", "PutOrderItemsByItemIdStatus"),
             ("GET", "/", "GetRoot"),
-            ("GET", "/{id}", "GetRoot"),
+            ("GET", "/{id}", "GetById"),
         ],
     )
     def test_endpoint_name(self, method: str, path: str, expected: str):
         assert _build_endpoint_name(method, path) == expected
+
+    def test_endpoint_name_differentiates_with_path_param(self):
+        """GET /products and GET /products/{id} must produce different names."""
+        list_name = _build_endpoint_name("GET", "/products")
+        detail_name = _build_endpoint_name("GET", "/products/{tracking_id}")
+        assert list_name != detail_name
