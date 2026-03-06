@@ -98,7 +98,7 @@ class GenerationModel(Base):
 
     # Relationships
     user: Mapped["UserModel"] = relationship(back_populates="generations")
-    api: Mapped["ApiModel"] = relationship()
+    api: Mapped["ApiModel"] = relationship(back_populates="generations")
 
 
 class Namespace(Base):
@@ -316,6 +316,9 @@ class ApiModel(Base):
     namespace: Mapped["Namespace"] = relationship(back_populates="apis")
     endpoints: Mapped[list["ApiEndpoint"]] = relationship(
         back_populates="api", cascade="all, delete-orphan"
+    )
+    generations: Mapped[list["GenerationModel"]] = relationship(
+        cascade="all, delete-orphan"
     )
 
 
