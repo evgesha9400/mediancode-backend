@@ -64,7 +64,7 @@ PRODUCT_FIELDS = [
         "name": "weight",
         "type": "float",
         "constraints": [("ge", "0"), ("lt", "1000")],
-        "validators": [("Clamp to Range", {"min": "0", "max": "1000"})],
+        "validators": [("Clamp to Range", {"min_value": "0", "max_value": "1000"})],
     },
     {
         "name": "quantity",

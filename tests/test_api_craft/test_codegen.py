@@ -422,6 +422,53 @@ def test_decimal_type_generates_import(tmp_path):
     compile(models_py, "models.py", "exec")
 
 
+def test_clamp_to_range_renders_values(tmp_path):
+    """Clamp to Range must render actual min/max values, not empty args."""
+    from api_craft.models.input import (
+        InputAPI,
+        InputApiConfig,
+        InputEndpoint,
+        InputField,
+        InputModel,
+        InputResolvedFieldValidator,
+    )
+
+    api = InputAPI(
+        name="ClampTest",
+        endpoints=[
+            InputEndpoint(name="GetItems", path="/items", method="GET", response="Item")
+        ],
+        objects=[
+            InputModel(
+                name="Item",
+                fields=[
+                    InputField(
+                        name="weight",
+                        type="float",
+                        field_validators=[
+                            InputResolvedFieldValidator(
+                                function_name="clamp_to_range_weight",
+                                mode="before",
+                                function_body="    v = max(0, min(1000, v))\n    return v",
+                            )
+                        ],
+                    )
+                ],
+            )
+        ],
+        config=InputApiConfig(
+            response_placeholders=False,
+            format_code=False,
+            generate_swagger=False,
+        ),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    models_py = (tmp_path / "clamp-test" / "src" / "models.py").read_text()
+    assert "max(0, min(1000, v))" in models_py
+    assert "max(, min(, v))" not in models_py
+
+
 class TestUpdateItemValidation:
     """Tests for UpdateItemRequest validators."""
 
