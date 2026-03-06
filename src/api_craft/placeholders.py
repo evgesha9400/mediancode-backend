@@ -109,12 +109,20 @@ class PlaceholderGenerator:
     circular references.
     """
 
-    def __init__(self, models: dict[str, list[TemplateField]]):
+    def __init__(
+        self,
+        models: dict[str, list[TemplateField]],
+        validator_fields: dict[str, set[str]] | None = None,
+    ):
         """Initialize the generator with a model registry.
 
         :param models: Dict mapping model names to their field definitions.
+        :param validator_fields: Optional dict mapping model names to sets of
+            field names referenced by model validators. These fields will be
+            included in placeholders even if optional.
         """
         self.models = models
+        self.validator_fields = validator_fields or {}
 
     def generate_for_model(
         self,
@@ -153,8 +161,10 @@ class PlaceholderGenerator:
         visited.add(model_name)
         result: dict[str, Any] = {}
 
+        required_by_validators = self.validator_fields.get(model_name, set())
+
         for offset, field in enumerate(fields, start=1):
-            if field.optional:
+            if field.optional and field.name not in required_by_validators:
                 continue
 
             constraints = extract_constraints(field.validators)
@@ -312,6 +322,17 @@ def _generate_pattern_string(pattern: str, index: int, max_len: int) -> str:
         r"^[A-Z0-9-]+$",
     ):
         return f"SKU-{index:03d}"[:max_len]
+
+    # Alpha-digit patterns: ^[A-Z]{N}-\d{M}$ or ^[A-Z]{N}\d{M}$
+    alpha_digit = re.match(r"^\^?\[A-Z\]\{(\d+)\}(.?)\\d\{(\d+)\}\$?$", pattern)
+    if alpha_digit:
+        alpha_count = int(alpha_digit.group(1))
+        separator = alpha_digit.group(2)
+        digit_count = int(alpha_digit.group(3))
+        letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        alpha = "".join(letters[(index + i) % 26] for i in range(alpha_count))
+        digits = str(index % (10**digit_count)).zfill(digit_count)
+        return f"{alpha}{separator}{digits}"[:max_len]
 
     # Email patterns
     if "email" in pattern.lower() or "@" in pattern:

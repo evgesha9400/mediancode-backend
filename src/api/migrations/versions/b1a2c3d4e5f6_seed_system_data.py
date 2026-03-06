@@ -299,7 +299,7 @@ FIELD_VALIDATOR_TEMPLATES_DATA = [
         "name": "Round Decimal",
         "description": "Rounds numeric value to specified decimal places",
         "compatible_types": ["float", "Decimal"],
-        "mode": "before",
+        "mode": "after",
         "parameters": [
             {
                 "key": "places",
@@ -325,7 +325,7 @@ FIELD_VALIDATOR_TEMPLATES_DATA = [
         "name": "Clamp to Range",
         "description": "Clamps numeric value to min/max bounds instead of rejecting",
         "compatible_types": ["int", "float", "Decimal"],
-        "mode": "before",
+        "mode": "after",
         "parameters": [
             {
                 "key": "min_value",
@@ -458,7 +458,7 @@ MODEL_VALIDATOR_TEMPLATES_DATA = [
     {
         "id": MVT_MUTUAL_EXCLUSIVITY_ID,
         "name": "Mutual Exclusivity",
-        "description": "Ensures exactly one of two fields is set (not both, not neither)",
+        "description": "Ensures at most one of two fields is set (not both)",
         "mode": "after",
         "parameters": [],
         "field_mappings": [
@@ -475,7 +475,7 @@ MODEL_VALIDATOR_TEMPLATES_DATA = [
                 "required": True,
             },
         ],
-        "body_template": "    a_set = self.{{ field_a }} is not None\n    b_set = self.{{ field_b }} is not None\n    if a_set == b_set:\n        raise ValueError('Exactly one of {{ field_a }} or {{ field_b }} must be provided')\n    return self",
+        "body_template": "    a_set = self.{{ field_a }} is not None\n    b_set = self.{{ field_b }} is not None\n    if a_set and b_set:\n        raise ValueError('{{ field_a }} and {{ field_b }} cannot both be set')\n    return self",
     },
     {
         "id": MVT_AT_LEAST_ONE_ID,

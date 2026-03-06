@@ -986,6 +986,57 @@ class TestShopApiFullE2E:
             source = py_file.read_text()
             compile(source, str(py_file), "exec")
 
+    # --- Phase 16: Generated app endpoint connectivity ---
+
+    def test_phase_16_generated_endpoints(self):
+        """Load the generated FastAPI app and verify all endpoints respond."""
+        cls = TestShopApiFullE2E
+
+        src_path = Path(cls.generated_dir) / "src"
+        generated_app = load_app(src_path)
+        cls.gen_client = TestClient(generated_app)
+
+        # Healthcheck
+        resp = cls.gen_client.get("/health")
+        assert resp.status_code == 200
+
+        # GET /products (list, useEnvelope=False, responseShape=list)
+        resp = cls.gen_client.get("/products")
+        assert_gen_response(resp)
+        data = resp.json()
+        assert isinstance(data, list)
+
+        # GET /products/{tracking_id}
+        resp = cls.gen_client.get("/products/abc-123")
+        assert_gen_response(resp)
+
+        # POST /products (request + response body = Product)
+        resp = cls.gen_client.post("/products", json=cls._valid_product())
+        assert_gen_response(resp)
+
+        # PUT /items/{tracking_id} (path changed in phase 13)
+        resp = cls.gen_client.put("/items/abc-123", json=cls._valid_product())
+        assert_gen_response(resp)
+
+        # DELETE /products/{tracking_id} (no response object → 204)
+        resp = cls.gen_client.delete("/products/abc-123")
+        assert resp.status_code in (
+            200,
+            204,
+        ), f"DELETE failed: {resp.status_code} {resp.text}"
+
+        # GET /customers (list)
+        resp = cls.gen_client.get("/customers")
+        assert_gen_response(resp)
+        data = resp.json()
+        assert isinstance(data, list)
+
+        # PATCH /customers/{email}
+        resp = cls.gen_client.patch(
+            "/customers/test@example.com", json=cls._valid_customer()
+        )
+        assert_gen_response(resp)
+
     # --- Static helpers for generated API payloads ---
 
     @staticmethod

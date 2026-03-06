@@ -1,6 +1,8 @@
 # src/api_craft/transformers.py
 """Transformers for input models to template models."""
 
+import re
+
 from api_craft.models.input import (
     InputAPI,
     InputEndpoint,
@@ -206,9 +208,28 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
     """Transform an :class:`InputAPI` instance to a :class:`TemplateAPI` instance."""
     template_models = [transform_model(model) for model in input_api.objects]
 
-    # Build field map and create placeholder generator
+    # Build field map and extract fields referenced by model validators
     field_map = {model.name: model.fields for model in template_models}
-    placeholder_generator = PlaceholderGenerator(field_map)
+    field_names_per_model = {
+        model.name: {f.name for f in model.fields} for model in template_models
+    }
+    # For before-mode model validators (e.g. At Least One Required),
+    # include the first referenced optional field so placeholders are valid.
+    validator_fields: dict[str, set[str]] = {}
+    for model in template_models:
+        referenced: set[str] = set()
+        optional_names = {f.name for f in model.fields if f.optional}
+        for mv in model.model_validators:
+            if mv.mode != "before":
+                continue
+            for match in re.finditer(r'data\.get\(["\'](\w+)["\']\)', mv.function_body):
+                name = match.group(1)
+                if name in optional_names:
+                    referenced.add(name)
+                    break  # one field per validator suffices
+        if referenced:
+            validator_fields[model.name] = referenced
+    placeholder_generator = PlaceholderGenerator(field_map, validator_fields)
 
     transformed_views = [
         transform_endpoint(
