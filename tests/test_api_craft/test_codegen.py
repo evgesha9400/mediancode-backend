@@ -327,6 +327,66 @@ class TestCreateItemValidation:
         assert_validation_error(response, expected_field="description")
 
 
+def test_field_validator_body_indentation(tmp_path):
+    """Field validator bodies must be indented inside the class method."""
+    from api_craft.models.input import (
+        InputAPI,
+        InputApiConfig,
+        InputEndpoint,
+        InputField,
+        InputModel,
+        InputResolvedFieldValidator,
+    )
+
+    api = InputAPI(
+        name="IndentTest",
+        endpoints=[
+            InputEndpoint(
+                name="GetItems",
+                path="/items",
+                method="GET",
+                response="Item",
+            )
+        ],
+        objects=[
+            InputModel(
+                name="Item",
+                fields=[
+                    InputField(
+                        name="value",
+                        type="str",
+                        field_validators=[
+                            InputResolvedFieldValidator(
+                                function_name="trim_value",
+                                mode="before",
+                                function_body="    v = v.strip()\n    return v",
+                            )
+                        ],
+                    )
+                ],
+            )
+        ],
+        config=InputApiConfig(
+            response_placeholders=False,
+            format_code=False,
+            generate_swagger=False,
+        ),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    models_py = (tmp_path / "indent-test" / "src" / "models.py").read_text()
+
+    # Must compile without IndentationError
+    compile(models_py, "models.py", "exec")
+
+    # Each body line must be indented at least 8 spaces (class + method)
+    for line in models_py.splitlines():
+        stripped = line.lstrip()
+        if stripped.startswith("v = v.strip()") or stripped.startswith("return v"):
+            indent = len(line) - len(stripped)
+            assert indent >= 8, f"Insufficient indent ({indent}): {line!r}"
+
+
 class TestUpdateItemValidation:
     """Tests for UpdateItemRequest validators."""
 

@@ -4,6 +4,12 @@
 - imports: Set[str] - set of import statements
 </%doc>\
 <%
+def indent_body(body, spaces=4):
+    """Add extra indentation to each line of a function body."""
+    prefix = ' ' * spaces
+    lines = body.split('\n')
+    return '\n'.join(prefix + line if line.strip() else line for line in lines)
+
 def render_field_constraint(validator):
     """Render a validator as a Pydantic Field constraint."""
     name = validator.name
@@ -100,7 +106,7 @@ class ${model.name}(BaseModel):
     @field_validator("${field.name}", mode="${fv.mode}")
     @classmethod
     def ${fv.function_name}(cls, v):
-${fv.function_body}
+${indent_body(fv.function_body)}
 %         endfor
 %     endfor
 %     for mv in model.model_validators:
@@ -112,6 +118,6 @@ ${fv.function_body}
 %         else:
     def ${mv.function_name}(self):
 %         endif
-${mv.function_body}
+${indent_body(mv.function_body)}
 %     endfor
 % endfor
