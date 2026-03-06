@@ -86,14 +86,14 @@ async def client():
         user = result.scalar_one_or_none()
         if user:
             uid = user.id
+            await session.execute(
+                delete(GenerationModel).where(GenerationModel.user_id == uid)
+            )
             await session.execute(delete(ApiModel).where(ApiModel.user_id == uid))
             await session.execute(
                 delete(ObjectDefinition).where(ObjectDefinition.user_id == uid)
             )
             await session.execute(delete(FieldModel).where(FieldModel.user_id == uid))
-            await session.execute(
-                delete(GenerationModel).where(GenerationModel.user_id == uid)
-            )
             await session.execute(delete(Namespace).where(Namespace.user_id == uid))
             await session.execute(delete(UserModel).where(UserModel.id == uid))
             await session.commit()
@@ -933,6 +933,58 @@ class TestShopApiFullE2E:
         ep = resp.json()
         assert ep["path"] == "/items/{tracking_id}"
         assert ep["pathParams"][0]["fieldId"] == cls.field_ids["tracking_id"]
+
+    # --- Phase 14: Generate API ---
+
+    async def test_phase_14_generate_api(self, client: AsyncClient):
+        """Call the generate endpoint and receive the ZIP file."""
+        cls = TestShopApiFullE2E
+
+        resp = await client.post(f"/apis/{cls.api_id}/generate")
+        assert resp.status_code == 200, f"Generate failed: {resp.text}"
+        assert "application/zip" in resp.headers.get("content-type", "")
+        assert "content-disposition" in resp.headers
+        assert "shopapi" in resp.headers["content-disposition"].lower()
+        assert len(resp.content) > 0
+        cls.zip_bytes = resp.content
+
+    # --- Phase 15: Verify ZIP structure ---
+
+    async def test_phase_15_verify_zip_structure(self, client: AsyncClient):
+        """Extract ZIP and verify file structure, no __pycache__, .py compiles."""
+        cls = TestShopApiFullE2E
+
+        with zipfile.ZipFile(io.BytesIO(cls.zip_bytes)) as zf:
+            names = zf.namelist()
+
+            # No __pycache__ directories
+            assert not any(
+                "__pycache__" in n for n in names
+            ), f"Found __pycache__ in ZIP: {[n for n in names if '__pycache__' in n]}"
+
+            # Required files present
+            required_files = [
+                "src/models.py",
+                "src/views.py",
+                "src/main.py",
+                "src/path.py",
+                "pyproject.toml",
+                "Makefile",
+                "Dockerfile",
+            ]
+            for required in required_files:
+                assert required in names, f"Missing file in ZIP: {required}"
+
+        # Extract to temp directory
+        cls.generated_dir = tempfile.mkdtemp(prefix="shop_api_gen_")
+        with zipfile.ZipFile(io.BytesIO(cls.zip_bytes)) as zf:
+            zf.extractall(cls.generated_dir)
+
+        # All .py files must compile without errors
+        gen_path = Path(cls.generated_dir)
+        for py_file in gen_path.rglob("*.py"):
+            source = py_file.read_text()
+            compile(source, str(py_file), "exec")
 
     # --- Static helpers for generated API payloads ---
 
