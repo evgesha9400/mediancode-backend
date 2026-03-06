@@ -1037,6 +1037,210 @@ class TestShopApiFullE2E:
         )
         assert_gen_response(resp)
 
+    # --- Phase 17: Product field constraint validation ---
+
+    def test_phase_17_product_constraints(self):
+        """Verify Product field constraints in the generated API."""
+        cls = TestShopApiFullE2E
+        c = cls.gen_client
+
+        # name: min_length=1 (empty rejected)
+        resp = c.post("/products", json=cls._valid_product(name=""))
+        assert_gen_validation_error(resp, expected_field="name")
+
+        # name: max_length=150 (too long rejected; updated from 200 in phase 5)
+        resp = c.post("/products", json=cls._valid_product(name="A" * 151))
+        assert_gen_validation_error(resp, expected_field="name")
+
+        # sku: pattern=^[A-Z]{2}-\d{4}$ (invalid rejected after uppercase normalization)
+        resp = c.post("/products", json=cls._valid_product(sku="invalid!"))
+        assert_gen_validation_error(resp, expected_field="sku")
+
+        # price: gt=0 (zero rejected)
+        resp = c.post("/products", json=cls._valid_product(price=0))
+        assert_gen_validation_error(resp, expected_field="price")
+
+        # price: gt=0 (negative rejected)
+        resp = c.post("/products", json=cls._valid_product(price=-10.0))
+        assert_gen_validation_error(resp, expected_field="price")
+
+        # quantity: ge=0 (negative rejected)
+        resp = c.post("/products", json=cls._valid_product(quantity=-1))
+        assert_gen_validation_error(resp, expected_field="quantity")
+
+        # min_order_quantity: ge=1 (zero rejected)
+        resp = c.post("/products", json=cls._valid_product(min_order_quantity=0))
+        assert_gen_validation_error(resp, expected_field="min_order_quantity")
+
+        # max_order_quantity: le=1000 (over limit rejected)
+        resp = c.post("/products", json=cls._valid_product(max_order_quantity=1001))
+        assert_gen_validation_error(resp, expected_field="max_order_quantity")
+
+        # discount_percent: multiple_of=5 (not multiple rejected)
+        resp = c.post("/products", json=cls._valid_product(discount_percent=7))
+        assert_gen_validation_error(resp, expected_field="discount_percent")
+
+        # discount_percent: le=100 (over 100 rejected)
+        resp = c.post("/products", json=cls._valid_product(discount_percent=105))
+        assert_gen_validation_error(resp, expected_field="discount_percent")
+
+        # weight: ge=0 (negative rejected)
+        resp = c.post("/products", json=cls._valid_product(weight=-1.0))
+        assert_gen_validation_error(resp, expected_field="weight")
+
+    # --- Phase 18: Customer field constraint validation ---
+
+    def test_phase_18_customer_constraints(self):
+        """Verify Customer field constraints in the generated API."""
+        cls = TestShopApiFullE2E
+        c = cls.gen_client
+
+        # customer_name: min_length=1 (empty rejected)
+        resp = c.patch(
+            "/customers/test@example.com",
+            json=cls._valid_customer(customer_name=""),
+        )
+        assert_gen_validation_error(resp, expected_field="customer_name")
+
+        # phone: min_length=7 (too short rejected)
+        resp = c.patch(
+            "/customers/test@example.com",
+            json=cls._valid_customer(phone="123"),
+        )
+        assert_gen_validation_error(resp, expected_field="phone")
+
+    # --- Phase 19: Product model validators ---
+
+    def test_phase_19_product_model_validators(self):
+        """Verify Product model validators in the generated API."""
+        cls = TestShopApiFullE2E
+        c = cls.gen_client
+
+        # Field Comparison: min_order_quantity >= max_order_quantity rejected
+        resp = c.post(
+            "/products",
+            json=cls._valid_product(min_order_quantity=500, max_order_quantity=500),
+        )
+        assert_gen_validation_error(resp)
+
+        # Mutual Exclusivity: both discount_percent and discount_amount rejected
+        resp = c.post(
+            "/products",
+            json=cls._valid_product(discount_percent=10, discount_amount=5.00),
+        )
+        assert_gen_validation_error(resp)
+
+        # All Or None: sale_price without sale_end_date rejected
+        resp = c.post(
+            "/products",
+            json=cls._valid_product(sale_price=19.99),
+        )
+        assert_gen_validation_error(resp)
+
+        # Conditional Required: discount_percent without sale_price rejected
+        resp = c.post(
+            "/products",
+            json=cls._valid_product(discount_percent=10),
+        )
+        assert_gen_validation_error(resp)
+
+    # --- Phase 20: Customer model validator ---
+
+    def test_phase_20_customer_model_validator(self):
+        """Verify Customer At Least One Required validator."""
+        cls = TestShopApiFullE2E
+        c = cls.gen_client
+
+        # At Least One Required: neither email nor phone rejected
+        payload = cls._valid_customer()
+        payload.pop("email", None)
+        payload.pop("phone", None)
+        resp = c.patch("/customers/test@example.com", json=payload)
+        assert_gen_validation_error(resp)
+
+    # --- Phase 21: Clean up generated app ---
+
+    def test_phase_21_cleanup_generated(self):
+        """Clean up the generated app temp directory."""
+        cls = TestShopApiFullE2E
+        cls.gen_client = None
+        if cls.generated_dir and Path(cls.generated_dir).exists():
+            shutil.rmtree(cls.generated_dir)
+
+    # --- Phase 22: Delete endpoints ---
+
+    async def test_phase_22_delete_endpoints(self, client: AsyncClient):
+        """Delete all 7 endpoints and verify list is empty."""
+        cls = TestShopApiFullE2E
+
+        for key, ep_id in cls.endpoint_ids.items():
+            resp = await client.delete(f"/endpoints/{ep_id}")
+            assert (
+                resp.status_code == 204
+            ), f"Failed to delete endpoint {key}: {resp.text}"
+
+        resp = await client.get("/endpoints")
+        assert resp.status_code == 200
+        assert len(resp.json()) == 0
+
+    # --- Phase 23: Delete API ---
+
+    async def test_phase_23_delete_api(self, client: AsyncClient):
+        """Delete the Shop API and verify list is empty."""
+        cls = TestShopApiFullE2E
+
+        resp = await client.delete(f"/apis/{cls.api_id}")
+        assert resp.status_code == 204
+
+        resp = await client.get("/apis")
+        assert resp.status_code == 200
+        assert len(resp.json()) == 0
+
+    # --- Phase 24: Delete objects ---
+
+    async def test_phase_24_delete_objects(self, client: AsyncClient):
+        """Delete both objects and verify list is empty."""
+        cls = TestShopApiFullE2E
+
+        for obj_id in (cls.product_id, cls.customer_id):
+            resp = await client.delete(f"/objects/{obj_id}")
+            assert resp.status_code == 204
+
+        resp = await client.get("/objects")
+        assert resp.status_code == 200
+        assert len(resp.json()) == 0
+
+    # --- Phase 25: Delete fields ---
+
+    async def test_phase_25_delete_fields(self, client: AsyncClient):
+        """Delete all 23 fields and verify list is empty."""
+        cls = TestShopApiFullE2E
+
+        for name, field_id in cls.field_ids.items():
+            resp = await client.delete(f"/fields/{field_id}")
+            assert (
+                resp.status_code == 204
+            ), f"Failed to delete field '{name}': {resp.text}"
+
+        resp = await client.get("/fields")
+        assert resp.status_code == 200
+        assert len(resp.json()) == 0
+
+    # --- Phase 26: Delete namespace ---
+
+    async def test_phase_26_delete_namespace(self, client: AsyncClient):
+        """Delete Shop namespace and verify only Global remains."""
+        cls = TestShopApiFullE2E
+
+        resp = await client.delete(f"/namespaces/{cls.namespace_id}")
+        assert resp.status_code == 204
+
+        resp = await client.get("/namespaces")
+        assert resp.status_code == 200
+        names = {n["name"] for n in resp.json()}
+        assert "Shop" not in names
+        assert "Global" in names
+
     # --- Static helpers for generated API payloads ---
 
     @staticmethod
