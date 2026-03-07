@@ -5,14 +5,17 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
+import httpx
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.database import GenerationModel, Namespace, UserModel
-from api.settings import Settings
+from api.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
+
+CLERK_API_BASE = "https://api.clerk.com/v1"
 
 
 class UserService:
@@ -33,16 +36,19 @@ class UserService:
         self.db = db
 
     async def ensure_provisioned(self, clerk_id: str) -> UserModel:
-        """Ensure the user exists with a default namespace.
+        """Ensure the user exists with a default namespace and up-to-date profile.
 
         Fast path: single indexed lookup by clerk_id. If the user does not
         exist, creates user row + default namespace in a savepoint.
+        Self-healing: syncs profile data from Clerk if any field is missing.
 
         :param clerk_id: The Clerk user ID.
         :returns: The provisioned user.
         """
         user = await self.get_by_clerk_id(clerk_id)
         if user is not None:
+            if user.first_name is None or user.last_name is None or user.email is None:
+                await self._sync_profile(user)
             return user
 
         return await self._provision_user(clerk_id)
@@ -72,6 +78,7 @@ class UserService:
                 await self.db.flush()
 
             logger.info("Provisioned user %s with default namespace", clerk_id)
+            await self._sync_profile(user)
             return user
         except IntegrityError:
             logger.debug("User %s already provisioned (concurrent request)", clerk_id)
@@ -79,6 +86,40 @@ class UserService:
             existing = await self.get_by_clerk_id(clerk_id)
             assert existing is not None  # noqa: S101
             return existing
+
+    async def _sync_profile(self, user: UserModel) -> None:
+        """Fetch profile data from Clerk Backend API and update the user.
+
+        Extracts first_name, last_name, and the primary email address.
+
+        :param user: The user model to update.
+        """
+        settings = get_settings()
+        if not settings.clerk_secret_key:
+            return
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{CLERK_API_BASE}/users/{user.clerk_id}",
+                    headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
+                    timeout=5.0,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except httpx.HTTPError:
+            logger.warning("Failed to fetch Clerk profile for %s", user.clerk_id)
+            return
+
+        user.first_name = data.get("first_name") or None
+        user.last_name = data.get("last_name") or None
+
+        primary_email_id = data.get("primary_email_address_id")
+        if primary_email_id:
+            for addr in data.get("email_addresses", []):
+                if addr.get("id") == primary_email_id:
+                    user.email = addr.get("email_address")
+                    break
 
     async def get_by_clerk_id(self, clerk_id: str) -> UserModel | None:
         """Lookup user by Clerk ID.

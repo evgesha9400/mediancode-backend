@@ -56,6 +56,9 @@ class UserModel(Base):
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
     )
     clerk_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    first_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    email: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, nullable=False
     )

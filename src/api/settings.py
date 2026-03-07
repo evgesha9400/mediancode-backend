@@ -60,6 +60,7 @@ class Settings(BaseSettings):
         return v
 
     clerk_frontend_api_url: str = "https://clerk.example.com"
+    clerk_secret_key: str = ""
     clerk_jwt_audience: str | None = None
     system_namespace_id: UUID = UUID("00000000-0000-0000-0000-000000000001")
     frontend_url: str = "http://localhost:5173"
