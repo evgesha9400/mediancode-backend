@@ -1,0 +1,292 @@
+-- Seed Shop API for user 23a06d8c-61c0-4655-8e40-5c16ee98a372
+-- Recreates the same setup as test_e2e_shop_full.py (final state)
+-- Plain SQL — runs in any PostgreSQL client.
+
+BEGIN;
+
+-- 1. Namespace
+INSERT INTO namespaces (id, user_id, name, is_default)
+VALUES (gen_random_uuid(), '23a06d8c-61c0-4655-8e40-5c16ee98a372', 'Shop', false);
+
+-- 2. Fields (23 total)
+-- We need stable IDs to reference later, so we use WITH clauses per group.
+
+WITH ns AS (
+  SELECT id FROM namespaces
+  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+),
+sys_ns AS (
+  SELECT id FROM namespaces WHERE user_id IS NULL LIMIT 1
+),
+types AS (
+  SELECT t.name, t.id FROM types t JOIN sys_ns ON t.namespace_id = sys_ns.id
+),
+t AS (
+  SELECT
+    (SELECT id FROM types WHERE name = 'str')      AS str,
+    (SELECT id FROM types WHERE name = 'int')      AS int,
+    (SELECT id FROM types WHERE name = 'float')    AS float,
+    (SELECT id FROM types WHERE name = 'bool')     AS bool,
+    (SELECT id FROM types WHERE name = 'datetime') AS datetime,
+    (SELECT id FROM types WHERE name = 'uuid')     AS uuid,
+    (SELECT id FROM types WHERE name = 'EmailStr') AS email,
+    (SELECT id FROM types WHERE name = 'HttpUrl')  AS httpurl,
+    (SELECT id FROM types WHERE name = 'Decimal')  AS decimal,
+    (SELECT id FROM types WHERE name = 'date')     AS date,
+    (SELECT id FROM types WHERE name = 'time')     AS time
+)
+INSERT INTO fields (id, namespace_id, user_id, name, type_id)
+SELECT gen_random_uuid(), ns.id, '23a06d8c-61c0-4655-8e40-5c16ee98a372', v.name, v.type_id
+FROM ns, (VALUES
+  ('name',               (SELECT str      FROM t)),
+  ('sku',                (SELECT str      FROM t)),
+  ('price',              (SELECT decimal  FROM t)),
+  ('sale_price',         (SELECT decimal  FROM t)),
+  ('sale_end_date',      (SELECT date     FROM t)),
+  ('weight',             (SELECT float    FROM t)),
+  ('quantity',           (SELECT int      FROM t)),
+  ('min_order_quantity', (SELECT int      FROM t)),
+  ('max_order_quantity', (SELECT int      FROM t)),
+  ('discount_percent',   (SELECT int      FROM t)),
+  ('discount_amount',    (SELECT decimal  FROM t)),
+  ('in_stock',           (SELECT bool     FROM t)),
+  ('product_url',        (SELECT httpurl  FROM t)),
+  ('release_date',       (SELECT date     FROM t)),
+  ('created_at',         (SELECT datetime FROM t)),
+  ('tracking_id',        (SELECT uuid     FROM t)),
+  ('customer_name',      (SELECT str      FROM t)),
+  ('email',              (SELECT email    FROM t)),
+  ('phone',              (SELECT str      FROM t)),
+  ('date_of_birth',      (SELECT date     FROM t)),
+  ('last_login_time',    (SELECT time     FROM t)),
+  ('is_active',          (SELECT bool     FROM t)),
+  ('registered_at',      (SELECT datetime FROM t))
+) AS v(name, type_id);
+
+-- 3. Field constraints
+WITH ns AS (
+  SELECT id FROM namespaces
+  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+),
+f AS (
+  SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
+),
+sys_ns AS (
+  SELECT id FROM namespaces WHERE user_id IS NULL LIMIT 1
+),
+c AS (
+  SELECT fc.name, fc.id FROM field_constraints fc JOIN sys_ns ON fc.namespace_id = sys_ns.id
+)
+INSERT INTO applied_constraints (id, constraint_id, field_id, value)
+SELECT gen_random_uuid(),
+       (SELECT id FROM c WHERE c.name = v.cname),
+       (SELECT id FROM f WHERE f.name = v.fname),
+       v.val
+FROM (VALUES
+  ('name',               'min_length',  '1'),
+  ('name',               'max_length',  '150'),
+  ('sku',                'pattern',     '^[A-Z]{2}-\d{4}$'),
+  ('price',              'gt',          '0'),
+  ('sale_price',         'ge',          '0'),
+  ('weight',             'ge',          '0'),
+  ('weight',             'lt',          '1000'),
+  ('quantity',           'ge',          '0'),
+  ('min_order_quantity', 'ge',          '1'),
+  ('max_order_quantity', 'le',          '1000'),
+  ('discount_percent',   'ge',          '0'),
+  ('discount_percent',   'le',          '100'),
+  ('discount_percent',   'multiple_of', '5'),
+  ('discount_amount',    'ge',          '0'),
+  ('customer_name',      'min_length',  '1'),
+  ('customer_name',      'max_length',  '100'),
+  ('phone',              'min_length',  '7'),
+  ('phone',              'max_length',  '15')
+) AS v(fname, cname, val);
+
+-- 4. Field validators
+WITH ns AS (
+  SELECT id FROM namespaces
+  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+),
+f AS (
+  SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
+)
+INSERT INTO applied_field_validators (id, field_id, template_id, parameters, position)
+SELECT gen_random_uuid(),
+       (SELECT id FROM f WHERE f.name = v.fname),
+       (SELECT id FROM field_validator_templates WHERE name = v.tname),
+       v.params::jsonb,
+       v.pos
+FROM (VALUES
+  ('name',          'Trim',                 NULL,                                    0),
+  ('name',          'Normalize Whitespace', NULL,                                    1),
+  ('sku',           'Normalize Case',       '{"case": "upper"}',                     0),
+  ('price',         'Round Decimal',        '{"places": "2"}',                       0),
+  ('weight',        'Clamp to Range',       '{"min_value": "0", "max_value": "1000"}', 0),
+  ('customer_name', 'Trim',                 NULL,                                    0),
+  ('customer_name', 'Normalize Case',       '{"case": "title"}',                     1),
+  ('customer_name', 'Trim To Length',       '{"max_length": "100"}',                 2)
+) AS v(fname, tname, params, pos);
+
+-- 5. Objects
+WITH ns AS (
+  SELECT id FROM namespaces
+  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+)
+INSERT INTO objects (id, namespace_id, user_id, name, description)
+SELECT gen_random_uuid(), ns.id, '23a06d8c-61c0-4655-8e40-5c16ee98a372', v.name, v.descr
+FROM ns, (VALUES
+  ('Product',  'Shop product'),
+  ('Customer', 'Shop customer')
+) AS v(name, descr);
+
+-- 6. Fields on objects
+WITH ns AS (
+  SELECT id FROM namespaces
+  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+),
+f AS (
+  SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
+),
+o AS (
+  SELECT o.name, o.id FROM objects o JOIN ns ON o.namespace_id = ns.id
+)
+INSERT INTO fields_on_objects (id, object_id, field_id, optional, position)
+SELECT gen_random_uuid(),
+       (SELECT id FROM o WHERE o.name = v.obj),
+       (SELECT id FROM f WHERE f.name = v.fname),
+       v.opt,
+       v.pos
+FROM (VALUES
+  -- Product (16 fields)
+  ('Product', 'name',               false, 0),
+  ('Product', 'sku',                false, 1),
+  ('Product', 'price',              false, 2),
+  ('Product', 'sale_price',         true,  3),
+  ('Product', 'sale_end_date',      true,  4),
+  ('Product', 'weight',             false, 5),
+  ('Product', 'quantity',           false, 6),
+  ('Product', 'min_order_quantity', false, 7),
+  ('Product', 'max_order_quantity', true,  8),
+  ('Product', 'discount_percent',   true,  9),
+  ('Product', 'discount_amount',    true,  10),
+  ('Product', 'in_stock',           false, 11),
+  ('Product', 'product_url',        false, 12),
+  ('Product', 'release_date',       false, 13),
+  ('Product', 'created_at',         false, 14),
+  ('Product', 'tracking_id',        false, 15),
+  -- Customer (7 fields)
+  ('Customer', 'customer_name',     false, 0),
+  ('Customer', 'email',             true,  1),
+  ('Customer', 'phone',             true,  2),
+  ('Customer', 'date_of_birth',     false, 3),
+  ('Customer', 'last_login_time',   false, 4),
+  ('Customer', 'is_active',         false, 5),
+  ('Customer', 'registered_at',     false, 6)
+) AS v(obj, fname, opt, pos);
+
+-- 7. Model validators
+WITH ns AS (
+  SELECT id FROM namespaces
+  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+),
+o AS (
+  SELECT o.name, o.id FROM objects o JOIN ns ON o.namespace_id = ns.id
+)
+INSERT INTO applied_model_validators (id, object_id, template_id, parameters, field_mappings, position)
+SELECT gen_random_uuid(),
+       (SELECT id FROM o WHERE o.name = v.obj),
+       (SELECT id FROM model_validator_templates WHERE name = v.tname),
+       v.params::jsonb,
+       v.mappings::jsonb,
+       v.pos
+FROM (VALUES
+  ('Product', 'Field Comparison',
+   '{"operator": "<"}',
+   '{"field_a": "min_order_quantity", "field_b": "max_order_quantity"}', 0),
+  ('Product', 'Mutual Exclusivity',
+   NULL,
+   '{"field_a": "discount_percent", "field_b": "discount_amount"}', 1),
+  ('Product', 'All Or None',
+   NULL,
+   '{"field_a": "sale_price", "field_b": "sale_end_date"}', 2),
+  ('Product', 'Conditional Required',
+   NULL,
+   '{"trigger_field": "discount_percent", "dependent_field": "sale_price"}', 3),
+  ('Customer', 'At Least One Required',
+   NULL,
+   '{"field_a": "email", "field_b": "phone"}', 0)
+) AS v(obj, tname, params, mappings, pos);
+
+-- 8. API
+WITH ns AS (
+  SELECT id FROM namespaces
+  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+)
+INSERT INTO apis (id, namespace_id, user_id, title, version, description, base_url, server_url, created_at, updated_at)
+SELECT gen_random_uuid(), ns.id, '23a06d8c-61c0-4655-8e40-5c16ee98a372',
+       'ShopApi', '1.0.0', 'Complete online shop API', '', '', now(), now()
+FROM ns;
+
+-- 9. Endpoints (7)
+WITH ns AS (
+  SELECT id FROM namespaces
+  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+),
+a AS (
+  SELECT id FROM apis
+  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND title = 'ShopApi'
+),
+f AS (
+  SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
+),
+o AS (
+  SELECT o.name, o.id FROM objects o JOIN ns ON o.namespace_id = ns.id
+),
+product_id  AS (SELECT id FROM o WHERE name = 'Product'),
+customer_id AS (SELECT id FROM o WHERE name = 'Customer'),
+tracking_id AS (SELECT id FROM f WHERE name = 'tracking_id'),
+email_id    AS (SELECT id FROM f WHERE name = 'email')
+INSERT INTO api_endpoints (id, api_id, method, path, description, tag_name, path_params,
+                           request_body_object_id, response_body_object_id, use_envelope, response_shape)
+VALUES
+  -- GET /products (list)
+  (gen_random_uuid(), (SELECT id FROM a), 'GET', '/products',
+   'List all products', 'Products', '[]',
+   NULL, (SELECT id FROM product_id), false, 'list'),
+
+  -- GET /products/{tracking_id}
+  (gen_random_uuid(), (SELECT id FROM a), 'GET', '/products/{tracking_id}',
+   'Get product by tracking ID', 'Products',
+   (SELECT json_build_array(json_build_object('name', 'tracking_id', 'fieldId', id::text))::jsonb FROM tracking_id),
+   NULL, (SELECT id FROM product_id), false, 'object'),
+
+  -- POST /products
+  (gen_random_uuid(), (SELECT id FROM a), 'POST', '/products',
+   'Create a product', 'Products', '[]',
+   (SELECT id FROM product_id), (SELECT id FROM product_id), false, 'object'),
+
+  -- PUT /items/{tracking_id}
+  (gen_random_uuid(), (SELECT id FROM a), 'PUT', '/items/{tracking_id}',
+   'Update a product', 'Products',
+   (SELECT json_build_array(json_build_object('name', 'tracking_id', 'fieldId', id::text))::jsonb FROM tracking_id),
+   (SELECT id FROM product_id), (SELECT id FROM product_id), false, 'object'),
+
+  -- DELETE /products/{tracking_id}
+  (gen_random_uuid(), (SELECT id FROM a), 'DELETE', '/products/{tracking_id}',
+   'Delete a product', 'Products',
+   (SELECT json_build_array(json_build_object('name', 'tracking_id', 'fieldId', id::text))::jsonb FROM tracking_id),
+   NULL, NULL, false, 'object'),
+
+  -- GET /customers (list)
+  (gen_random_uuid(), (SELECT id FROM a), 'GET', '/customers',
+   'List all customers', 'Customers', '[]',
+   NULL, (SELECT id FROM customer_id), false, 'list'),
+
+  -- PATCH /customers/{email}
+  (gen_random_uuid(), (SELECT id FROM a), 'PATCH', '/customers/{email}',
+   'Update a customer by email', 'Customers',
+   (SELECT json_build_array(json_build_object('name', 'email', 'fieldId', id::text))::jsonb FROM email_id),
+   (SELECT id FROM customer_id), (SELECT id FROM customer_id), false, 'object');
+
+COMMIT;
