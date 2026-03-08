@@ -1,8 +1,11 @@
 from mako.template import Template
 
+from typing import Any
+
 from api_craft.models.template import (
     TemplateAPI,
     TemplateModel,
+    TemplateORMModel,
     TemplatePathParam,
     TemplateQueryParam,
     TemplateView,
@@ -82,3 +85,35 @@ def render_dockerfile(api: TemplateAPI, dockerfile_template: Template) -> str:
 def render_readme(api: TemplateAPI, readme_template: Template) -> str:
     rendered_readme = readme_template.render(api=api)
     return rendered_readme
+
+
+def render_orm_models(
+    orm_models: list[TemplateORMModel],
+    imports: list[str],
+    template: Template,
+) -> str:
+    return template.render(orm_models=orm_models, imports=imports)
+
+
+def render_database(api: TemplateAPI, template: Template) -> str:
+    return template.render(api=api)
+
+
+def render_seed(
+    orm_models: list[TemplateORMModel],
+    seed_data: dict[str, dict[str, Any]],
+    template: Template,
+) -> str:
+    return template.render(orm_models=orm_models, seed_data=seed_data)
+
+
+def render_docker_compose(api: TemplateAPI, template: Template) -> str:
+    return template.render(api=api)
+
+
+def render_alembic_ini(api: TemplateAPI, template: Template) -> str:
+    return template.render(api=api)
+
+
+def render_alembic_env(api: TemplateAPI, template: Template) -> str:
+    return template.render(api=api)

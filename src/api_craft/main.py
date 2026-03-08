@@ -17,8 +17,10 @@ from mako.lookup import TemplateLookup
 from mako.template import Template
 
 from api_craft.extractors import (
+    collect_database_dependencies,
     collect_model_extra_dependencies,
     collect_model_imports,
+    collect_orm_imports,
     collect_path_params_imports,
     collect_query_params_imports,
     extract_path_parameters,
@@ -27,14 +29,20 @@ from api_craft.extractors import (
 from api_craft.models.input import InputAPI
 from api_craft.models.template import TemplateAPI
 from api_craft.renderers import (
+    render_alembic_env,
+    render_alembic_ini,
+    render_database,
+    render_docker_compose,
     render_dockerfile,
     render_main,
     render_makefile,
     render_models,
+    render_orm_models,
     render_path_params,
     render_pyproject,
     render_query_params,
     render_readme,
+    render_seed,
     render_views,
 )
 from api_craft.transformers import transform_api
@@ -133,6 +141,12 @@ class APIGenerator:
                 "makefile": "makefile.mako",
                 "dockerfile": "dockerfile.mako",
                 "readme": "readme.mako",
+                "orm_models": "orm_models.mako",
+                "database": "database.mako",
+                "seed": "seed.mako",
+                "docker_compose": "docker_compose.mako",
+                "alembic_ini": "alembic_ini.mako",
+                "alembic_env": "alembic_env.mako",
             }
 
             self.templates = {
@@ -193,11 +207,27 @@ class APIGenerator:
             model_imports = collect_model_imports(components["models"])
             extra_deps = collect_model_extra_dependencies(components["models"])
 
+            database_config = components.get("database_config")
+            orm_models = components.get("orm_models", [])
+
+            # Build orm_model_map: response model name -> ORM class name
+            orm_model_map = None
+            if database_config and orm_models:
+                orm_model_map = {m.source_model: m.class_name for m in orm_models}
+                # Merge database dependencies into extra_deps
+                db_deps = collect_database_dependencies()
+                extra_deps = sorted(set(extra_deps + db_deps))
+
             rendered_components = {
                 "models.py": render_models(
                     components["models"], model_imports, self.templates["models"]
                 ),
-                "views.py": render_views(components["views"], self.templates["views"]),
+                "views.py": render_views(
+                    components["views"],
+                    self.templates["views"],
+                    database_config=database_config,
+                    orm_model_map=orm_model_map,
+                ),
                 "main.py": render_main(template_api, self.templates["main"]),
                 "pyproject.toml": render_pyproject(
                     template_api, self.templates["pyproject"], extra_deps
@@ -225,6 +255,28 @@ class APIGenerator:
                     self.templates["query"],
                 )
 
+            # Database files (only when database is enabled)
+            if database_config and orm_models:
+                orm_imports = collect_orm_imports(orm_models)
+                rendered_components["orm_models.py"] = render_orm_models(
+                    orm_models, orm_imports, self.templates["orm_models"]
+                )
+                rendered_components["database.py"] = render_database(
+                    template_api, self.templates["database"]
+                )
+                rendered_components["seed.py"] = render_seed(
+                    orm_models, {}, self.templates["seed"]
+                )
+                rendered_components["docker-compose.yml"] = render_docker_compose(
+                    template_api, self.templates["docker_compose"]
+                )
+                rendered_components["alembic.ini"] = render_alembic_ini(
+                    template_api, self.templates["alembic_ini"]
+                )
+                rendered_components["alembic_env.py"] = render_alembic_env(
+                    template_api, self.templates["alembic_env"]
+                )
+
             return rendered_components
         except Exception as e:
             logger.error(f"Failed to render components: {str(e)}")
@@ -248,14 +300,28 @@ class APIGenerator:
             # Create directories
             create_dir(src_directory)
 
+            # Files that go in the project root (not src/)
+            root_files = {
+                "pyproject.toml",
+                "Makefile",
+                "Dockerfile",
+                "README.md",
+                "docker-compose.yml",
+                "alembic.ini",
+            }
+
+            # Create migrations directory if alembic_env.py is present
+            if "alembic_env.py" in rendered_components:
+                migrations_dir = os.path.join(project_directory, "migrations")
+                versions_dir = os.path.join(migrations_dir, "versions")
+                create_dir(versions_dir)
+
             # Write source files
             for filename, content in rendered_components.items():
-                if filename in [
-                    "pyproject.toml",
-                    "Makefile",
-                    "Dockerfile",
-                    "README.md",
-                ]:
+                if filename == "alembic_env.py":
+                    # alembic_env.py goes to migrations/env.py
+                    file_path = os.path.join(project_directory, "migrations", "env.py")
+                elif filename in root_files:
                     file_path = os.path.join(project_directory, filename)
                 else:
                     file_path = os.path.join(src_directory, filename)
