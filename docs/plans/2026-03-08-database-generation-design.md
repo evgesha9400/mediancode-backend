@@ -25,6 +25,18 @@ class InputField(BaseModel):
     on_delete: OnDeleteAction = "restrict"     # cascade | restrict | set_null
 ```
 
+### `InputEndpoint` — new field
+
+```python
+class InputEndpoint(BaseModel):
+    # ... existing fields ...
+    entity: str | None = None    # explicit ORM entity name this endpoint operates on
+```
+
+When `entity` is set, the view template generates DB queries against that entity's ORM model.
+When `entity` is `None`, the endpoint retains hardcoded placeholder behavior (or is a non-DB endpoint).
+This avoids fragile inference from response models — wrapper models like `ItemList` don't break the mapping.
+
 ### `InputApiConfig` — new database section
 
 ```python
@@ -73,6 +85,21 @@ objects:
     fields:
       - name: status
         type: str
+
+endpoints:
+  - name: GetOrders
+    path: /orders
+    method: GET
+    response: Order
+    response_shape: list
+    entity: Order              # ← explicit: queries OrderRecord table
+
+  - name: CreateOrder
+    path: /orders
+    method: POST
+    response: Order
+    request: CreateOrderRequest
+    entity: Order              # ← explicit: inserts into OrderRecord table
 ```
 
 ## Template Model Changes
@@ -145,16 +172,16 @@ class TemplateAPI(BaseModel):
 | `docker-compose.yml` | PostgreSQL 18 + API service |
 | `alembic.ini` | Alembic config, reads `DATABASE_URL` env var |
 | `migrations/env.py` | Alembic env, imports `orm_models.Base.metadata` |
-| `migrations/versions/0001_initial.py` | Initial migration matching ORM models |
+| `migrations/script.py.mako` | Alembic's migration template for new revisions |
 
 ### Modified files
 
 | File | Change |
 |---|---|
-| `src/views.py` | DB queries via `Depends(get_session)` instead of hardcoded returns |
-| `src/main.py` | Lifespan context manager with DB init + seed |
+| `src/views.py` | DB queries via `Depends(get_session)` for endpoints with `entity` set |
+| `src/main.py` | Lifespan context manager with engine disposal on shutdown |
 | `pyproject.toml` | Adds sqlalchemy[asyncio], asyncpg, alembic |
-| `Makefile` | Adds db-up, db-upgrade, db-seed, db-reset, db-downgrade |
+| `Makefile` | Adds db-up, db-init, db-upgrade, db-seed, db-reset, db-downgrade |
 | `Dockerfile` | Copies migrations/, runs alembic upgrade head before uvicorn |
 | `README.md` | Database setup documentation section |
 
@@ -254,20 +281,18 @@ async def delete_order(order_id: path.OrderId, session: AsyncSession = Depends(g
 
 ### `src/main.py` (database-enabled)
 
+Alembic is the sole source of truth for schema management. The lifespan only handles
+engine disposal on shutdown — no `create_all`, no implicit seeding. Schema is applied
+via `make db-upgrade` (runs `alembic upgrade head`), seed data via `make db-seed`.
+
 ```python
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from database import engine, async_session
-from orm_models import Base
-from seed import seed_database
+from database import engine
 from views import api_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    async with async_session() as session:
-        await seed_database(session)
     yield
     await engine.dispose()
 
@@ -325,6 +350,9 @@ db-up:
 
 db-down:
 	@docker compose down
+
+db-init: db-up
+	@PYTHONPATH=src poetry run alembic revision --autogenerate -m "initial"
 
 db-upgrade: db-up
 	@PYTHONPATH=src poetry run alembic upgrade head
@@ -392,19 +420,47 @@ Six new render functions:
 - Create `migrations/versions/` directory
 - Write `alembic.ini` to project root
 - Write `env.py` to `migrations/`
-- Write initial migration to `migrations/versions/`
+- Write `script.py.mako` to `migrations/` (Alembic's revision template)
 - Write `docker-compose.yml` to project root
+
+Note: No initial migration is pre-generated. The user runs `make db-init` which
+executes `alembic revision --autogenerate -m "initial"` against the ORM models.
+This avoids rendering SQL DDL in the generator and leverages Alembic's autogenerate.
 
 ### Validation (`validators.py`)
 
 New `validate_foreign_keys()`:
-- Verifies FK target entity exists
-- Verifies FK target entity has a PK field
+- Verifies FK target entity exists and has a PK field
+- Called from `InputAPI._validate_references()`
+
+New `validate_primary_keys()`:
+- PK field must not be `optional: true`
+- At most one PK per model (composite keys not supported in v1)
+- Called from `InputAPI._validate_references()`
+
+New `validate_fk_constraints()`:
+- `on_delete: set_null` requires the FK field to have `optional: true`
+- Called from `InputAPI._validate_references()`
+
+New `validate_endpoint_entities()` (when database enabled):
+- `entity` must reference a model that has a PK field
 - Called from `InputAPI._validate_references()`
 
 ## View-to-Entity Mapping
 
-Endpoint's response model is looked up: if the model has a PK field, it has a corresponding ORM record. The HTTP method determines the query pattern:
+Each endpoint explicitly declares which entity it operates on via the `entity` field:
+
+```yaml
+- name: GetItems
+  path: /items
+  method: GET
+  response: Item
+  response_shape: list
+  entity: Item         # ← views template queries ItemRecord
+```
+
+The `entity` field is resolved to the corresponding `{Entity}Record` ORM model.
+The HTTP method determines the query pattern:
 
 | Method | Query Pattern |
 |---|---|
@@ -414,7 +470,8 @@ Endpoint's response model is looked up: if the model has a PK field, it has a co
 | PUT | select by pk, update from `request.model_dump(exclude_unset=True)`, commit |
 | DELETE | select by pk, delete, commit |
 
-Endpoints whose response model has no PK retain hardcoded placeholder behavior.
+Endpoints without `entity` set retain hardcoded placeholder behavior. This is explicit —
+wrapper models like `ItemList` used as response models don't cause incorrect entity inference.
 
 ## Future Work (not in scope)
 

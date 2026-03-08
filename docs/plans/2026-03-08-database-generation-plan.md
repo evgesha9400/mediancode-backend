@@ -1,7 +1,5 @@
 # Database Generation Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Extend api_craft to generate database-backed FastAPI projects with SQLAlchemy ORM, Alembic migrations, Docker Compose, and DB-backed views.
 
 **Architecture:** When `config.database.enabled: true`, the existing Transform→Extract→Render→Write pipeline is extended with ORM model transformation, new templates for database files, and modified view/main templates that use async SQLAlchemy sessions instead of hardcoded placeholders.
@@ -12,10 +10,11 @@
 
 ---
 
-### Task 1: Add `pk`, `fk`, `on_delete` to InputField and database config
+### Task 1: Add `pk`, `fk`, `on_delete` to InputField, `entity` to InputEndpoint, and database config
 
 **Files:**
 - Modify: `src/api_craft/models/input.py:52-70` (InputField)
+- Modify: `src/api_craft/models/input.py:116-152` (InputEndpoint)
 - Modify: `src/api_craft/models/input.py:166-178` (InputApiConfig)
 - Modify: `src/api/schemas/literals.py:10-16` (add OnDeleteAction literal)
 - Test: `tests/test_api_craft/test_input_models.py` (create new)
@@ -24,7 +23,7 @@
 
 ```python
 # tests/test_api_craft/test_input_models.py
-"""Tests for input model changes: pk, fk, on_delete, database config."""
+"""Tests for input model changes: pk, fk, on_delete, entity, database config."""
 
 import pytest
 from api_craft.models.input import InputField, InputModel, InputApiConfig, InputAPI, InputEndpoint
@@ -64,6 +63,16 @@ class TestForeignKeyField:
     def test_field_on_delete_invalid_rejected(self):
         with pytest.raises(Exception):
             InputField(name="order_id", type="int", fk="Order", on_delete="delete")
+
+
+class TestEndpointEntity:
+    def test_entity_defaults_none(self):
+        ep = InputEndpoint(name="GetItems", path="/items", method="GET")
+        assert ep.entity is None
+
+    def test_entity_set(self):
+        ep = InputEndpoint(name="GetItems", path="/items", method="GET", entity="Item")
+        assert ep.entity == "Item"
 
 
 class TestDatabaseConfig:
@@ -110,6 +119,13 @@ class InputField(BaseModel):
     on_delete: OnDeleteAction = "restrict"
 ```
 
+Add `entity` to `InputEndpoint` (after line 140):
+```python
+class InputEndpoint(BaseModel):
+    # ... existing fields ...
+    entity: str | None = None    # explicit ORM entity this endpoint operates on
+```
+
 Add new config class before `InputApiConfig`:
 ```python
 class InputDatabaseConfig(BaseModel):
@@ -147,7 +163,7 @@ git commit -m "feat(models): add pk, fk, on_delete to InputField and database co
 
 ---
 
-### Task 2: Add FK validation to validators.py
+### Task 2: Add PK/FK/entity validation to validators.py
 
 **Files:**
 - Modify: `src/api_craft/models/validators.py`
@@ -159,6 +175,39 @@ git commit -m "feat(models): add pk, fk, on_delete to InputField and database co
 Append to `tests/test_api_craft/test_input_models.py`:
 
 ```python
+class TestPrimaryKeyValidation:
+    def test_optional_pk_rejected(self):
+        """PK field must not be optional."""
+        with pytest.raises(ValueError, match="cannot be optional"):
+            InputAPI(
+                name="PkTest",
+                endpoints=[InputEndpoint(name="GetItems", path="/items", method="GET", response="Item")],
+                objects=[
+                    InputModel(
+                        name="Item",
+                        fields=[InputField(name="id", type="int", pk=True, optional=True)],
+                    ),
+                ],
+            )
+
+    def test_multiple_pks_rejected(self):
+        """Only one PK field per model is allowed."""
+        with pytest.raises(ValueError, match="multiple primary key"):
+            InputAPI(
+                name="PkTest",
+                endpoints=[InputEndpoint(name="GetItems", path="/items", method="GET", response="Item")],
+                objects=[
+                    InputModel(
+                        name="Item",
+                        fields=[
+                            InputField(name="id", type="int", pk=True),
+                            InputField(name="uuid", type="uuid", pk=True),
+                        ],
+                    ),
+                ],
+            )
+
+
 class TestForeignKeyValidation:
     def test_fk_to_valid_entity_accepted(self):
         """FK referencing an entity with a PK field is valid."""
@@ -224,23 +273,102 @@ class TestForeignKeyValidation:
                     ),
                 ],
             )
+
+    def test_set_null_requires_optional_fk(self):
+        """on_delete=set_null requires the FK field to be optional."""
+        with pytest.raises(ValueError, match="must be optional"):
+            InputAPI(
+                name="FkTest",
+                endpoints=[
+                    InputEndpoint(name="GetOrders", path="/orders", method="GET", response="Order"),
+                ],
+                objects=[
+                    InputModel(
+                        name="Order",
+                        fields=[InputField(name="id", type="int", pk=True)],
+                    ),
+                    InputModel(
+                        name="OrderItem",
+                        fields=[
+                            InputField(name="id", type="int", pk=True),
+                            InputField(name="order_id", type="int", fk="Order", on_delete="set_null"),
+                        ],
+                    ),
+                ],
+            )
+
+
+class TestEndpointEntityValidation:
+    def test_entity_referencing_valid_pk_model_accepted(self):
+        api = InputAPI(
+            name="EntityTest",
+            endpoints=[
+                InputEndpoint(name="GetItems", path="/items", method="GET", response="Item", entity="Item"),
+            ],
+            objects=[
+                InputModel(name="Item", fields=[InputField(name="id", type="int", pk=True)]),
+            ],
+        )
+        assert api.endpoints[0].entity == "Item"
+
+    def test_entity_referencing_non_pk_model_rejected(self):
+        with pytest.raises(ValueError, match="not a persisted entity"):
+            InputAPI(
+                name="EntityTest",
+                endpoints=[
+                    InputEndpoint(name="GetItems", path="/items", method="GET", response="ItemList", entity="ItemList"),
+                ],
+                objects=[
+                    InputModel(name="ItemList", fields=[InputField(name="total", type="int")]),
+                ],
+            )
+
+    def test_entity_referencing_nonexistent_model_rejected(self):
+        with pytest.raises(ValueError, match="not a persisted entity"):
+            InputAPI(
+                name="EntityTest",
+                endpoints=[
+                    InputEndpoint(name="GetItems", path="/items", method="GET", entity="Nonexistent"),
+                ],
+                objects=[],
+            )
 ```
 
 **Step 2: Run test to verify it fails**
 
-Run: `poetry run pytest tests/test_api_craft/test_input_models.py::TestForeignKeyValidation -v`
-Expected: FAIL — FK validation doesn't exist yet
+Run: `poetry run pytest tests/test_api_craft/test_input_models.py::TestForeignKeyValidation tests/test_api_craft/test_input_models.py::TestPrimaryKeyValidation tests/test_api_craft/test_input_models.py::TestEndpointEntityValidation -v`
+Expected: FAIL — validation functions don't exist yet
 
 **Step 3: Write minimal implementation**
 
 Add to `src/api_craft/models/validators.py`:
 
 ```python
-def validate_foreign_keys(objects: Iterable["InputModel"]) -> None:
-    """Verify FK targets exist and have a PK field.
+def validate_primary_keys(objects: Iterable["InputModel"]) -> None:
+    """Validate PK constraints: not optional, at most one per model.
 
     :param objects: Collection of declared objects.
-    :raises ValueError: If an FK target is not a persisted entity.
+    :raises ValueError: If PK constraints are violated.
+    """
+    for obj in objects:
+        pk_fields = [f for f in obj.fields if f.pk]
+        if len(pk_fields) > 1:
+            raise ValueError(
+                f"Object '{obj.name}' has multiple primary key fields. "
+                f"Composite keys are not supported."
+            )
+        for field in pk_fields:
+            if field.optional:
+                raise ValueError(
+                    f"Field '{obj.name}.{field.name}' is a primary key and cannot be optional"
+                )
+
+
+def validate_foreign_keys(objects: Iterable["InputModel"]) -> None:
+    """Verify FK targets exist, have a PK, and set_null constraints.
+
+    :param objects: Collection of declared objects.
+    :raises ValueError: If FK constraints are violated.
     """
     entity_map = {
         obj.name: obj
@@ -249,26 +377,60 @@ def validate_foreign_keys(objects: Iterable["InputModel"]) -> None:
     }
     for obj in objects:
         for field in obj.fields:
-            if field.fk and field.fk not in entity_map:
+            if not field.fk:
+                continue
+            if field.fk not in entity_map:
                 raise ValueError(
                     f"Field '{obj.name}.{field.name}' references "
                     f"'{field.fk}' which is not a persisted entity"
                 )
+            if field.on_delete == "set_null" and not field.optional:
+                raise ValueError(
+                    f"Field '{obj.name}.{field.name}' uses on_delete=set_null "
+                    f"and must be optional (nullable) to allow NULL values"
+                )
+
+
+def validate_endpoint_entities(
+    endpoints: Iterable["InputEndpoint"],
+    objects: Iterable["InputModel"],
+) -> None:
+    """Verify endpoint entity references point to persisted models.
+
+    :param endpoints: Collection of endpoint definitions.
+    :param objects: Collection of declared objects.
+    :raises ValueError: If entity references a non-persisted model.
+    """
+    entity_names = {
+        obj.name
+        for obj in objects
+        if any(f.pk for f in obj.fields)
+    }
+    for endpoint in endpoints:
+        if endpoint.entity and endpoint.entity not in entity_names:
+            raise ValueError(
+                f"Endpoint '{endpoint.name}' references entity "
+                f"'{endpoint.entity}' which is not a persisted entity"
+            )
 ```
 
-Add import and call in `src/api_craft/models/input.py` `_validate_references`:
+Add imports and calls in `src/api_craft/models/input.py` `_validate_references`:
 
 ```python
 from api_craft.models.validators import (
+    validate_endpoint_entities,
     validate_endpoint_references,
     validate_foreign_keys,
     validate_model_field_types,
     validate_path_parameters,
+    validate_primary_keys,
     validate_unique_object_names,
 )
 
 # In InputAPI._validate_references, add after validate_endpoint_references:
+validate_primary_keys(self.objects)
 validate_foreign_keys(self.objects)
+validate_endpoint_entities(self.endpoints, self.objects)
 ```
 
 **Step 4: Run test to verify it passes**
@@ -401,7 +563,24 @@ class TemplateAPI(BaseModel):
     database_config: TemplateDatabaseConfig | None = None
 ```
 
-And add `pk: bool = False` to `TemplateField`.
+Add `entity: str | None = None` to `TemplateView` (after `response_shape`):
+
+```python
+class TemplateView(BaseModel):
+    # ... existing fields ...
+    entity: str | None = None    # ORM entity this endpoint operates on
+```
+
+Add `pk: bool = False` to `TemplateField`.
+
+In `src/api_craft/transformers.py`, pass `entity` through in `transform_endpoint()`:
+
+```python
+return TemplateView(
+    # ... existing fields ...
+    entity=input_endpoint.entity,
+)
+```
 
 **Step 4: Run test to verify it passes**
 
@@ -1284,17 +1463,16 @@ datefmt = %H:%M:%S
 <%doc>
 - Template Parameters:
 - api: TemplateAPI
+
+Note: This env.py relies on PYTHONPATH=src being set by the caller.
+All Makefile targets that run Alembic already set this.
 </%doc>\
 import os
-import sys
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
-
-# Add src to path for orm_models import
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from orm_models import Base
 
@@ -1378,13 +1556,16 @@ The view template should check `database_config` at the top and branch according
 
 When database enabled, add:
 - Import `asynccontextmanager`
-- Import `database.engine`, `database.async_session`, `orm_models.Base`, `seed.seed_database`
-- Add `lifespan` context manager that creates tables and seeds
+- Import `database.engine`
+- Add `lifespan` context manager that disposes engine on shutdown (no `create_all`, no seeding)
 - Pass `lifespan=lifespan` to `FastAPI()`
+
+Alembic is the sole schema management tool. Schema creation happens via `make db-upgrade`,
+seed data via `make db-seed`. The app does not write to the DB on startup.
 
 **Step 3: Modify `makefile.mako`**
 
-When database enabled, add targets: `db-up`, `db-down`, `db-upgrade`, `db-downgrade`, `db-seed`, `db-reset`, `run-stack`. Modify `run-local` to depend on `db-up`.
+When database enabled, add targets: `db-up`, `db-down`, `db-init`, `db-upgrade`, `db-downgrade`, `db-seed`, `db-reset`, `run-stack`. Modify `run-local` to depend on `db-up`.
 
 **Step 4: Modify `dockerfile.mako`**
 
@@ -1592,6 +1773,7 @@ endpoints:
     method: GET
     tag: Items
     response: Item
+    entity: Item
     path_params:
       - name: item_id
         type: int
@@ -1602,6 +1784,7 @@ endpoints:
     tag: Items
     response: Item
     response_shape: list
+    entity: Item
 
   - name: CreateItem
     path: /items
@@ -1609,6 +1792,7 @@ endpoints:
     tag: Items
     response: Item
     request: CreateItemRequest
+    entity: Item
 
   - name: UpdateItem
     path: /items/{item_id}
@@ -1616,6 +1800,7 @@ endpoints:
     tag: Items
     response: Item
     request: UpdateItemRequest
+    entity: Item
     path_params:
       - name: item_id
         type: int
@@ -1624,6 +1809,7 @@ endpoints:
     path: /items/{item_id}
     method: DELETE
     tag: Items
+    entity: Item
     path_params:
       - name: item_id
         type: int
@@ -1794,15 +1980,22 @@ class TestMainWithDatabase:
         content = (db_project / "src" / "main.py").read_text()
         assert "from database import" in content
 
-    def test_main_imports_seed(self, db_project: Path):
+    def test_main_no_create_all(self, db_project: Path):
+        """Alembic is sole schema manager — no create_all in app startup."""
         content = (db_project / "src" / "main.py").read_text()
-        assert "seed_database" in content
+        assert "create_all" not in content
+
+    def test_main_no_seed_on_startup(self, db_project: Path):
+        """Seed runs via make db-seed, not on app startup."""
+        content = (db_project / "src" / "main.py").read_text()
+        assert "seed_database" not in content
 
 
 class TestMakefileWithDatabase:
     def test_makefile_has_db_targets(self, db_project: Path):
         content = (db_project / "Makefile").read_text()
         assert "db-up:" in content
+        assert "db-init:" in content
         assert "db-upgrade:" in content
         assert "db-seed:" in content
         assert "db-reset:" in content
@@ -1943,12 +2136,14 @@ endpoints:
     method: GET
     response: Order
     response_shape: list
+    entity: Order
 
   - name: CreateOrder
     path: /orders
     method: POST
     response: Order
     request: CreateOrderRequest
+    entity: Order
 
 config:
   database:
@@ -2073,4 +2268,28 @@ Inspect `tests/output/` to verify generated database files look correct.
 poetry run black src/ tests/
 git add -A
 git commit -m "chore(generation): final cleanup for database generation feature"
+```
+
+---
+
+## Execution Prompt
+
+Paste this into a new Claude Code session to execute:
+
+```
+Execute the implementation plan at docs/plans/2026-03-08-database-generation-plan.md
+
+Use the superpowers:executing-plans skill. Work through all tasks in order, TDD-style (tests first, then implementation, then verify). Commit after each task.
+
+Key context:
+- Python 3.13+, Poetry for package management
+- Virtual env: managed by Poetry (poetry install to set up)
+- Run tests: make test (or poetry run pytest tests/ -v)
+- Format code: poetry run black src/ tests/
+- Mako templates in src/api_craft/templates/
+- Existing tests pass — do not break them
+- The plan has complete code for every file — follow it closely
+- If a test fails, debug and fix before moving to the next task
+- After every code change, run poetry run black src/ tests/
+- Follow Conventional Commits for commit messages
 ```
