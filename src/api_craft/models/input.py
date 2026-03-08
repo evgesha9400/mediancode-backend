@@ -2,7 +2,12 @@ from typing import Any, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from api.schemas.literals import HttpMethod, ResponseShape, ValidatorMode
+from api.schemas.literals import (
+    HttpMethod,
+    OnDeleteAction,
+    ResponseShape,
+    ValidatorMode,
+)
 from api_craft.models.types import PascalCaseName, SnakeCaseName
 from api_craft.models.validators import (
     validate_endpoint_references,
@@ -68,6 +73,9 @@ class InputField(BaseModel):
     default_value: str | None = None
     validators: list[InputValidator] = Field(default_factory=list)
     field_validators: list[InputResolvedFieldValidator] = Field(default_factory=list)
+    pk: bool = False
+    fk: str | None = None
+    on_delete: OnDeleteAction = "restrict"
 
 
 class InputModel(BaseModel):
@@ -163,6 +171,17 @@ class InputTag(BaseModel):
     description: str | None = None
 
 
+class InputDatabaseConfig(BaseModel):
+    """Database configuration for the generated API.
+
+    :ivar enabled: Whether to generate database support.
+    :ivar seed_data: Whether to generate seed data helpers.
+    """
+
+    enabled: bool = False
+    seed_data: bool = True
+
+
 class InputApiConfig(BaseModel):
     """Configuration flags for the generated API.
 
@@ -170,12 +189,14 @@ class InputApiConfig(BaseModel):
     :ivar response_placeholders: Toggle for generating placeholder response bodies.
     :ivar format_code: Toggle for formatting generated code with Black.
     :ivar generate_swagger: Toggle for auto-generating swagger.yaml from the API.
+    :ivar database: Database configuration for the generated API.
     """
 
     healthcheck: str | None = None
     response_placeholders: bool = True
     format_code: bool = True
     generate_swagger: bool = True
+    database: InputDatabaseConfig = InputDatabaseConfig()
 
 
 class InputAPI(BaseModel):

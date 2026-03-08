@@ -14,6 +14,7 @@ HttpMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
 ResponseShape = Literal["object", "list"]
 Container = Literal["List"]
 ValidatorMode = Literal["before", "after"]
+OnDeleteAction = Literal["cascade", "restrict", "set_null"]
 
 
 def check_constraint_sql(column: str, literal_type: type) -> str:
