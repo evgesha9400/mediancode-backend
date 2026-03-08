@@ -214,3 +214,62 @@ class TestForeignKeyValidation:
                     ),
                 ],
             )
+
+
+from api_craft.models.template import (
+    TemplateORMField,
+    TemplateORMModel,
+    TemplateDatabaseConfig,
+)
+
+
+class TestTemplateORMModels:
+    def test_orm_field_creation(self):
+        field = TemplateORMField(
+            name="id",
+            python_type="int",
+            column_type="Integer",
+            primary_key=True,
+            autoincrement=True,
+        )
+        assert field.primary_key is True
+        assert field.nullable is False
+        assert field.foreign_key is None
+
+    def test_orm_field_with_fk(self):
+        field = TemplateORMField(
+            name="order_id",
+            python_type="int",
+            column_type="Integer",
+            foreign_key="orders.id",
+            on_delete="CASCADE",
+        )
+        assert field.foreign_key == "orders.id"
+        assert field.on_delete == "CASCADE"
+
+    def test_orm_model_creation(self):
+        model = TemplateORMModel(
+            class_name="ItemRecord",
+            table_name="items",
+            source_model="Item",
+            fields=[
+                TemplateORMField(
+                    name="id",
+                    python_type="int",
+                    column_type="Integer",
+                    primary_key=True,
+                ),
+                TemplateORMField(name="name", python_type="str", column_type="Text"),
+            ],
+        )
+        assert model.class_name == "ItemRecord"
+        assert model.table_name == "items"
+        assert len(model.fields) == 2
+
+    def test_database_config(self):
+        config = TemplateDatabaseConfig(
+            enabled=True,
+            seed_data=True,
+            default_url="postgresql+asyncpg://postgres:postgres@localhost:5432/test",
+        )
+        assert config.enabled is True

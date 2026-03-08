@@ -40,6 +40,7 @@ class TemplateField(BaseModel):
     default_value: str | None = None
     validators: list[TemplateValidator] = []
     field_validators: list[TemplateResolvedFieldValidator] = []
+    pk: bool = False
 
 
 class TemplateModel(BaseModel):
@@ -106,6 +107,36 @@ class TemplateAPIConfig(BaseModel):
     generate_swagger: bool = True
 
 
+class TemplateORMField(BaseModel):
+    """ORM field definition for template rendering."""
+
+    name: str
+    python_type: str
+    column_type: str
+    primary_key: bool = False
+    nullable: bool = False
+    autoincrement: bool = False
+    foreign_key: str | None = None
+    on_delete: str | None = None
+
+
+class TemplateORMModel(BaseModel):
+    """ORM model (table) definition for template rendering."""
+
+    class_name: str
+    table_name: str
+    source_model: str
+    fields: list[TemplateORMField]
+
+
+class TemplateDatabaseConfig(BaseModel):
+    """Database configuration for template rendering."""
+
+    enabled: bool
+    seed_data: bool
+    default_url: str
+
+
 class TemplateAPI(BaseModel):
     """Root API definition for template rendering."""
 
@@ -120,3 +151,5 @@ class TemplateAPI(BaseModel):
     views: list[TemplateView]
     tags: list[TemplateTag] = []
     config: TemplateAPIConfig
+    orm_models: list[TemplateORMModel] = []
+    database_config: TemplateDatabaseConfig | None = None
