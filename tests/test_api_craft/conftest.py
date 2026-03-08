@@ -39,7 +39,16 @@ def load_app(src_path: Path):
     modules_to_cleanup = []
     try:
         # Load modules in dependency order with unique names
-        module_files = ["models", "path", "query", "views", "main"]
+        module_files = [
+            "orm_models",
+            "database",
+            "seed",
+            "models",
+            "path",
+            "query",
+            "views",
+            "main",
+        ]
 
         for module_name in module_files:
             module_path = src_path / f"{module_name}.py"
