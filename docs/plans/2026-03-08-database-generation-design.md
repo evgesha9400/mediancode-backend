@@ -25,18 +25,6 @@ class InputField(BaseModel):
     on_delete: OnDeleteAction = "restrict"     # cascade | restrict | set_null
 ```
 
-### `InputEndpoint` — new field
-
-```python
-class InputEndpoint(BaseModel):
-    # ... existing fields ...
-    entity: str | None = None    # explicit ORM entity name this endpoint operates on
-```
-
-When `entity` is set, the view template generates DB queries against that entity's ORM model.
-When `entity` is `None`, the endpoint retains hardcoded placeholder behavior (or is a non-DB endpoint).
-This avoids fragile inference from response models — wrapper models like `ItemList` don't break the mapping.
-
 ### `InputApiConfig` — new database section
 
 ```python
@@ -92,14 +80,11 @@ endpoints:
     method: GET
     response: Order
     response_shape: list
-    entity: Order              # ← explicit: queries OrderRecord table
-
   - name: CreateOrder
     path: /orders
     method: POST
     response: Order
     request: CreateOrderRequest
-    entity: Order              # ← explicit: inserts into OrderRecord table
 ```
 
 ## Template Model Changes
@@ -178,7 +163,7 @@ class TemplateAPI(BaseModel):
 
 | File | Change |
 |---|---|
-| `src/views.py` | DB queries via `Depends(get_session)` for endpoints with `entity` set |
+| `src/views.py` | DB queries via `Depends(get_session)` for endpoints whose response model has a PK |
 | `src/main.py` | Lifespan context manager with engine disposal on shutdown |
 | `pyproject.toml` | Adds sqlalchemy[asyncio], asyncpg, alembic |
 | `Makefile` | Adds db-up, db-init, db-upgrade, db-seed, db-reset, db-downgrade |
@@ -442,24 +427,21 @@ New `validate_fk_constraints()`:
 - `on_delete: set_null` requires the FK field to have `optional: true`
 - Called from `InputAPI._validate_references()`
 
-New `validate_endpoint_entities()` (when database enabled):
-- `entity` must reference a model that has a PK field
-- Called from `InputAPI._validate_references()`
-
 ## View-to-Entity Mapping
 
-Each endpoint explicitly declares which entity it operates on via the `entity` field:
+Entity mapping is inferred from the endpoint's `response` model. If the response model
+has a `pk: true` field, the endpoint generates DB queries against the corresponding
+`{Model}Record` ORM class. If the response model has no PK, the endpoint retains
+hardcoded placeholder behavior.
 
 ```yaml
 - name: GetItems
   path: /items
   method: GET
-  response: Item
+  response: Item          # Item has pk: true → queries ItemRecord
   response_shape: list
-  entity: Item         # ← views template queries ItemRecord
 ```
 
-The `entity` field is resolved to the corresponding `{Entity}Record` ORM model.
 The HTTP method determines the query pattern:
 
 | Method | Query Pattern |
@@ -469,9 +451,6 @@ The HTTP method determines the query pattern:
 | POST | `Model(**request.model_dump())`, add, commit, refresh |
 | PUT | select by pk, update from `request.model_dump(exclude_unset=True)`, commit |
 | DELETE | select by pk, delete, commit |
-
-Endpoints without `entity` set retain hardcoded placeholder behavior. This is explicit —
-wrapper models like `ItemList` used as response models don't cause incorrect entity inference.
 
 ## Future Work (not in scope)
 

@@ -10,11 +10,10 @@
 
 ---
 
-### Task 1: Add `pk`, `fk`, `on_delete` to InputField, `entity` to InputEndpoint, and database config
+### Task 1: Add `pk`, `fk`, `on_delete` to InputField and database config
 
 **Files:**
 - Modify: `src/api_craft/models/input.py:52-70` (InputField)
-- Modify: `src/api_craft/models/input.py:116-152` (InputEndpoint)
 - Modify: `src/api_craft/models/input.py:166-178` (InputApiConfig)
 - Modify: `src/api/schemas/literals.py:10-16` (add OnDeleteAction literal)
 - Test: `tests/test_api_craft/test_input_models.py` (create new)
@@ -23,7 +22,7 @@
 
 ```python
 # tests/test_api_craft/test_input_models.py
-"""Tests for input model changes: pk, fk, on_delete, entity, database config."""
+"""Tests for input model changes: pk, fk, on_delete, database config."""
 
 import pytest
 from api_craft.models.input import InputField, InputModel, InputApiConfig, InputAPI, InputEndpoint
@@ -63,16 +62,6 @@ class TestForeignKeyField:
     def test_field_on_delete_invalid_rejected(self):
         with pytest.raises(Exception):
             InputField(name="order_id", type="int", fk="Order", on_delete="delete")
-
-
-class TestEndpointEntity:
-    def test_entity_defaults_none(self):
-        ep = InputEndpoint(name="GetItems", path="/items", method="GET")
-        assert ep.entity is None
-
-    def test_entity_set(self):
-        ep = InputEndpoint(name="GetItems", path="/items", method="GET", entity="Item")
-        assert ep.entity == "Item"
 
 
 class TestDatabaseConfig:
@@ -119,13 +108,6 @@ class InputField(BaseModel):
     on_delete: OnDeleteAction = "restrict"
 ```
 
-Add `entity` to `InputEndpoint` (after line 140):
-```python
-class InputEndpoint(BaseModel):
-    # ... existing fields ...
-    entity: str | None = None    # explicit ORM entity this endpoint operates on
-```
-
 Add new config class before `InputApiConfig`:
 ```python
 class InputDatabaseConfig(BaseModel):
@@ -163,7 +145,7 @@ git commit -m "feat(models): add pk, fk, on_delete to InputField and database co
 
 ---
 
-### Task 2: Add PK/FK/entity validation to validators.py
+### Task 2: Add PK/FK validation to validators.py
 
 **Files:**
 - Modify: `src/api_craft/models/validators.py`
@@ -298,45 +280,11 @@ class TestForeignKeyValidation:
             )
 
 
-class TestEndpointEntityValidation:
-    def test_entity_referencing_valid_pk_model_accepted(self):
-        api = InputAPI(
-            name="EntityTest",
-            endpoints=[
-                InputEndpoint(name="GetItems", path="/items", method="GET", response="Item", entity="Item"),
-            ],
-            objects=[
-                InputModel(name="Item", fields=[InputField(name="id", type="int", pk=True)]),
-            ],
-        )
-        assert api.endpoints[0].entity == "Item"
-
-    def test_entity_referencing_non_pk_model_rejected(self):
-        with pytest.raises(ValueError, match="not a persisted entity"):
-            InputAPI(
-                name="EntityTest",
-                endpoints=[
-                    InputEndpoint(name="GetItems", path="/items", method="GET", response="ItemList", entity="ItemList"),
-                ],
-                objects=[
-                    InputModel(name="ItemList", fields=[InputField(name="total", type="int")]),
-                ],
-            )
-
-    def test_entity_referencing_nonexistent_model_rejected(self):
-        with pytest.raises(ValueError, match="not a persisted entity"):
-            InputAPI(
-                name="EntityTest",
-                endpoints=[
-                    InputEndpoint(name="GetItems", path="/items", method="GET", entity="Nonexistent"),
-                ],
-                objects=[],
-            )
 ```
 
 **Step 2: Run test to verify it fails**
 
-Run: `poetry run pytest tests/test_api_craft/test_input_models.py::TestForeignKeyValidation tests/test_api_craft/test_input_models.py::TestPrimaryKeyValidation tests/test_api_craft/test_input_models.py::TestEndpointEntityValidation -v`
+Run: `poetry run pytest tests/test_api_craft/test_input_models.py::TestForeignKeyValidation tests/test_api_craft/test_input_models.py::TestPrimaryKeyValidation -v`
 Expected: FAIL — validation functions don't exist yet
 
 **Step 3: Write minimal implementation**
@@ -391,34 +339,12 @@ def validate_foreign_keys(objects: Iterable["InputModel"]) -> None:
                 )
 
 
-def validate_endpoint_entities(
-    endpoints: Iterable["InputEndpoint"],
-    objects: Iterable["InputModel"],
-) -> None:
-    """Verify endpoint entity references point to persisted models.
-
-    :param endpoints: Collection of endpoint definitions.
-    :param objects: Collection of declared objects.
-    :raises ValueError: If entity references a non-persisted model.
-    """
-    entity_names = {
-        obj.name
-        for obj in objects
-        if any(f.pk for f in obj.fields)
-    }
-    for endpoint in endpoints:
-        if endpoint.entity and endpoint.entity not in entity_names:
-            raise ValueError(
-                f"Endpoint '{endpoint.name}' references entity "
-                f"'{endpoint.entity}' which is not a persisted entity"
-            )
 ```
 
 Add imports and calls in `src/api_craft/models/input.py` `_validate_references`:
 
 ```python
 from api_craft.models.validators import (
-    validate_endpoint_entities,
     validate_endpoint_references,
     validate_foreign_keys,
     validate_model_field_types,
@@ -430,7 +356,6 @@ from api_craft.models.validators import (
 # In InputAPI._validate_references, add after validate_endpoint_references:
 validate_primary_keys(self.objects)
 validate_foreign_keys(self.objects)
-validate_endpoint_entities(self.endpoints, self.objects)
 ```
 
 **Step 4: Run test to verify it passes**
@@ -563,24 +488,7 @@ class TemplateAPI(BaseModel):
     database_config: TemplateDatabaseConfig | None = None
 ```
 
-Add `entity: str | None = None` to `TemplateView` (after `response_shape`):
-
-```python
-class TemplateView(BaseModel):
-    # ... existing fields ...
-    entity: str | None = None    # ORM entity this endpoint operates on
-```
-
 Add `pk: bool = False` to `TemplateField`.
-
-In `src/api_craft/transformers.py`, pass `entity` through in `transform_endpoint()`:
-
-```python
-return TemplateView(
-    # ... existing fields ...
-    entity=input_endpoint.entity,
-)
-```
 
 **Step 4: Run test to verify it passes**
 
@@ -1773,7 +1681,6 @@ endpoints:
     method: GET
     tag: Items
     response: Item
-    entity: Item
     path_params:
       - name: item_id
         type: int
@@ -1784,7 +1691,6 @@ endpoints:
     tag: Items
     response: Item
     response_shape: list
-    entity: Item
 
   - name: CreateItem
     path: /items
@@ -1792,7 +1698,6 @@ endpoints:
     tag: Items
     response: Item
     request: CreateItemRequest
-    entity: Item
 
   - name: UpdateItem
     path: /items/{item_id}
@@ -1800,7 +1705,6 @@ endpoints:
     tag: Items
     response: Item
     request: UpdateItemRequest
-    entity: Item
     path_params:
       - name: item_id
         type: int
@@ -1809,7 +1713,6 @@ endpoints:
     path: /items/{item_id}
     method: DELETE
     tag: Items
-    entity: Item
     path_params:
       - name: item_id
         type: int
@@ -2136,14 +2039,12 @@ endpoints:
     method: GET
     response: Order
     response_shape: list
-    entity: Order
 
   - name: CreateOrder
     path: /orders
     method: POST
     response: Order
     request: CreateOrderRequest
-    entity: Order
 
 config:
   database:
