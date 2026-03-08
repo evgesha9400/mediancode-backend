@@ -1,0 +1,143 @@
+# tests/specs/items_api_db.yaml
+name: ItemsDbApi
+version: "0.1.0"
+author: Median Code
+description: Items API with database backend
+
+tags:
+  - name: Items
+    description: Item management operations
+
+objects:
+  - name: Item
+    description: Product item
+    fields:
+      - name: id
+        type: int
+        pk: true
+        validators:
+          - name: ge
+            params: { value: 1 }
+      - name: sku
+        type: str
+        validators:
+          - name: min_length
+            params: { value: 3 }
+          - name: max_length
+            params: { value: 20 }
+          - name: pattern
+            params: { value: "^[A-Z0-9-]+$" }
+      - name: name
+        type: str
+        validators:
+          - name: min_length
+            params: { value: 1 }
+          - name: max_length
+            params: { value: 100 }
+      - name: price
+        type: float
+        validators:
+          - name: gt
+            params: { value: 0 }
+          - name: le
+            params: { value: 1000000 }
+      - name: quantity
+        type: int
+        validators:
+          - name: ge
+            params: { value: 0 }
+
+  - name: CreateItemRequest
+    fields:
+      - name: sku
+        type: str
+        validators:
+          - name: min_length
+            params: { value: 3 }
+          - name: max_length
+            params: { value: 20 }
+          - name: pattern
+            params: { value: "^[A-Z0-9-]+$" }
+      - name: name
+        type: str
+        validators:
+          - name: min_length
+            params: { value: 1 }
+          - name: max_length
+            params: { value: 100 }
+      - name: price
+        type: float
+        validators:
+          - name: gt
+            params: { value: 0 }
+      - name: quantity
+        type: int
+        validators:
+          - name: ge
+            params: { value: 0 }
+
+  - name: UpdateItemRequest
+    fields:
+      - name: name
+        type: str
+        optional: true
+        validators:
+          - name: max_length
+            params: { value: 100 }
+      - name: price
+        type: float
+        optional: true
+        validators:
+          - name: gt
+            params: { value: 0 }
+      - name: quantity
+        type: int
+        optional: true
+
+endpoints:
+  - name: GetItem
+    path: /items/{item_id}
+    method: GET
+    tag: Items
+    response: Item
+    path_params:
+      - name: item_id
+        type: int
+
+  - name: GetItems
+    path: /items
+    method: GET
+    tag: Items
+    response: Item
+    response_shape: list
+
+  - name: CreateItem
+    path: /items
+    method: POST
+    tag: Items
+    response: Item
+    request: CreateItemRequest
+
+  - name: UpdateItem
+    path: /items/{item_id}
+    method: PUT
+    tag: Items
+    response: Item
+    request: UpdateItemRequest
+    path_params:
+      - name: item_id
+        type: int
+
+  - name: DeleteItem
+    path: /items/{item_id}
+    method: DELETE
+    tag: Items
+    path_params:
+      - name: item_id
+        type: int
+
+config:
+  healthcheck: /healthcheck
+  database:
+    enabled: true
+    seed_data: true
