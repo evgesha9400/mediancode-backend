@@ -11,8 +11,10 @@ from api.schemas.literals import (
 from api_craft.models.types import PascalCaseName, SnakeCaseName
 from api_craft.models.validators import (
     validate_endpoint_references,
+    validate_foreign_keys,
     validate_model_field_types,
     validate_path_parameters,
+    validate_primary_keys,
     validate_unique_object_names,
 )
 
@@ -232,4 +234,6 @@ class InputAPI(BaseModel):
         declared_object_names = {obj.name for obj in self.objects}
         validate_model_field_types(self.objects, declared_object_names)
         validate_endpoint_references(self.endpoints, declared_object_names)
+        validate_primary_keys(self.objects)
+        validate_foreign_keys(self.objects)
         return self

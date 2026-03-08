@@ -62,3 +62,155 @@ class TestDatabaseConfig:
     def test_database_seed_disabled(self):
         config = InputApiConfig(database={"enabled": True, "seed_data": False})
         assert config.database.seed_data is False
+
+
+class TestPrimaryKeyValidation:
+    def test_optional_pk_rejected(self):
+        """PK field must not be optional."""
+        with pytest.raises(ValueError, match="cannot be optional"):
+            InputAPI(
+                name="PkTest",
+                endpoints=[
+                    InputEndpoint(
+                        name="GetItems", path="/items", method="GET", response="Item"
+                    )
+                ],
+                objects=[
+                    InputModel(
+                        name="Item",
+                        fields=[
+                            InputField(name="id", type="int", pk=True, optional=True)
+                        ],
+                    ),
+                ],
+            )
+
+    def test_multiple_pks_rejected(self):
+        """Only one PK field per model is allowed."""
+        with pytest.raises(ValueError, match="multiple primary key"):
+            InputAPI(
+                name="PkTest",
+                endpoints=[
+                    InputEndpoint(
+                        name="GetItems", path="/items", method="GET", response="Item"
+                    )
+                ],
+                objects=[
+                    InputModel(
+                        name="Item",
+                        fields=[
+                            InputField(name="id", type="int", pk=True),
+                            InputField(name="uuid", type="uuid", pk=True),
+                        ],
+                    ),
+                ],
+            )
+
+
+class TestForeignKeyValidation:
+    def test_fk_to_valid_entity_accepted(self):
+        """FK referencing an entity with a PK field is valid."""
+        api = InputAPI(
+            name="FkTest",
+            endpoints=[
+                InputEndpoint(
+                    name="GetOrders", path="/orders", method="GET", response="Order"
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="Order",
+                    fields=[InputField(name="id", type="int", pk=True)],
+                ),
+                InputModel(
+                    name="OrderItem",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="order_id", type="int", fk="Order"),
+                    ],
+                ),
+            ],
+        )
+        assert len(api.objects) == 2
+
+    def test_fk_to_nonexistent_entity_rejected(self):
+        """FK referencing an entity that doesn't exist raises ValueError."""
+        with pytest.raises(ValueError, match="not a persisted entity"):
+            InputAPI(
+                name="FkTest",
+                endpoints=[
+                    InputEndpoint(
+                        name="GetItems", path="/items", method="GET", response="Item"
+                    ),
+                ],
+                objects=[
+                    InputModel(
+                        name="Item",
+                        fields=[
+                            InputField(name="id", type="int", pk=True),
+                            InputField(name="order_id", type="int", fk="Order"),
+                        ],
+                    ),
+                ],
+            )
+
+    def test_fk_to_entity_without_pk_rejected(self):
+        """FK referencing a model without a PK field raises ValueError."""
+        with pytest.raises(ValueError, match="not a persisted entity"):
+            InputAPI(
+                name="FkTest",
+                endpoints=[
+                    InputEndpoint(
+                        name="GetOrders",
+                        path="/orders",
+                        method="GET",
+                        response="Order",
+                    ),
+                ],
+                objects=[
+                    InputModel(
+                        name="Order",
+                        fields=[InputField(name="status", type="str")],
+                    ),
+                    InputModel(
+                        name="OrderItem",
+                        fields=[
+                            InputField(name="id", type="int", pk=True),
+                            InputField(name="order_id", type="int", fk="Order"),
+                        ],
+                    ),
+                ],
+            )
+
+    def test_set_null_requires_optional_fk(self):
+        """on_delete=set_null requires the FK field to be optional."""
+        with pytest.raises(ValueError, match="must be optional"):
+            InputAPI(
+                name="FkTest",
+                endpoints=[
+                    InputEndpoint(
+                        name="GetOrders",
+                        path="/orders",
+                        method="GET",
+                        response="Order",
+                    ),
+                ],
+                objects=[
+                    InputModel(
+                        name="Order",
+                        fields=[InputField(name="id", type="int", pk=True)],
+                    ),
+                    InputModel(
+                        name="OrderItem",
+                        fields=[
+                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="order_id",
+                                type="int",
+                                fk="Order",
+                                on_delete="set_null",
+                            ),
+                        ],
+                    ),
+                ],
+            )
