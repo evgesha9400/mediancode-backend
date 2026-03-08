@@ -254,3 +254,84 @@ class TestSnakeToPlural:
         from api_craft.utils import snake_to_plural, camel_to_snake
 
         assert snake_to_plural(camel_to_snake(input_name)) == expected
+
+
+from api_craft.extractors import collect_orm_imports, collect_database_dependencies
+from api_craft.models.template import TemplateORMField, TemplateORMModel
+
+
+class TestCollectOrmImports:
+    def test_collects_column_types(self):
+        models = [
+            TemplateORMModel(
+                class_name="ItemRecord",
+                table_name="items",
+                source_model="Item",
+                fields=[
+                    TemplateORMField(
+                        name="id",
+                        python_type="int",
+                        column_type="Integer",
+                        primary_key=True,
+                    ),
+                    TemplateORMField(
+                        name="name", python_type="str", column_type="Text"
+                    ),
+                    TemplateORMField(
+                        name="price", python_type="float", column_type="Float"
+                    ),
+                ],
+            )
+        ]
+        imports = collect_orm_imports(models)
+        assert "Integer" in imports
+        assert "Text" in imports
+        assert "Float" in imports
+
+    def test_collects_foreign_key_import(self):
+        models = [
+            TemplateORMModel(
+                class_name="OrderItemRecord",
+                table_name="order_items",
+                source_model="OrderItem",
+                fields=[
+                    TemplateORMField(
+                        name="order_id",
+                        python_type="int",
+                        column_type="Integer",
+                        foreign_key="orders.id",
+                        on_delete="CASCADE",
+                    ),
+                ],
+            )
+        ]
+        imports = collect_orm_imports(models)
+        assert "ForeignKey" in imports
+
+    def test_deduplicates_imports(self):
+        models = [
+            TemplateORMModel(
+                class_name="ItemRecord",
+                table_name="items",
+                source_model="Item",
+                fields=[
+                    TemplateORMField(
+                        name="a", python_type="int", column_type="Integer"
+                    ),
+                    TemplateORMField(
+                        name="b", python_type="int", column_type="Integer"
+                    ),
+                ],
+            )
+        ]
+        imports = collect_orm_imports(models)
+        assert imports.count("Integer") == 1
+
+
+class TestCollectDatabaseDependencies:
+    def test_returns_required_deps(self):
+        deps = collect_database_dependencies()
+        dep_names = [d.split(" ")[0] for d in deps]
+        assert "sqlalchemy[asyncio]" in dep_names
+        assert "asyncpg" in dep_names
+        assert "alembic" in dep_names

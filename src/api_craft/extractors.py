@@ -3,6 +3,7 @@ import re
 from api_craft.models.template import (
     TemplateAPI,
     TemplateModel,
+    TemplateORMModel,
     TemplatePathParam,
     TemplateQueryParam,
 )
@@ -174,3 +175,41 @@ def collect_model_extra_dependencies(models: list[TemplateModel]) -> list[str]:
         for field in model.fields:
             types.append(field.type)
     return collect_extra_dependencies(types)
+
+
+# Column type patterns that need String(N) extraction
+_STRING_PATTERN = re.compile(r"String\(\d+\)")
+
+
+def collect_orm_imports(orm_models: list[TemplateORMModel]) -> list[str]:
+    """Collect SQLAlchemy column type imports needed by ORM models.
+
+    :param orm_models: Collection of ORM models.
+    :returns: Deduplicated list of SQLAlchemy type names to import.
+    """
+    imports = set()
+    for model in orm_models:
+        for field in model.fields:
+            # Normalize String(N) to String
+            col_type = field.column_type
+            if _STRING_PATTERN.match(col_type):
+                imports.add("String")
+            else:
+                imports.add(col_type)
+
+            if field.foreign_key:
+                imports.add("ForeignKey")
+
+    return sorted(imports)
+
+
+def collect_database_dependencies() -> list[str]:
+    """Return pip dependencies for database support.
+
+    :returns: List of pip dependency strings.
+    """
+    return [
+        "sqlalchemy[asyncio] (>=2.0.0,<3.0.0)",
+        "asyncpg (>=0.31.0,<1.0.0)",
+        "alembic (>=1.18.0,<2.0.0)",
+    ]
