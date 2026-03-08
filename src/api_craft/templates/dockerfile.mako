@@ -22,6 +22,16 @@ RUN poetry config virtualenvs.create false && \
 
 # Copy application code
 COPY src/ .
+% if api.database_config:
+
+# Copy migration files
+COPY migrations/ ./migrations/
+COPY alembic.ini .
+% endif
 
 # Specify the command to run on container start
+% if api.database_config:
+CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 80"]
+% else:
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
+% endif

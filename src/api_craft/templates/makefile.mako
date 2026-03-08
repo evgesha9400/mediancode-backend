@@ -2,14 +2,22 @@
 - Template Parameters:
 - api: TemplateApi
 </%doc>\
+% if api.database_config:
+.PHONY: install run-local build clean run-container swagger db-up db-down db-init db-upgrade db-downgrade db-seed db-reset run-stack
+% else:
 .PHONY: install run-local build clean run-container swagger
+% endif
 
 PROJECT_NAME=${api.snake_name}
 
 install:
 	@poetry install
 
+% if api.database_config:
+run-local: install db-up
+% else:
 run-local: install
+% endif
 	@PYTHONPATH=src poetry run uvicorn main:app --reload --port 8000
 
 build:
@@ -25,3 +33,31 @@ run-container: install clean build
 
 swagger: install
 	@PYTHONPATH=src poetry run python swagger.py
+% if api.database_config:
+
+db-up:
+	@docker compose up -d db
+	@echo "Waiting for PostgreSQL..."
+	@sleep 2
+
+db-down:
+	@docker compose down
+
+db-init: db-up
+	@PYTHONPATH=src poetry run alembic revision --autogenerate -m "initial"
+
+db-upgrade: db-up
+	@PYTHONPATH=src poetry run alembic upgrade head
+
+db-downgrade:
+	@PYTHONPATH=src poetry run alembic downgrade -1
+
+db-seed: db-upgrade
+	@PYTHONPATH=src poetry run python -c "import asyncio; from database import async_session; from seed import seed_database; asyncio.run(seed_database(async_session()))"
+
+db-reset: db-down db-up
+	@PYTHONPATH=src poetry run alembic upgrade head
+
+run-stack:
+	@docker compose up --build
+% endif

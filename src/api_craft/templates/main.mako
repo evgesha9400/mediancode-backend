@@ -2,15 +2,30 @@
 - Template Parameters:
 - api: TemplateApi
 </%doc>\
+% if api.database_config:
+from contextlib import asynccontextmanager
+
+% endif
 from fastapi import FastAPI
 
 % if api.config.healthcheck:
 from starlette.responses import Response
 % endif
 
-
+% if api.database_config:
+from database import engine
+% endif
 
 from views import api_router
+% if api.database_config:
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await engine.dispose()
+
+% endif
 
 app = FastAPI(
     title="${api.spaced_name}",
@@ -22,6 +37,9 @@ app = FastAPI(
         {"name": "${tag.name}"${ ', "description": "' + tag.description + '"' if tag.description else ''}},
 % endfor
     ],
+% endif
+% if api.database_config:
+    lifespan=lifespan,
 % endif
 )
 app.include_router(api_router)

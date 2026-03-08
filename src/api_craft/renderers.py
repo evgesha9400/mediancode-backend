@@ -39,8 +39,17 @@ def render_models(
     return rendered_models
 
 
-def render_views(views: list[TemplateView], views_template: Template) -> str:
-    rendered_views = views_template.render(views=views)
+def render_views(
+    views: list[TemplateView],
+    views_template: Template,
+    database_config=None,
+    orm_model_map: dict[str, str] | None = None,
+) -> str:
+    rendered_views = views_template.render(
+        views=views,
+        database_config=database_config,
+        orm_model_map=orm_model_map or {},
+    )
     return rendered_views
 
 

@@ -63,6 +63,37 @@ make run-container
 ```
 
 The API will be available at [http://localhost:8000](http://localhost:8000)
+% if api.database_config:
+
+${"##"} Database
+
+This project uses PostgreSQL with async SQLAlchemy and Alembic for migrations.
+
+${"###"} Setup
+
+```bash
+# Start PostgreSQL (Docker)
+make db-up
+
+# Create initial migration
+make db-init
+
+# Apply migrations
+make db-upgrade
+
+# Seed database with sample data
+make db-seed
+
+# Reset database (drop and recreate)
+make db-reset
+```
+
+${"###"} Run Full Stack (Docker Compose)
+
+```bash
+make run-stack
+```
+% endif
 
 ${"##"} API Documentation
 
@@ -86,10 +117,20 @@ ${api.kebab_name}/
 % if api.views and any(v.query_params for v in api.views):
 │   ├── query.py         # Query parameter validators
 % endif
+% if api.database_config:
+│   ├── orm_models.py    # SQLAlchemy ORM models
+│   ├── database.py      # Database engine and session
+│   ├── seed.py          # Database seed data
+% endif
 │   └── ...
 ├── pyproject.toml       # Project dependencies
 ├── Makefile             # Common commands
 ├── Dockerfile           # Container configuration
+% if api.database_config:
+├── docker-compose.yml   # Docker Compose for DB + API
+├── alembic.ini          # Alembic configuration
+├── migrations/          # Alembic migration files
+% endif
 └── swagger.py           # OpenAPI schema generator
 ```
 
@@ -103,6 +144,16 @@ ${"##"} Available Commands
 | `make run-container` | Build and run in Docker container |
 | `make clean` | Stop and remove Docker container/image |
 | `make swagger` | Generate swagger.yaml from the API |
+% if api.database_config:
+| `make db-up` | Start PostgreSQL container |
+| `make db-down` | Stop Docker Compose services |
+| `make db-init` | Create initial Alembic migration |
+| `make db-upgrade` | Apply pending migrations |
+| `make db-downgrade` | Rollback last migration |
+| `make db-seed` | Seed database with sample data |
+| `make db-reset` | Reset database (drop + migrate) |
+| `make run-stack` | Run full stack via Docker Compose |
+% endif
 % if api.config.healthcheck:
 
 ${"##"} Health Check

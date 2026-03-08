@@ -1,8 +1,18 @@
 <%doc>
 - Template Parameters:
 - views (list): A list of views to generate
+- database_config: TemplateDatabaseConfig | None
+- orm_model_map: dict[str, str] | None - maps response model name to ORM class name
 </%doc>\
+% if database_config:
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from database import get_session
+% else:
 from fastapi import APIRouter
+% endif
 <%
 model_names = []
 for view in views:
@@ -13,6 +23,11 @@ for view in views:
 has_path_params = any(view.path_params for view in views)
 has_query_params = any(view.query_params for view in views)
 has_no_response = any(not view.response_model for view in views)
+orm_model_names = sorted(set(
+    orm_model_map[view.response_model]
+    for view in views
+    if view.response_model and orm_model_map and view.response_model in orm_model_map
+))
 %>
 % if has_no_response:
 from starlette.responses import Response
@@ -21,6 +36,13 @@ from starlette.responses import Response
 from models import (
 % for index, name in enumerate(model_names):
     ${name}${"," if index < len(model_names) - 1 else ""}
+% endfor
+)
+% endif
+% if database_config and orm_model_names:
+from orm_models import (
+% for index, name in enumerate(orm_model_names):
+    ${name}${"," if index < len(orm_model_names) - 1 else ""}
 % endfor
 )
 % endif
@@ -46,7 +68,12 @@ api_router = APIRouter()
         signature_lines.append(
             f"    {q_param.snake_name}: query.{q_param.camel_name}{suffix},"
         )
+    if database_config:
+        signature_lines.append("    session: AsyncSession = Depends(get_session),")
     has_signature = bool(signature_lines)
+    # Determine if this view's response model has an ORM model
+    has_orm = orm_model_map and view.response_model and view.response_model in orm_model_map
+    orm_class = orm_model_map.get(view.response_model, "") if orm_model_map and view.response_model else ""
 %>
 @api_router.${view.method}(
     path="${view.path}",
@@ -72,6 +99,53 @@ ${line}
 % else:
 async def ${view.snake_name}():
 % endif
+% if database_config and has_orm:
+## Database-backed view body
+% if view.method == "get" and view.response_shape == "list":
+    result = await session.execute(select(${orm_class}))
+    return result.scalars().all()
+% elif view.method == "get":
+<%
+    pk_param = view.path_params[0].snake_name if view.path_params else "id"
+%>\
+    result = await session.execute(select(${orm_class}).where(${orm_class}.id == ${pk_param}))
+    record = result.scalars().first()
+    if not record:
+        raise HTTPException(status_code=404, detail="${view.response_model} not found")
+    return record
+% elif view.method == "post":
+    record = ${orm_class}(**request.model_dump())
+    session.add(record)
+    await session.commit()
+    await session.refresh(record)
+    return record
+% elif view.method == "put" or view.method == "patch":
+<%
+    pk_param = view.path_params[0].snake_name if view.path_params else "id"
+%>\
+    result = await session.execute(select(${orm_class}).where(${orm_class}.id == ${pk_param}))
+    record = result.scalars().first()
+    if not record:
+        raise HTTPException(status_code=404, detail="${view.response_model} not found")
+    for key, value in request.model_dump(exclude_unset=True).items():
+        setattr(record, key, value)
+    await session.commit()
+    await session.refresh(record)
+    return record
+% elif view.method == "delete":
+<%
+    pk_param = view.path_params[0].snake_name if view.path_params else "id"
+%>\
+    result = await session.execute(select(${orm_class}).where(${orm_class}.id == ${pk_param}))
+    record = result.scalars().first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Not found")
+    await session.delete(record)
+    await session.commit()
+    return Response(status_code=204)
+% endif
+% else:
+## Non-database view body (placeholder)
     # TODO: implement your view
 % if not view.response_model:
     return Response(status_code=204)
@@ -94,6 +168,7 @@ async def ${view.snake_name}():
     )
 % else:
     return ${view.response_model}()
+% endif
 % endif
 % endif
 % endfor
