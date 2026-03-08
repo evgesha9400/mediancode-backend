@@ -335,3 +335,79 @@ class TestCollectDatabaseDependencies:
         assert "sqlalchemy[asyncio]" in dep_names
         assert "asyncpg" in dep_names
         assert "alembic" in dep_names
+
+
+from api_craft.models.input import InputAPI, InputEndpoint, InputApiConfig
+from api_craft.transformers import transform_api
+
+
+class TestTransformApiWithDatabase:
+    def test_database_disabled_no_orm_models(self):
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems", path="/items", method="GET", response="Item"
+                )
+            ],
+            objects=[
+                _make_model(
+                    "Item",
+                    [
+                        {"name": "id", "type": "int", "pk": True},
+                        {"name": "name", "type": "str"},
+                    ],
+                )
+            ],
+            config=InputApiConfig(database={"enabled": False}),
+        )
+        result = transform_api(api)
+        assert result.orm_models == []
+        assert result.database_config is None
+
+    def test_database_enabled_produces_orm_models(self):
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems", path="/items", method="GET", response="Item"
+                )
+            ],
+            objects=[
+                _make_model(
+                    "Item",
+                    [
+                        {"name": "id", "type": "int", "pk": True},
+                        {"name": "name", "type": "str"},
+                    ],
+                )
+            ],
+            config=InputApiConfig(database={"enabled": True}),
+        )
+        result = transform_api(api)
+        assert len(result.orm_models) == 1
+        assert result.orm_models[0].class_name == "ItemRecord"
+        assert result.database_config is not None
+        assert result.database_config.enabled is True
+
+    def test_database_config_default_url_uses_api_name(self):
+        api = InputAPI(
+            name="ShopApi",
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems", path="/items", method="GET", response="Item"
+                )
+            ],
+            objects=[
+                _make_model(
+                    "Item",
+                    [
+                        {"name": "id", "type": "int", "pk": True},
+                        {"name": "name", "type": "str"},
+                    ],
+                )
+            ],
+            config=InputApiConfig(database={"enabled": True}),
+        )
+        result = transform_api(api)
+        assert "shop_api" in result.database_config.default_url

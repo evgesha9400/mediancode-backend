@@ -18,6 +18,7 @@ from api_craft.models.input import (
 from api_craft.models.template import (
     TemplateAPI,
     TemplateAPIConfig,
+    TemplateDatabaseConfig,
     TemplateField,
     TemplateModel,
     TemplateORMField,
@@ -354,6 +355,17 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
 
     template_tags = [transform_tag(tag) for tag in input_api.tags]
 
+    orm_models = []
+    database_config = None
+    if input_api.config.database.enabled:
+        orm_models = transform_orm_models(input_api.objects)
+        snake_name = camel_to_snake(input_api.name)
+        database_config = TemplateDatabaseConfig(
+            enabled=True,
+            seed_data=input_api.config.database.seed_data,
+            default_url=f"postgresql+asyncpg://postgres:postgres@localhost:5432/{snake_name}",
+        )
+
     return TemplateAPI(
         snake_name=camel_to_snake(input_api.name),
         camel_name=input_api.name,
@@ -371,4 +383,6 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
             format_code=input_api.config.format_code,
             generate_swagger=input_api.config.generate_swagger,
         ),
+        orm_models=orm_models,
+        database_config=database_config,
     )

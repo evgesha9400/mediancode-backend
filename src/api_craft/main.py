@@ -172,6 +172,8 @@ class APIGenerator:
                 "views": template_api.views,
                 "path_params": extract_path_parameters(template_api),
                 "query_params": extract_query_parameters(template_api),
+                "orm_models": template_api.orm_models,
+                "database_config": template_api.database_config,
             }
         except Exception as e:
             logger.error(f"Failed to extract components: {str(e)}")
