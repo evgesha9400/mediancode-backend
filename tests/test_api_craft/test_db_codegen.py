@@ -233,3 +233,39 @@ class TestBackwardCompatibility:
         assert "Depends" not in views
         assert "get_session" not in views
         assert "select(" not in views
+
+
+@pytest.fixture(scope="module")
+def fk_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Generate the Orders DB API project with FK relationships."""
+    tmp_path = tmp_path_factory.mktemp("orders_db_api")
+    api_input = load_input("orders_api_db.yaml")
+    APIGenerator().generate(api_input, path=str(tmp_path))
+    return tmp_path / "orders-db-api"
+
+
+class TestForeignKeyGeneration:
+    def test_order_item_has_fk(self, fk_project: Path):
+        content = (fk_project / "src" / "orm_models.py").read_text()
+        assert 'ForeignKey("orders.id"' in content
+
+    def test_fk_has_cascade_delete(self, fk_project: Path):
+        content = (fk_project / "src" / "orm_models.py").read_text()
+        assert 'ondelete="CASCADE"' in content
+
+    def test_both_tables_generated(self, fk_project: Path):
+        content = (fk_project / "src" / "orm_models.py").read_text()
+        assert "class OrderRecord(Base):" in content
+        assert "class OrderItemRecord(Base):" in content
+
+    def test_no_dto_tables(self, fk_project: Path):
+        content = (fk_project / "src" / "orm_models.py").read_text()
+        assert "CreateOrderRequestRecord" not in content
+
+    def test_fk_import_present(self, fk_project: Path):
+        content = (fk_project / "src" / "orm_models.py").read_text()
+        assert "ForeignKey" in content
+
+    def test_orm_models_compile(self, fk_project: Path):
+        content = (fk_project / "src" / "orm_models.py").read_text()
+        compile(content, "orm_models.py", "exec")
