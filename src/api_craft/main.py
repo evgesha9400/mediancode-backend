@@ -17,6 +17,7 @@ from mako.lookup import TemplateLookup
 from mako.template import Template
 
 from api_craft.extractors import (
+    collect_model_extra_dependencies,
     collect_model_imports,
     collect_path_params_imports,
     collect_query_params_imports,
@@ -188,6 +189,7 @@ class APIGenerator:
         """
         try:
             model_imports = collect_model_imports(components["models"])
+            extra_deps = collect_model_extra_dependencies(components["models"])
 
             rendered_components = {
                 "models.py": render_models(
@@ -196,7 +198,7 @@ class APIGenerator:
                 "views.py": render_views(components["views"], self.templates["views"]),
                 "main.py": render_main(template_api, self.templates["main"]),
                 "pyproject.toml": render_pyproject(
-                    template_api, self.templates["pyproject"]
+                    template_api, self.templates["pyproject"], extra_deps
                 ),
                 "Makefile": render_makefile(template_api, self.templates["makefile"]),
                 "Dockerfile": render_dockerfile(

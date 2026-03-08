@@ -49,8 +49,14 @@ def render_main(api: TemplateAPI, main_template: Template) -> str:
     return rendered_main
 
 
-def render_pyproject(api: TemplateAPI, pyproject_template: Template) -> str:
-    rendered_pyproject = pyproject_template.render(api=api)
+def render_pyproject(
+    api: TemplateAPI,
+    pyproject_template: Template,
+    extra_dependencies: list[str] | None = None,
+) -> str:
+    rendered_pyproject = pyproject_template.render(
+        api=api, extra_dependencies=extra_dependencies or []
+    )
     return rendered_pyproject
 
 

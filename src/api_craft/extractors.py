@@ -22,6 +22,11 @@ PYDANTIC_TYPE_IMPORTS = {
     "HttpUrl": "from pydantic import HttpUrl",
 }
 
+# Mapping of types to extra pip dependencies they require
+TYPE_EXTRA_DEPENDENCIES = {
+    "EmailStr": "email-validator (>=2.0.0,<3.0.0)",
+}
+
 # Mapping of typing generics to their import from typing module
 TYPING_GENERICS = {
     "List",
@@ -141,3 +146,31 @@ def extract_query_parameters(template_api: TemplateAPI) -> list[TemplateQueryPar
                 query_params.append(param)
                 query_param_names.add(param.snake_name)
     return query_params
+
+
+def collect_extra_dependencies(types: list[str]) -> list[str]:
+    """Collect extra pip dependencies required by the given types.
+
+    :param types: List of type strings used in models.
+    :returns: Sorted list of pip dependency strings.
+    """
+    deps = set()
+    for type_str in types:
+        words = re.findall(r"\b(\w+)\b", type_str)
+        for word in words:
+            if word in TYPE_EXTRA_DEPENDENCIES:
+                deps.add(TYPE_EXTRA_DEPENDENCIES[word])
+    return sorted(deps)
+
+
+def collect_model_extra_dependencies(models: list[TemplateModel]) -> list[str]:
+    """Collect extra pip dependencies required by model field types.
+
+    :param models: Collection of template-ready models.
+    :returns: Sorted list of pip dependency strings.
+    """
+    types = []
+    for model in models:
+        for field in model.fields:
+            types.append(field.type)
+    return collect_extra_dependencies(types)

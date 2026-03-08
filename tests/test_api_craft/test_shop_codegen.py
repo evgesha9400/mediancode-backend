@@ -134,8 +134,21 @@ class TestShopApiArtifacts:
         for f in expected_files:
             assert f.exists(), f"Missing generated file: {f}"
 
-        # Log generated models.py content for debugging
+        # Verify pyproject.toml includes extra deps required by model types
+        pyproject_content = (project_dir / "pyproject.toml").read_text()
         models_content = (src_dir / "models.py").read_text()
+
+        from api_craft.extractors import TYPE_EXTRA_DEPENDENCIES
+
+        for type_name, dep in TYPE_EXTRA_DEPENDENCIES.items():
+            if type_name in models_content:
+                pkg_name = dep.split(" ")[0]
+                assert pkg_name in pyproject_content, (
+                    f"Generated models.py uses {type_name} but pyproject.toml "
+                    f"is missing required dependency: {dep}"
+                )
+
+        # Log generated content for debugging
         logger.info(f"Generated models.py:\n{models_content}")
 
         views_content = (src_dir / "views.py").read_text()

@@ -1,6 +1,7 @@
 <%doc>
 - Parameters:
 - api : TemplateApi
+- extra_dependencies : list[str] - additional pip dependencies
 </%doc>\
 [project]
 name = "${api.kebab_name}"
@@ -13,7 +14,12 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "uvicorn (>=0.34.0,<1.0.0)",
-    "fastapi (>=0.115.0,<1.0.0)"
+    "fastapi (>=0.115.0,<1.0.0)"\
+% for dep in extra_dependencies:
+,
+    "${dep}"\
+% endfor
+
 ]
 
 [dependency-groups]
