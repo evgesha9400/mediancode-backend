@@ -20,6 +20,8 @@ from api_craft.models.template import (
     TemplateAPIConfig,
     TemplateField,
     TemplateModel,
+    TemplateORMField,
+    TemplateORMModel,
     TemplatePathParam,
     TemplateQueryParam,
     TemplateResolvedFieldValidator,
@@ -35,6 +37,7 @@ from api_craft.utils import (
     camel_to_snake,
     remove_duplicates,
     snake_to_camel,
+    snake_to_plural,
 )
 
 
@@ -202,6 +205,115 @@ def transform_endpoint(
         use_envelope=input_endpoint.use_envelope,
         response_shape=input_endpoint.response_shape,
     )
+
+
+ON_DELETE_MAP = {
+    "cascade": "CASCADE",
+    "restrict": "RESTRICT",
+    "set_null": "SET NULL",
+}
+
+
+def _get_max_length(validators):
+    """Extract max_length value from validators list."""
+    for v in validators:
+        if v.name == "max_length" and v.params and "value" in v.params:
+            return v.params["value"]
+    return None
+
+
+def map_column_type(type_str: str, validators: list) -> str | None:
+    """Map a Python type string to a SQLAlchemy column type string.
+
+    Returns None for types that cannot be mapped to columns (List, Dict, model refs).
+    """
+    # Skip collection types
+    if type_str.startswith(("List[", "Dict[", "Set[", "Tuple[")):
+        return None
+
+    base = type_str.split(".")[0] if "." in type_str else type_str
+
+    type_map = {
+        "str": lambda: (
+            f"String({ml})" if (ml := _get_max_length(validators)) else "Text"
+        ),
+        "int": lambda: "Integer",
+        "float": lambda: "Float",
+        "bool": lambda: "Boolean",
+        "datetime": lambda: "DateTime",
+        "date": lambda: "Date",
+        "time": lambda: "Time",
+        "uuid": lambda: "Uuid",
+        "UUID": lambda: "Uuid",
+        "Decimal": lambda: "Numeric",
+        "decimal": lambda: "Numeric",
+        "EmailStr": lambda: "String(320)",
+        "HttpUrl": lambda: "Text",
+    }
+
+    factory = type_map.get(base)
+    if factory is None:
+        return None
+    return factory()
+
+
+def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMModel]:
+    """Convert InputModels with pk fields into TemplateORMModels."""
+    # Build entity lookup: name -> (table_name, pk_column_name)
+    entity_lookup = {}
+    for model in input_models:
+        pk_fields = [f for f in model.fields if f.pk]
+        if pk_fields:
+            table_name = snake_to_plural(camel_to_snake(model.name))
+            entity_lookup[str(model.name)] = (table_name, str(pk_fields[0].name))
+
+    orm_models = []
+    for model in input_models:
+        pk_fields = [f for f in model.fields if f.pk]
+        if not pk_fields:
+            continue
+
+        table_name = snake_to_plural(camel_to_snake(model.name))
+        orm_fields = []
+
+        for field in model.fields:
+            column_type = map_column_type(field.type, field.validators)
+            if column_type is None:
+                continue
+
+            base_type = field.type.split(".")[0] if "." in field.type else field.type
+            python_type = base_type if not field.optional else f"{base_type} | None"
+
+            foreign_key = None
+            on_delete = None
+            if field.fk and field.fk in entity_lookup:
+                target_table, target_pk = entity_lookup[field.fk]
+                foreign_key = f"{target_table}.{target_pk}"
+                on_delete = ON_DELETE_MAP.get(field.on_delete, "RESTRICT")
+
+            orm_fields.append(
+                TemplateORMField(
+                    name=str(field.name),
+                    python_type=python_type,
+                    column_type=column_type,
+                    primary_key=field.pk,
+                    nullable=field.optional,
+                    autoincrement=field.pk and field.type in ("int",),
+                    foreign_key=foreign_key,
+                    on_delete=on_delete,
+                )
+            )
+
+        orm_models.append(
+            TemplateORMModel(
+                class_name=f"{model.name}Record",
+                table_name=table_name,
+                source_model=str(model.name),
+                fields=orm_fields,
+            )
+        )
+
+    return orm_models
 
 
 def transform_api(input_api: InputAPI) -> TemplateAPI:

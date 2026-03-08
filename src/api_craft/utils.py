@@ -55,6 +55,15 @@ def add_spaces_to_camel_case(name: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", " ", name)
 
 
+def snake_to_plural(name: str) -> str:
+    """Pluralize a snake_case name using basic English rules."""
+    if name.endswith("y") and not name.endswith(("ay", "ey", "iy", "oy", "uy")):
+        return name[:-1] + "ies"
+    if name.endswith(("s", "sh", "ch", "x", "z")):
+        return name + "es"
+    return name + "s"
+
+
 def remove_duplicates(s: str) -> str:
     """Remove duplicate words from the given string."""
     words = re.findall("[A-Z][^A-Z]*", s)
