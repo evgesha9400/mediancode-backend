@@ -49,7 +49,9 @@ def _render_template(body_template: str, context: dict[str, str]) -> str:
     return template.render(**context)
 
 
-async def generate_api_zip(api: ApiModel, db: AsyncSession) -> io.BytesIO:
+async def generate_api_zip(
+    api: ApiModel, db: AsyncSession, options: GenerateOptions = None
+) -> io.BytesIO:
     """Generate a ZIP file containing the FastAPI application for an API.
 
     :param api: The API model with loaded relations.
@@ -61,7 +63,9 @@ async def generate_api_zip(api: ApiModel, db: AsyncSession) -> io.BytesIO:
     fields_map = await _fetch_fields(api, objects_map, db)
 
     # Convert to api_craft InputAPI format
-    input_api = _convert_to_input_api(api, objects_map, fields_map, GenerateOptions())
+    if options is None:
+        options = GenerateOptions()
+    input_api = _convert_to_input_api(api, objects_map, fields_map, options)
 
     # Generate files to a temporary directory
     with tempfile.TemporaryDirectory() as temp_dir:

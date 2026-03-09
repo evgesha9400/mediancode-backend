@@ -10,11 +10,14 @@ import pytest
 
 from unittest.mock import MagicMock
 
+import inspect
+
 from api.schemas.api import GenerateOptions
 from api.services.generation import (
     _build_endpoint_name,
     _build_field_type,
     _convert_to_input_api,
+    generate_api_zip,
 )
 
 
@@ -180,6 +183,17 @@ class TestConvertToInputApiOptions:
         opts = GenerateOptions(generate_swagger=False)
         result = _convert_to_input_api(api, {}, {}, opts)
         assert result.config.generate_swagger is False
+
+
+class TestGenerateApiZipSignature:
+    def test_accepts_options_parameter(self):
+        """generate_api_zip must accept an 'options' parameter."""
+        sig = inspect.signature(generate_api_zip)
+        assert "options" in sig.parameters
+        param = sig.parameters["options"]
+        assert (
+            param.default is not inspect.Parameter.empty
+        ), "options must have a default value"
 
 
 def test_zip_excludes_pycache():

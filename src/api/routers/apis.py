@@ -12,7 +12,7 @@ from api.rate_limit import (
     RATE_LIMIT_GENERATION,
     limiter,
 )
-from api.schemas.api import ApiCreate, ApiResponse, ApiUpdate
+from api.schemas.api import ApiCreate, ApiResponse, ApiUpdate, GenerateOptions
 from api.services.api import ApiService, get_api_service
 from api.services.user import UserService
 from api.settings import get_settings
@@ -204,6 +204,7 @@ async def generate_api_code(
     api_id: str,
     user: ProvisionedUser,
     db: DbSession,
+    options: GenerateOptions = GenerateOptions(),
 ) -> StreamingResponse:
     """Generate FastAPI application code for an API.
 
@@ -231,7 +232,7 @@ async def generate_api_code(
         )
 
     # Generate the ZIP file
-    zip_buffer = await generate_api_zip(api, db)
+    zip_buffer = await generate_api_zip(api, db, options)
 
     # Record generation event (always, even in beta)
     await user_service.record_generation(user, api.id)
