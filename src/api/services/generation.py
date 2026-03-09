@@ -20,9 +20,11 @@ from api.models.database import (
     ObjectDefinition,
 )
 from api_craft.main import APIGenerator
+from api.schemas.api import GenerateOptions
 from api_craft.models.input import (
     InputAPI,
     InputApiConfig,
+    InputDatabaseConfig,
     InputEndpoint,
     InputField,
     InputModel,
@@ -59,7 +61,7 @@ async def generate_api_zip(api: ApiModel, db: AsyncSession) -> io.BytesIO:
     fields_map = await _fetch_fields(api, objects_map, db)
 
     # Convert to api_craft InputAPI format
-    input_api = _convert_to_input_api(api, objects_map, fields_map)
+    input_api = _convert_to_input_api(api, objects_map, fields_map, GenerateOptions())
 
     # Generate files to a temporary directory
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -176,6 +178,7 @@ def _convert_to_input_api(
     api: ApiModel,
     objects_map: dict[str, ObjectDefinition],
     fields_map: dict[str, FieldModel],
+    options: GenerateOptions,
 ) -> InputAPI:
     """Convert database entities to api_craft InputAPI format.
 
@@ -310,8 +313,14 @@ def _convert_to_input_api(
         endpoints=input_endpoints,
         tags=input_tags,
         config=InputApiConfig(
-            healthcheck="/health",
-            response_placeholders=True,
+            healthcheck=options.healthcheck,
+            response_placeholders=options.response_placeholders,
+            format_code=options.format_code,
+            generate_swagger=options.generate_swagger,
+            database=InputDatabaseConfig(
+                enabled=options.database_enabled,
+                seed_data=options.database_seed_data,
+            ),
         ),
     )
 

@@ -8,8 +8,14 @@ import zipfile
 
 import pytest
 
+from unittest.mock import MagicMock
+
 from api.schemas.api import GenerateOptions
-from api.services.generation import _build_endpoint_name, _build_field_type
+from api.services.generation import (
+    _build_endpoint_name,
+    _build_field_type,
+    _convert_to_input_api,
+)
 
 
 class TestBuildFieldType:
@@ -121,6 +127,59 @@ class TestGenerateOptions:
     def test_custom_healthcheck_path(self):
         opts = GenerateOptions(healthcheck="/status")
         assert opts.healthcheck == "/status"
+
+
+class TestConvertToInputApiOptions:
+    def _make_api_model(self):
+        """Create a minimal mock ApiModel for testing."""
+        api = MagicMock()
+        api.title = "TestApi"
+        api.version = "1.0.0"
+        api.description = "Test"
+        api.endpoints = []
+        return api
+
+    def test_default_options_match_current_behavior(self):
+        api = self._make_api_model()
+        opts = GenerateOptions()
+        result = _convert_to_input_api(api, {}, {}, opts)
+        assert result.config.healthcheck == "/health"
+        assert result.config.response_placeholders is True
+        assert result.config.format_code is True
+        assert result.config.generate_swagger is True
+        assert result.config.database.enabled is False
+        assert result.config.database.seed_data is True
+
+    def test_database_enabled_passed_through(self):
+        api = self._make_api_model()
+        opts = GenerateOptions(database_enabled=True, database_seed_data=False)
+        result = _convert_to_input_api(api, {}, {}, opts)
+        assert result.config.database.enabled is True
+        assert result.config.database.seed_data is False
+
+    def test_healthcheck_none_disables_it(self):
+        api = self._make_api_model()
+        opts = GenerateOptions(healthcheck=None)
+        result = _convert_to_input_api(api, {}, {}, opts)
+        assert result.config.healthcheck is None
+
+    def test_response_placeholders_false_passed_through(self):
+        api = self._make_api_model()
+        opts = GenerateOptions(response_placeholders=False)
+        result = _convert_to_input_api(api, {}, {}, opts)
+        assert result.config.response_placeholders is False
+
+    def test_format_code_false_passed_through(self):
+        api = self._make_api_model()
+        opts = GenerateOptions(format_code=False)
+        result = _convert_to_input_api(api, {}, {}, opts)
+        assert result.config.format_code is False
+
+    def test_generate_swagger_false_passed_through(self):
+        api = self._make_api_model()
+        opts = GenerateOptions(generate_swagger=False)
+        result = _convert_to_input_api(api, {}, {}, opts)
+        assert result.config.generate_swagger is False
 
 
 def test_zip_excludes_pycache():
