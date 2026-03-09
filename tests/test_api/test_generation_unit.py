@@ -8,6 +8,7 @@ import zipfile
 
 import pytest
 
+from api.schemas.api import GenerateOptions
 from api.services.generation import _build_endpoint_name, _build_field_type
 
 
@@ -64,6 +65,62 @@ class TestBuildEndpointName:
         list_name = _build_endpoint_name("GET", "/products")
         detail_name = _build_endpoint_name("GET", "/products/{tracking_id}")
         assert list_name != detail_name
+
+
+class TestGenerateOptions:
+    def test_defaults(self):
+        opts = GenerateOptions()
+        assert opts.healthcheck == "/health"
+        assert opts.response_placeholders is True
+        assert opts.format_code is True
+        assert opts.generate_swagger is True
+        assert opts.database_enabled is False
+        assert opts.database_seed_data is True
+
+    def test_override_all_fields(self):
+        opts = GenerateOptions(
+            healthcheck=None,
+            response_placeholders=False,
+            format_code=False,
+            generate_swagger=False,
+            database_enabled=True,
+            database_seed_data=False,
+        )
+        assert opts.healthcheck is None
+        assert opts.response_placeholders is False
+        assert opts.format_code is False
+        assert opts.generate_swagger is False
+        assert opts.database_enabled is True
+        assert opts.database_seed_data is False
+
+    def test_camel_case_alias(self):
+        opts = GenerateOptions.model_validate(
+            {
+                "responsePlaceholders": False,
+                "formatCode": False,
+                "generateSwagger": False,
+                "databaseEnabled": True,
+                "databaseSeedData": False,
+            }
+        )
+        assert opts.response_placeholders is False
+        assert opts.format_code is False
+        assert opts.generate_swagger is False
+        assert opts.database_enabled is True
+        assert opts.database_seed_data is False
+
+    def test_empty_body_uses_defaults(self):
+        opts = GenerateOptions.model_validate({})
+        assert opts.healthcheck == "/health"
+        assert opts.response_placeholders is True
+        assert opts.format_code is True
+        assert opts.generate_swagger is True
+        assert opts.database_enabled is False
+        assert opts.database_seed_data is True
+
+    def test_custom_healthcheck_path(self):
+        opts = GenerateOptions(healthcheck="/status")
+        assert opts.healthcheck == "/status"
 
 
 def test_zip_excludes_pycache():

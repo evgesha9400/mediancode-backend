@@ -86,3 +86,24 @@ class ApiResponse(BaseModel):
     )
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class GenerateOptions(BaseModel):
+    """Options for code generation passed to POST /v1/apis/{api_id}/generate.
+
+    :ivar healthcheck: Path for the healthcheck endpoint (None to disable).
+    :ivar response_placeholders: Generate placeholder response bodies.
+    :ivar format_code: Format generated code with Black.
+    :ivar generate_swagger: Auto-generate swagger.yaml.
+    :ivar database_enabled: Generate database support (SQLAlchemy, Alembic, Docker Compose).
+    :ivar database_seed_data: Generate seed data helpers (only when database_enabled is True).
+    """
+
+    healthcheck: str | None = Field(default="/health")
+    response_placeholders: bool = Field(default=True, alias="responsePlaceholders")
+    format_code: bool = Field(default=True, alias="formatCode")
+    generate_swagger: bool = Field(default=True, alias="generateSwagger")
+    database_enabled: bool = Field(default=False, alias="databaseEnabled")
+    database_seed_data: bool = Field(default=True, alias="databaseSeedData")
+
+    model_config = ConfigDict(populate_by_name=True)
