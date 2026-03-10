@@ -4,7 +4,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Self
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from api_craft.models.types import PascalCaseName
 
@@ -107,3 +109,17 @@ class GenerateOptions(BaseModel):
     database_seed_data: bool = Field(default=True, alias="databaseSeedData")
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @model_validator(mode="after")
+    def _validate_mutual_exclusivity(self) -> Self:
+        """Validate that database and response placeholders are not both enabled.
+
+        :returns: The validated options instance.
+        :raises ValueError: If both database and response placeholders are enabled.
+        """
+        if self.database_enabled and self.response_placeholders:
+            raise ValueError(
+                "Response placeholders cannot be enabled when database generation is active. "
+                "Disable response placeholders or disable database generation."
+            )
+        return self
