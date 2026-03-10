@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - imports used for type checking only
-    from api_craft.models.input import InputEndpoint, InputModel
+    from api_craft.models.input import InputApiConfig, InputEndpoint, InputModel
 
 TYPE_IDENTIFIER_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
@@ -187,6 +187,34 @@ def validate_primary_keys(objects: Iterable["InputModel"]) -> None:
                 raise ValueError(
                     f"Field '{obj.name}.{field.name}' is a primary key and cannot be optional"
                 )
+
+
+def validate_database_config(
+    config: "InputApiConfig",
+    objects: Iterable["InputModel"],
+) -> None:
+    """Validate database generation configuration constraints.
+
+    :param config: API configuration containing database and placeholder settings.
+    :param objects: Collection of declared objects.
+    :raises ValueError: If database is enabled with response placeholders,
+        or if database is enabled but no object has a primary key.
+    """
+    if not config.database.enabled:
+        return
+
+    if config.response_placeholders:
+        raise ValueError(
+            "Response placeholders cannot be enabled when database generation is active. "
+            "Disable response placeholders or disable database generation."
+        )
+
+    has_any_pk = any(any(field.pk for field in obj.fields) for obj in objects)
+    if not has_any_pk:
+        raise ValueError(
+            "Database generation requires at least one object with a primary key field. "
+            "Mark a field as PK on your objects, or disable database generation."
+        )
 
 
 SNAKE_CASE_PATTERN = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")

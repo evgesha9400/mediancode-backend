@@ -3,6 +3,7 @@
 
 import pytest
 from api_craft.models.input import (
+    InputDatabaseConfig,
     InputField,
     InputModel,
     InputApiConfig,
@@ -124,3 +125,120 @@ class TestTemplateORMModels:
             default_url="postgresql+asyncpg://postgres:postgres@localhost:5432/test",
         )
         assert config.enabled is True
+
+
+class TestDatabaseConfigValidation:
+    """Validation rules for database generation configuration."""
+
+    def test_database_with_placeholders_raises(self):
+        """Database enabled + response_placeholders=True must raise."""
+        with pytest.raises(ValueError, match="Response placeholders cannot be enabled"):
+            InputAPI(
+                name="TestApi",
+                objects=[
+                    InputModel(
+                        name="Item",
+                        fields=[InputField(name="id", type="int", pk=True)],
+                    ),
+                ],
+                endpoints=[
+                    InputEndpoint(
+                        name="GetItems", path="/items", method="GET", response="Item"
+                    ),
+                ],
+                config=InputApiConfig(
+                    response_placeholders=True,
+                    database=InputDatabaseConfig(enabled=True),
+                ),
+            )
+
+    def test_database_without_placeholders_passes(self):
+        """Database enabled + response_placeholders=False must succeed."""
+        api = InputAPI(
+            name="TestApi",
+            objects=[
+                InputModel(
+                    name="Item",
+                    fields=[InputField(name="id", type="int", pk=True)],
+                ),
+            ],
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems", path="/items", method="GET", response="Item"
+                ),
+            ],
+            config=InputApiConfig(
+                response_placeholders=False,
+                database=InputDatabaseConfig(enabled=True),
+            ),
+        )
+        assert api.config.database.enabled is True
+
+    def test_placeholders_without_database_passes(self):
+        """Placeholders enabled without database must succeed."""
+        api = InputAPI(
+            name="TestApi",
+            objects=[
+                InputModel(
+                    name="Item",
+                    fields=[InputField(name="name", type="str")],
+                ),
+            ],
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems", path="/items", method="GET", response="Item"
+                ),
+            ],
+            config=InputApiConfig(
+                response_placeholders=True,
+                database=InputDatabaseConfig(enabled=False),
+            ),
+        )
+        assert api.config.response_placeholders is True
+
+    def test_database_without_pk_raises(self):
+        """Database enabled with no PK on any object must raise."""
+        with pytest.raises(ValueError, match="at least one object with a primary key"):
+            InputAPI(
+                name="TestApi",
+                objects=[
+                    InputModel(
+                        name="Item",
+                        fields=[InputField(name="name", type="str")],
+                    ),
+                ],
+                endpoints=[
+                    InputEndpoint(
+                        name="GetItems", path="/items", method="GET", response="Item"
+                    ),
+                ],
+                config=InputApiConfig(
+                    response_placeholders=False,
+                    database=InputDatabaseConfig(enabled=True),
+                ),
+            )
+
+    def test_database_with_pk_passes(self):
+        """Database enabled with a PK on at least one object must succeed."""
+        api = InputAPI(
+            name="TestApi",
+            objects=[
+                InputModel(
+                    name="Item",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems", path="/items", method="GET", response="Item"
+                ),
+            ],
+            config=InputApiConfig(
+                response_placeholders=False,
+                database=InputDatabaseConfig(enabled=True),
+            ),
+        )
+        assert api.config.database.enabled is True
