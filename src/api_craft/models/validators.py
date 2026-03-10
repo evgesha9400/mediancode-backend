@@ -189,29 +189,6 @@ def validate_primary_keys(objects: Iterable["InputModel"]) -> None:
                 )
 
 
-def validate_foreign_keys(objects: Iterable["InputModel"]) -> None:
-    """Verify FK targets exist, have a PK, and set_null constraints.
-
-    :param objects: Collection of declared objects.
-    :raises ValueError: If FK constraints are violated.
-    """
-    entity_map = {obj.name: obj for obj in objects if any(f.pk for f in obj.fields)}
-    for obj in objects:
-        for field in obj.fields:
-            if not field.fk:
-                continue
-            if field.fk not in entity_map:
-                raise ValueError(
-                    f"Field '{obj.name}.{field.name}' references "
-                    f"'{field.fk}' which is not a persisted entity"
-                )
-            if field.on_delete == "set_null" and not field.optional:
-                raise ValueError(
-                    f"Field '{obj.name}.{field.name}' uses on_delete=set_null "
-                    f"and must be optional (nullable) to allow NULL values"
-                )
-
-
 SNAKE_CASE_PATTERN = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
 
 
