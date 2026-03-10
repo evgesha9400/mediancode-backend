@@ -283,14 +283,44 @@ class TestConvertToInputApiPkFk:
         assert id_field.pk is False
 
     def test_fk_resolved_to_object_name(self):
+        """FK resolution requires the target object to be a persisted entity (has PK)."""
+        # Create a second object "Order" with a PK, and have Item's field FK to it
+        pk_field = MagicMock()
+        pk_field.name = "order_id"
+        pk_field.field_type = MagicMock()
+        pk_field.field_type.python_type = "int"
+        pk_field.description = None
+        pk_field.default_value = None
+        pk_field.container = None
+        pk_field.constraint_values = []
+        pk_field.validators = []
+
+        pk_assoc = MagicMock()
+        pk_assoc.field_id = "field-2"
+        pk_assoc.optional = False
+        pk_assoc.position = 0
+        pk_assoc.is_pk = True
+        pk_assoc.fk_object_id = None
+        pk_assoc.on_delete = None
+
+        order_obj = MagicMock()
+        order_obj.id = "obj-2"
+        order_obj.name = "Order"
+        order_obj.description = "An order"
+        order_obj.field_associations = [pk_assoc]
+        order_obj.validators = []
+
         api, objects_map, fields_map = self._make_api_with_objects(
-            fk_object_id="obj-1", on_delete="cascade"
+            fk_object_id="obj-2", on_delete="cascade"
         )
+        objects_map["obj-2"] = order_obj
+        fields_map["field-2"] = pk_field
+
         opts = GenerateOptions()
         result = _convert_to_input_api(api, objects_map, fields_map, opts)
         item_obj = next(o for o in result.objects if o.name == "Item")
         id_field = next(f for f in item_obj.fields if f.name == "id")
-        assert id_field.fk == "Item"
+        assert id_field.fk == "Order"
         assert id_field.on_delete == "cascade"
 
     def test_fk_none_when_not_set(self):
