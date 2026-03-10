@@ -4,14 +4,12 @@ from pydantic import BaseModel, Field, model_validator
 
 from api.schemas.literals import (
     HttpMethod,
-    OnDeleteAction,
     ResponseShape,
     ValidatorMode,
 )
 from api_craft.models.types import PascalCaseName, SnakeCaseName
 from api_craft.models.validators import (
     validate_endpoint_references,
-    validate_foreign_keys,
     validate_model_field_types,
     validate_path_parameters,
     validate_primary_keys,
@@ -76,8 +74,6 @@ class InputField(BaseModel):
     validators: list[InputValidator] = Field(default_factory=list)
     field_validators: list[InputResolvedFieldValidator] = Field(default_factory=list)
     pk: bool = False
-    fk: str | None = None
-    on_delete: OnDeleteAction = "restrict"
 
 
 class InputModel(BaseModel):
@@ -235,5 +231,4 @@ class InputAPI(BaseModel):
         validate_model_field_types(self.objects, declared_object_names)
         validate_endpoint_references(self.endpoints, declared_object_names)
         validate_primary_keys(self.objects)
-        validate_foreign_keys(self.objects)
         return self
