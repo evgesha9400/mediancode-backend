@@ -1,4 +1,5 @@
--- Seed Shop API for user 23a06d8c-61c0-4655-8e40-5c16ee98a372
+-- Seed Shop API for user 9d17b505-af9d-4a19-a519-a7b89a6ed14d
+-- Clerk ID: user_39LzgEEnF5YQRTke3nSdPMEvoKT
 -- Recreates the same setup as test_e2e_shop_full.py (final state)
 -- Plain SQL — runs in any PostgreSQL client.
 
@@ -6,14 +7,14 @@ BEGIN;
 
 -- 1. Namespace
 INSERT INTO namespaces (id, user_id, name, is_default)
-VALUES (gen_random_uuid(), '23a06d8c-61c0-4655-8e40-5c16ee98a372', 'Shop', false);
+VALUES (gen_random_uuid(), '9d17b505-af9d-4a19-a519-a7b89a6ed14d', 'Shop', false);
 
 -- 2. Fields (23 total)
 -- We need stable IDs to reference later, so we use WITH clauses per group.
 
 WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 ),
 sys_ns AS (
   SELECT id FROM namespaces WHERE user_id IS NULL LIMIT 1
@@ -36,7 +37,7 @@ t AS (
     (SELECT id FROM types WHERE name = 'time')     AS time
 )
 INSERT INTO fields (id, namespace_id, user_id, name, type_id)
-SELECT gen_random_uuid(), ns.id, '23a06d8c-61c0-4655-8e40-5c16ee98a372', v.name, v.type_id
+SELECT gen_random_uuid(), ns.id, '9d17b505-af9d-4a19-a519-a7b89a6ed14d', v.name, v.type_id
 FROM ns, (VALUES
   ('name',               (SELECT str      FROM t)),
   ('sku',                (SELECT str      FROM t)),
@@ -66,7 +67,7 @@ FROM ns, (VALUES
 -- 3. Field constraints
 WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 ),
 f AS (
   SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
@@ -106,7 +107,7 @@ FROM (VALUES
 -- 4. Field validators
 WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 ),
 f AS (
   SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
@@ -131,10 +132,10 @@ FROM (VALUES
 -- 5. Objects
 WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 )
 INSERT INTO objects (id, namespace_id, user_id, name, description)
-SELECT gen_random_uuid(), ns.id, '23a06d8c-61c0-4655-8e40-5c16ee98a372', v.name, v.descr
+SELECT gen_random_uuid(), ns.id, '9d17b505-af9d-4a19-a519-a7b89a6ed14d', v.name, v.descr
 FROM ns, (VALUES
   ('Product',  'Shop product'),
   ('Customer', 'Shop customer')
@@ -143,7 +144,7 @@ FROM ns, (VALUES
 -- 6. Fields on objects
 WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 ),
 f AS (
   SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
@@ -188,7 +189,7 @@ FROM (VALUES
 -- 7. Model validators
 WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 ),
 o AS (
   SELECT o.name, o.id FROM objects o JOIN ns ON o.namespace_id = ns.id
@@ -221,21 +222,21 @@ FROM (VALUES
 -- 8. API
 WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 )
 INSERT INTO apis (id, namespace_id, user_id, title, version, description, base_url, server_url, created_at, updated_at)
-SELECT gen_random_uuid(), ns.id, '23a06d8c-61c0-4655-8e40-5c16ee98a372',
+SELECT gen_random_uuid(), ns.id, '9d17b505-af9d-4a19-a519-a7b89a6ed14d',
        'ShopApi', '1.0.0', 'Complete online shop API', '', '', now(), now()
 FROM ns;
 
 -- 9. Endpoints (7)
 WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 ),
 a AS (
   SELECT id FROM apis
-  WHERE user_id = '23a06d8c-61c0-4655-8e40-5c16ee98a372' AND title = 'ShopApi'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND title = 'ShopApi'
 ),
 f AS (
   SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
