@@ -197,9 +197,6 @@ def collect_orm_imports(orm_models: list[TemplateORMModel]) -> list[str]:
             else:
                 imports.add(col_type)
 
-            if field.foreign_key:
-                imports.add("ForeignKey")
-
     return sorted(imports)
 
 
