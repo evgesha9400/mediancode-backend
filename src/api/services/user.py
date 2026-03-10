@@ -91,11 +91,16 @@ class UserService:
         """Fetch profile data from Clerk Backend API and update the user.
 
         Extracts first_name, last_name, and the primary email address.
+        Never raises — profile sync failures must not break authentication.
 
         :param user: The user model to update.
         """
         settings = get_settings()
         if not settings.clerk_secret_key:
+            logger.warning(
+                "clerk_secret_key not configured — skipping profile sync for %s",
+                user.clerk_id,
+            )
             return
 
         try:
@@ -108,18 +113,37 @@ class UserService:
                 resp.raise_for_status()
                 data = resp.json()
         except httpx.HTTPError:
-            logger.warning("Failed to fetch Clerk profile for %s", user.clerk_id)
+            logger.exception("Clerk API request failed for user %s", user.clerk_id)
+            return
+        except Exception:
+            logger.exception(
+                "Unexpected error fetching Clerk profile for %s", user.clerk_id
+            )
             return
 
-        user.first_name = data.get("first_name") or None
-        user.last_name = data.get("last_name") or None
+        try:
+            user.first_name = data.get("first_name") or None
+            user.last_name = data.get("last_name") or None
 
-        primary_email_id = data.get("primary_email_address_id")
-        if primary_email_id:
-            for addr in data.get("email_addresses", []):
-                if addr.get("id") == primary_email_id:
-                    user.email = addr.get("email_address")
-                    break
+            primary_email_id = data.get("primary_email_address_id")
+            if primary_email_id:
+                for addr in data.get("email_addresses", []):
+                    if addr.get("id") == primary_email_id:
+                        user.email = addr.get("email_address")
+                        break
+
+            await self.db.flush()
+            logger.info(
+                "Synced Clerk profile for %s (name=%s %s, email=%s)",
+                user.clerk_id,
+                user.first_name,
+                user.last_name,
+                user.email,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to parse/save Clerk profile data for %s", user.clerk_id
+            )
 
     async def get_by_clerk_id(self, clerk_id: str) -> UserModel | None:
         """Lookup user by Clerk ID.

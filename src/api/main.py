@@ -1,6 +1,7 @@
 # src/api/main.py
 """FastAPI application entry point."""
 
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -25,6 +26,26 @@ from api.routers import (
 )
 from api.settings import get_settings
 
+# Configure application logging — uvicorn only sets up its own loggers,
+# so without this, all api.* logger calls are silently dropped.
+_app_logger = logging.getLogger("api")
+_app_logger.setLevel(logging.INFO)
+if not _app_logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    )
+    _app_logger.addHandler(_handler)
+
+logger = logging.getLogger(__name__)
+
+
+class _HealthCheckFilter(logging.Filter):
+    """Filter out health check requests from access logs."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "/health" not in record.getMessage()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -33,9 +54,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     :param app: FastAPI application instance.
     :yields: Nothing, just manages startup/shutdown.
     """
-    # Startup
+    logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
     yield
-    # Shutdown
 
 
 # Disable docs in production
@@ -97,6 +117,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     :param exc: The uncaught exception.
     :returns: JSON error response.
     """
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Internal server error"},
