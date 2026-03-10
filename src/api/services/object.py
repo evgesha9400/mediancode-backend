@@ -189,8 +189,6 @@ class ObjectService(BaseService[ObjectDefinition]):
                 field_id=field_ref.field_id,
                 optional=field_ref.optional,
                 is_pk=field_ref.is_pk,
-                fk_object_id=field_ref.fk_object_id,
-                on_delete=field_ref.on_delete,
                 position=position,
             )
             self.db.add(assoc)
