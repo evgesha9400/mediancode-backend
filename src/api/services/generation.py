@@ -212,12 +212,6 @@ def _convert_to_input_api(
                         for rv in _build_resolved_field_validators(field)
                     ],
                     pk=assoc.is_pk,
-                    fk=(
-                        objects_map[assoc.fk_object_id].name
-                        if assoc.fk_object_id and assoc.fk_object_id in objects_map
-                        else None
-                    ),
-                    on_delete=assoc.on_delete or "restrict",
                 )
                 fields.append(input_field)
 
