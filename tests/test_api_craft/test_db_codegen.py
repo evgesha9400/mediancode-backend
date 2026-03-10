@@ -269,3 +269,27 @@ class TestForeignKeyGeneration:
     def test_orm_models_compile(self, fk_project: Path):
         content = (fk_project / "src" / "orm_models.py").read_text()
         compile(content, "orm_models.py", "exec")
+
+
+class TestDatabaseDependencies:
+    """Verify database dependencies are included in pyproject.toml."""
+
+    def test_sqlalchemy_in_dependencies(self, db_project: Path):
+        content = (db_project / "pyproject.toml").read_text()
+        assert "sqlalchemy" in content
+
+    def test_asyncpg_in_dependencies(self, db_project: Path):
+        content = (db_project / "pyproject.toml").read_text()
+        assert "asyncpg" in content
+
+    def test_alembic_in_dependencies(self, db_project: Path):
+        content = (db_project / "pyproject.toml").read_text()
+        assert "alembic" in content
+
+    def test_no_db_deps_when_disabled(self, tmp_path):
+        api_input = load_input("items_api.yaml")
+        APIGenerator().generate(api_input, path=str(tmp_path))
+        content = (tmp_path / "items-api" / "pyproject.toml").read_text()
+        assert "sqlalchemy" not in content
+        assert "asyncpg" not in content
+        assert "alembic" not in content
