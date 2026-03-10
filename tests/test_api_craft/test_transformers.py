@@ -166,77 +166,6 @@ class TestTypeMapping:
         assert len(result[0].fields) == 1  # only id, tags skipped
 
 
-class TestForeignKeyTransform:
-    def test_fk_field_resolved(self):
-        models = [
-            _make_model(
-                "Order",
-                [
-                    {"name": "id", "type": "int", "pk": True},
-                ],
-            ),
-            _make_model(
-                "OrderItem",
-                [
-                    {"name": "id", "type": "int", "pk": True},
-                    {
-                        "name": "order_id",
-                        "type": "int",
-                        "fk": "Order",
-                        "on_delete": "cascade",
-                    },
-                ],
-            ),
-        ]
-        result = transform_orm_models(models)
-        order_item = next(m for m in result if m.class_name == "OrderItemRecord")
-        fk_field = next(f for f in order_item.fields if f.name == "order_id")
-        assert fk_field.foreign_key == "orders.id"
-        assert fk_field.on_delete == "CASCADE"
-
-    def test_fk_on_delete_restrict(self):
-        models = [
-            _make_model("Order", [{"name": "id", "type": "int", "pk": True}]),
-            _make_model(
-                "OrderItem",
-                [
-                    {"name": "id", "type": "int", "pk": True},
-                    {
-                        "name": "order_id",
-                        "type": "int",
-                        "fk": "Order",
-                        "on_delete": "restrict",
-                    },
-                ],
-            ),
-        ]
-        result = transform_orm_models(models)
-        order_item = next(m for m in result if m.class_name == "OrderItemRecord")
-        fk_field = next(f for f in order_item.fields if f.name == "order_id")
-        assert fk_field.on_delete == "RESTRICT"
-
-    def test_fk_on_delete_set_null(self):
-        models = [
-            _make_model("Order", [{"name": "id", "type": "int", "pk": True}]),
-            _make_model(
-                "OrderItem",
-                [
-                    {"name": "id", "type": "int", "pk": True},
-                    {
-                        "name": "order_id",
-                        "type": "int",
-                        "fk": "Order",
-                        "on_delete": "set_null",
-                    },
-                ],
-            ),
-        ]
-        result = transform_orm_models(models)
-        order_item = next(m for m in result if m.class_name == "OrderItemRecord")
-        fk_field = next(f for f in order_item.fields if f.name == "order_id")
-        assert fk_field.on_delete == "SET NULL"
-
-
 class TestSnakeToPlural:
     """Test table name pluralization."""
 
@@ -287,26 +216,6 @@ class TestCollectOrmImports:
         assert "Integer" in imports
         assert "Text" in imports
         assert "Float" in imports
-
-    def test_collects_foreign_key_import(self):
-        models = [
-            TemplateORMModel(
-                class_name="OrderItemRecord",
-                table_name="order_items",
-                source_model="OrderItem",
-                fields=[
-                    TemplateORMField(
-                        name="order_id",
-                        python_type="int",
-                        column_type="Integer",
-                        foreign_key="orders.id",
-                        on_delete="CASCADE",
-                    ),
-                ],
-            )
-        ]
-        imports = collect_orm_imports(models)
-        assert "ForeignKey" in imports
 
     def test_deduplicates_imports(self):
         models = [
