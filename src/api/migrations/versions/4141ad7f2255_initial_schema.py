@@ -323,15 +323,8 @@ def upgrade() -> None:
         sa.Column(
             "is_pk", sa.Boolean(), nullable=False, server_default=sa.text("false")
         ),
-        sa.Column("fk_object_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("on_delete", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["field_id"], ["fields.id"]),
-        sa.ForeignKeyConstraint(["fk_object_id"], ["objects.id"]),
         sa.ForeignKeyConstraint(["object_id"], ["objects.id"], ondelete="CASCADE"),
-        sa.CheckConstraint(
-            "on_delete IN ('cascade', 'restrict', 'set_null')",
-            name="ck_fields_on_objects_on_delete",
-        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
