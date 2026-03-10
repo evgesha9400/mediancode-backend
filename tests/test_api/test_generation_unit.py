@@ -224,3 +224,79 @@ def test_zip_excludes_pycache():
             names = zf.namelist()
             assert not any("__pycache__" in n for n in names)
             assert any("main.py" in n for n in names)
+
+
+class TestConvertToInputApiPkFk:
+    """Tests that pk/fk/on_delete flow from associations to InputField."""
+
+    def _make_api_with_objects(self, *, is_pk=False, fk_object_id=None, on_delete=None):
+        """Create mocks simulating the DB models with field associations."""
+        field = MagicMock()
+        field.name = "id"
+        field.field_type = MagicMock()
+        field.field_type.python_type = "int"
+        field.description = None
+        field.default_value = None
+        field.container = None
+        field.constraint_values = []
+        field.validators = []
+
+        assoc = MagicMock()
+        assoc.field_id = "field-1"
+        assoc.optional = False
+        assoc.position = 0
+        assoc.is_pk = is_pk
+        assoc.fk_object_id = fk_object_id
+        assoc.on_delete = on_delete
+
+        obj = MagicMock()
+        obj.id = "obj-1"
+        obj.name = "Item"
+        obj.description = "Test item"
+        obj.field_associations = [assoc]
+        obj.validators = []
+
+        api = MagicMock()
+        api.title = "TestApi"
+        api.version = "1.0.0"
+        api.description = "Test"
+        api.endpoints = []
+
+        objects_map = {"obj-1": obj}
+        fields_map = {"field-1": field}
+        return api, objects_map, fields_map
+
+    def test_pk_passed_through(self):
+        api, objects_map, fields_map = self._make_api_with_objects(is_pk=True)
+        opts = GenerateOptions(database_enabled=True)
+        result = _convert_to_input_api(api, objects_map, fields_map, opts)
+        item_obj = next(o for o in result.objects if o.name == "Item")
+        id_field = next(f for f in item_obj.fields if f.name == "id")
+        assert id_field.pk is True
+
+    def test_pk_false_by_default(self):
+        api, objects_map, fields_map = self._make_api_with_objects(is_pk=False)
+        opts = GenerateOptions()
+        result = _convert_to_input_api(api, objects_map, fields_map, opts)
+        item_obj = next(o for o in result.objects if o.name == "Item")
+        id_field = next(f for f in item_obj.fields if f.name == "id")
+        assert id_field.pk is False
+
+    def test_fk_resolved_to_object_name(self):
+        api, objects_map, fields_map = self._make_api_with_objects(
+            fk_object_id="obj-1", on_delete="cascade"
+        )
+        opts = GenerateOptions()
+        result = _convert_to_input_api(api, objects_map, fields_map, opts)
+        item_obj = next(o for o in result.objects if o.name == "Item")
+        id_field = next(f for f in item_obj.fields if f.name == "id")
+        assert id_field.fk == "Item"
+        assert id_field.on_delete == "cascade"
+
+    def test_fk_none_when_not_set(self):
+        api, objects_map, fields_map = self._make_api_with_objects()
+        opts = GenerateOptions()
+        result = _convert_to_input_api(api, objects_map, fields_map, opts)
+        item_obj = next(o for o in result.objects if o.name == "Item")
+        id_field = next(f for f in item_obj.fields if f.name == "id")
+        assert id_field.fk is None
