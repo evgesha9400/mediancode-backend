@@ -116,8 +116,6 @@ class TemplateORMField(BaseModel):
     primary_key: bool = False
     nullable: bool = False
     autoincrement: bool = False
-    foreign_key: str | None = None
-    on_delete: str | None = None
 
 
 class TemplateORMModel(BaseModel):
