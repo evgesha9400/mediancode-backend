@@ -4,11 +4,6 @@
 - imports: list[str] - SQLAlchemy column type names
 </%doc>\
 <%
-has_foreign_keys = any(
-    field.foreign_key
-    for model in orm_models
-    for field in model.fields
-)
 sa_imports = sorted(set(imports))
 %>\
 from sqlalchemy import ${', '.join(sa_imports)}
@@ -31,9 +26,6 @@ class ${model.class_name}(Base):
         parts.append("primary_key=True")
     if field.autoincrement:
         parts.append("autoincrement=True")
-    if field.foreign_key:
-        on_del = f', ondelete="{field.on_delete}"' if field.on_delete else ''
-        parts.append(f'ForeignKey("{field.foreign_key}"{on_del})')
     if field.nullable and not field.primary_key:
         parts.append("nullable=True")
 %>\
