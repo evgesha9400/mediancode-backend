@@ -208,13 +208,6 @@ def transform_endpoint(
     )
 
 
-ON_DELETE_MAP = {
-    "cascade": "CASCADE",
-    "restrict": "RESTRICT",
-    "set_null": "SET NULL",
-}
-
-
 def _get_max_length(validators):
     """Extract max_length value from validators list."""
     for v in validators:
@@ -285,13 +278,6 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
             base_type = field.type.split(".")[0] if "." in field.type else field.type
             python_type = base_type if not field.optional else f"{base_type} | None"
 
-            foreign_key = None
-            on_delete = None
-            if field.fk and field.fk in entity_lookup:
-                target_table, target_pk = entity_lookup[field.fk]
-                foreign_key = f"{target_table}.{target_pk}"
-                on_delete = ON_DELETE_MAP.get(field.on_delete, "RESTRICT")
-
             orm_fields.append(
                 TemplateORMField(
                     name=str(field.name),
@@ -300,8 +286,6 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
                     primary_key=field.pk,
                     nullable=field.optional,
                     autoincrement=field.pk and field.type in ("int",),
-                    foreign_key=foreign_key,
-                    on_delete=on_delete,
                 )
             )
 
