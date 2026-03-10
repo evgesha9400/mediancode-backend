@@ -320,7 +320,9 @@ def upgrade() -> None:
         sa.Column("field_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("optional", sa.Boolean(), nullable=False),
         sa.Column("position", sa.Integer(), nullable=False),
-        sa.Column("is_pk", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "is_pk", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
         sa.Column("fk_object_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("on_delete", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["field_id"], ["fields.id"]),

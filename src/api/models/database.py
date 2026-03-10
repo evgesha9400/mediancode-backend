@@ -440,7 +440,9 @@ class ObjectDefinition(Base):
     user: Mapped["UserModel"] = relationship(back_populates="objects")
     namespace: Mapped["Namespace"] = relationship(back_populates="objects")
     field_associations: Mapped[list["ObjectFieldAssociation"]] = relationship(
-        back_populates="object", cascade="all, delete-orphan"
+        back_populates="object",
+        cascade="all, delete-orphan",
+        foreign_keys="[ObjectFieldAssociation.object_id]",
     )
     validators: Mapped[list["AppliedModelValidatorModel"]] = relationship(
         back_populates="object",
@@ -475,12 +477,27 @@ class ObjectFieldAssociation(Base):
     )
     optional: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     position: Mapped[int] = mapped_column(default=0, nullable=False)
+    is_pk: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    fk_object_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("objects.id"), nullable=True
+    )
+    on_delete: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "on_delete IN ('cascade', 'restrict', 'set_null')",
+            name="ck_fields_on_objects_on_delete",
+        ),
+    )
 
     # Relationships
     object: Mapped["ObjectDefinition"] = relationship(
-        back_populates="field_associations"
+        back_populates="field_associations", foreign_keys=[object_id]
     )
     field: Mapped["FieldModel"] = relationship(back_populates="object_associations")
+    fk_object: Mapped["ObjectDefinition | None"] = relationship(
+        foreign_keys=[fk_object_id]
+    )
 
 
 class AppliedModelValidatorModel(Base):
