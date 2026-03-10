@@ -291,7 +291,9 @@ class TestTransformApiWithDatabase:
                     ],
                 )
             ],
-            config=InputApiConfig(database={"enabled": True}),
+            config=InputApiConfig(
+                database={"enabled": True}, response_placeholders=False
+            ),
         )
         result = transform_api(api)
         assert len(result.orm_models) == 1
@@ -316,7 +318,9 @@ class TestTransformApiWithDatabase:
                     ],
                 )
             ],
-            config=InputApiConfig(database={"enabled": True}),
+            config=InputApiConfig(
+                database={"enabled": True}, response_placeholders=False
+            ),
         )
         result = transform_api(api)
         assert "shop_api" in result.database_config.default_url
@@ -325,25 +329,26 @@ class TestTransformApiWithDatabase:
 class TestDatabaseValidation:
     def test_database_enabled_without_pk_raises(self):
         """Database generation with no PK fields must raise ValueError."""
-        api_input = InputAPI(
-            name="TestApi",
-            objects=[
-                InputModel(
-                    name="Item",
-                    fields=[
-                        InputField(name="name", type="str"),
-                    ],
-                ),
-            ],
-            endpoints=[
-                InputEndpoint(
-                    name="GetItems", path="/items", method="GET", response="Item"
-                ),
-            ],
-            config=InputApiConfig(database={"enabled": True}),
-        )
         with pytest.raises(ValueError, match="primary key"):
-            transform_api(api_input)
+            InputAPI(
+                name="TestApi",
+                objects=[
+                    InputModel(
+                        name="Item",
+                        fields=[
+                            InputField(name="name", type="str"),
+                        ],
+                    ),
+                ],
+                endpoints=[
+                    InputEndpoint(
+                        name="GetItems", path="/items", method="GET", response="Item"
+                    ),
+                ],
+                config=InputApiConfig(
+                    database={"enabled": True}, response_placeholders=False
+                ),
+            )
 
     def test_database_enabled_with_pk_succeeds(self):
         """Database generation with a PK field must succeed."""
@@ -363,7 +368,9 @@ class TestDatabaseValidation:
                     name="GetItems", path="/items", method="GET", response="Item"
                 ),
             ],
-            config=InputApiConfig(database={"enabled": True}),
+            config=InputApiConfig(
+                database={"enabled": True}, response_placeholders=False
+            ),
         )
         result = transform_api(api_input)
         assert result.database_config is not None

@@ -343,11 +343,6 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
     database_config = None
     if input_api.config.database.enabled:
         orm_models = transform_orm_models(input_api.objects)
-        if not orm_models:
-            raise ValueError(
-                "Database generation requires at least one object with a primary key field. "
-                "Mark a field as PK on your objects, or disable database generation."
-            )
         snake_name = camel_to_snake(input_api.name)
         database_config = TemplateDatabaseConfig(
             enabled=True,

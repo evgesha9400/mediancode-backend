@@ -155,8 +155,30 @@ class TestConvertToInputApiOptions:
 
     def test_database_enabled_passed_through(self):
         api = self._make_api_model()
-        opts = GenerateOptions(database_enabled=True, database_seed_data=False)
-        result = _convert_to_input_api(api, {}, {}, opts)
+        field = MagicMock()
+        field.name = "id"
+        field.field_type = MagicMock()
+        field.field_type.python_type = "int"
+        field.description = None
+        field.default_value = None
+        field.container = None
+        field.constraint_values = []
+        field.validators = []
+        assoc = MagicMock()
+        assoc.field_id = "field-1"
+        assoc.optional = False
+        assoc.position = 0
+        assoc.is_pk = True
+        obj = MagicMock()
+        obj.id = "obj-1"
+        obj.name = "Item"
+        obj.description = "Test item"
+        obj.field_associations = [assoc]
+        obj.validators = []
+        opts = GenerateOptions(
+            database_enabled=True, database_seed_data=False, response_placeholders=False
+        )
+        result = _convert_to_input_api(api, {"obj-1": obj}, {"field-1": field}, opts)
         assert result.config.database.enabled is True
         assert result.config.database.seed_data is False
 
@@ -266,7 +288,7 @@ class TestConvertToInputApiPk:
 
     def test_pk_passed_through(self):
         api, objects_map, fields_map = self._make_api_with_objects(is_pk=True)
-        opts = GenerateOptions(database_enabled=True)
+        opts = GenerateOptions(database_enabled=True, response_placeholders=False)
         result = _convert_to_input_api(api, objects_map, fields_map, opts)
         item_obj = next(o for o in result.objects if o.name == "Item")
         id_field = next(f for f in item_obj.fields if f.name == "id")
