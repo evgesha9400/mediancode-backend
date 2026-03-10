@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from api.schemas.literals import OnDeleteAction
 from api_craft.models.types import PascalCaseName
 
 
@@ -19,6 +20,11 @@ class ObjectFieldReferenceSchema(BaseModel):
         ..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"]
     )
     optional: bool = Field(default=False, examples=[False])
+    is_pk: bool = Field(default=False, alias="isPk", examples=[False])
+    fk_object_id: UUID | None = Field(default=None, alias="fkObjectId", examples=[None])
+    on_delete: OnDeleteAction | None = Field(
+        default=None, alias="onDelete", examples=[None]
+    )
 
     model_config = ConfigDict(populate_by_name=True)
 
