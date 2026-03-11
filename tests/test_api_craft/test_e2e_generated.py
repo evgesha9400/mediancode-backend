@@ -48,7 +48,20 @@ def generated_shop_api(tmp_path_factory):
         f"DB_PORT={E2E_DB_PORT}\nAPP_PORT={E2E_APP_PORT}\n"
     )
 
-    # 3. Docker compose up
+    # 3. Generate poetry.lock (required by Dockerfile)
+    try:
+        subprocess.run(
+            ["poetry", "lock"],
+            cwd=str(project_dir),
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except subprocess.CalledProcessError as e:
+        pytest.fail(f"poetry lock failed:\nstdout: {e.stdout}\nstderr: {e.stderr}")
+
+    # 5. Docker compose up
     try:
         subprocess.run(
             ["docker", "compose", "up", "-d", "--build"],
@@ -63,7 +76,7 @@ def generated_shop_api(tmp_path_factory):
             f"docker compose up failed:\nstdout: {e.stdout}\nstderr: {e.stderr}"
         )
 
-    # 4. Wait for readiness
+    # 6. Wait for readiness
     deadline = time.time() + STARTUP_TIMEOUT
     ready = False
     while time.time() < deadline:
@@ -72,7 +85,7 @@ def generated_shop_api(tmp_path_factory):
             if r.status_code == 200:
                 ready = True
                 break
-        except (httpx.ConnectError, httpx.ReadTimeout):
+        except (httpx.ConnectError, httpx.ReadTimeout, httpx.ReadError):
             pass
         time.sleep(2)
 
@@ -96,7 +109,7 @@ def generated_shop_api(tmp_path_factory):
 
     yield BASE_URL
 
-    # 5. Teardown
+    # 7. Teardown
     subprocess.run(
         ["docker", "compose", "down", "-v", "--remove-orphans"],
         cwd=str(project_dir),
@@ -371,7 +384,7 @@ class TestFieldValidators:
     def test_customer_name_trim_title(self, generated_shop_api):
         r = httpx.post(
             f"{generated_shop_api}/customers",
-            json=valid_customer(customer_name="  john doe  "),
+            json=valid_customer(customer_id=100, customer_name="  john doe  "),
         )
         assert r.status_code == 200
         assert r.json()["customer_name"] == "John Doe"

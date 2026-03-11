@@ -295,6 +295,31 @@ class APIGenerator:
                 versions_dir = os.path.join(migrations_dir, "versions")
                 create_dir(versions_dir)
 
+                # Write Alembic script template for autogenerate
+                script_template = (
+                    '"""${message}\n\n'
+                    "Revision ID: ${up_revision}\n"
+                    "Revises: ${down_revision | comma,n}\n"
+                    "Create Date: ${create_date}\n\n"
+                    '"""\n'
+                    "from typing import Sequence, Union\n\n"
+                    "from alembic import op\n"
+                    "import sqlalchemy as sa\n\n\n"
+                    "# revision identifiers, used by Alembic.\n"
+                    "revision: str = ${repr(up_revision)}\n"
+                    "down_revision: Union[str, None] = ${repr(down_revision)}\n"
+                    "branch_labels: Union[str, Sequence[str], None] = ${repr(branch_labels)}\n"
+                    "depends_on: Union[str, Sequence[str], None] = ${repr(depends_on)}\n\n\n"
+                    "def upgrade() -> None:\n"
+                    "    ${upgrades if upgrades else 'pass'}\n\n\n"
+                    "def downgrade() -> None:\n"
+                    "    ${downgrades if downgrades else 'pass'}\n"
+                )
+                write_file(
+                    os.path.join(migrations_dir, "script.py.mako"),
+                    script_template,
+                )
+
             # Write source files
             for filename, content in rendered_components.items():
                 if filename == "alembic_env.py":

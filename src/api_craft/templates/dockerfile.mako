@@ -20,8 +20,9 @@ COPY pyproject.toml poetry.lock ./
 RUN poetry config virtualenvs.create false && \
     poetry install --only main --no-interaction --no-ansi
 
-# Copy application code
+# Copy application code and set Python path
 COPY src/ .
+ENV PYTHONPATH=/app
 % if api.database_config:
 
 # Copy migration files
@@ -31,7 +32,7 @@ COPY alembic.ini .
 
 # Specify the command to run on container start
 % if api.database_config:
-CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 80"]
+CMD ["sh", "-c", "ls migrations/versions/*.py >/dev/null 2>&1 || alembic revision --autogenerate -m 'initial' && alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 80"]
 % else:
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
 % endif

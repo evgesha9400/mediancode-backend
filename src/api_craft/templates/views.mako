@@ -130,7 +130,11 @@ async def ${view.snake_name}():
         raise HTTPException(status_code=404, detail="${view.response_model} not found")
     return record
 % elif view.method == "post":
-    record = ${orm_class}(**request.model_dump())
+    data = request.model_dump()
+    for k, v in data.items():
+        if type(v).__module__.startswith("pydantic"):
+            data[k] = str(v)
+    record = ${orm_class}(**data)
     session.add(record)
     await session.commit()
     await session.refresh(record)
@@ -144,6 +148,8 @@ async def ${view.snake_name}():
     if not record:
         raise HTTPException(status_code=404, detail="${view.response_model} not found")
     for key, value in request.model_dump(exclude_unset=True).items():
+        if type(value).__module__.startswith("pydantic"):
+            value = str(value)
         setattr(record, key, value)
     await session.commit()
     await session.refresh(record)

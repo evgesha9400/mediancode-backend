@@ -212,11 +212,16 @@ def transform_endpoint(
 # Module-level names (datetime, uuid, decimal) must use qualified class names.
 ORM_PYTHON_TYPE_MAP = {
     "datetime": "datetime.datetime",
+    "datetime.datetime": "datetime.datetime",
+    "datetime.date": "datetime.date",
+    "datetime.time": "datetime.time",
     "date": "datetime.date",
-    "time": "str",
+    "time": "datetime.time",
     "uuid": "uuid.UUID",
+    "uuid.UUID": "uuid.UUID",
     "UUID": "uuid.UUID",
     "decimal": "decimal.Decimal",
+    "decimal.Decimal": "decimal.Decimal",
     "Decimal": "decimal.Decimal",
     "EmailStr": "str",
     "HttpUrl": "str",
@@ -250,9 +255,9 @@ def map_column_type(type_str: str, validators: list) -> str | None:
         "datetime": lambda: "DateTime",
         "datetime.datetime": lambda: "DateTime",
         "datetime.date": lambda: "Date",
-        "datetime.time": lambda: "Text",
+        "datetime.time": lambda: "Time",
         "date": lambda: "Date",
-        "time": lambda: "Text",
+        "time": lambda: "Time",
         "uuid": lambda: "Uuid",
         "uuid.UUID": lambda: "Uuid",
         "UUID": lambda: "Uuid",
@@ -298,7 +303,9 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
                 continue
 
             base_type = field.type.split(".")[0] if "." in field.type else field.type
-            orm_type = ORM_PYTHON_TYPE_MAP.get(base_type, base_type)
+            orm_type = ORM_PYTHON_TYPE_MAP.get(field.type) or ORM_PYTHON_TYPE_MAP.get(
+                base_type, base_type
+            )
             python_type = orm_type if not field.optional else f"{orm_type} | None"
 
             is_uuid_pk = field.pk and base_type in ("uuid", "UUID")

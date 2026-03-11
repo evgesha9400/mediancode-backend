@@ -12,7 +12,7 @@ services:
     ports:
       - "${"${"}DB_PORT:-${api.database_config.db_port}}:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
