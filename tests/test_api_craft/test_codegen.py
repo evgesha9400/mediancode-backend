@@ -549,6 +549,54 @@ def test_delete_endpoint_without_response_object(tmp_path):
     compile(views_py, "views.py", "exec")
 
 
+def test_delete_endpoint_without_response_resolves_orm_from_pk(tmp_path):
+    """DELETE without response model resolves ORM class via path param PK match."""
+    from api_craft.models.input import (
+        InputAPI,
+        InputApiConfig,
+        InputDatabaseConfig,
+        InputEndpoint,
+        InputField,
+        InputModel,
+        InputPathParam,
+    )
+
+    api = InputAPI(
+        name="DeletePkTest",
+        endpoints=[
+            InputEndpoint(
+                name="DeleteProduct",
+                path="/products/{tracking_id}",
+                method="DELETE",
+                path_params=[InputPathParam(name="tracking_id", type="uuid")],
+            ),
+        ],
+        objects=[
+            InputModel(
+                name="Product",
+                fields=[
+                    InputField(name="tracking_id", type="uuid", pk=True),
+                    InputField(name="name", type="str"),
+                ],
+            )
+        ],
+        config=InputApiConfig(
+            response_placeholders=False,
+            database=InputDatabaseConfig(enabled=True),
+        ),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    views_py = (tmp_path / "delete-pk-test" / "src" / "views.py").read_text()
+
+    assert "async def delete_product" in views_py
+    assert "status_code=204" in views_py
+    assert "session.delete(record)" in views_py
+    assert "ProductRecord" in views_py
+    assert "TODO" not in views_py
+    compile(views_py, "views.py", "exec")
+
+
 def test_path_param_uses_field_type(tmp_path):
     """Path params should use the field's type, not always str."""
     from api_craft.models.input import (

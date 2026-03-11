@@ -3,6 +3,7 @@
 - views (list): A list of views to generate
 - database_config: TemplateDatabaseConfig | None
 - orm_model_map: dict[str, str] | None - maps response model name to ORM class name
+- orm_pk_map: dict[str, str] | None - maps primary key field name to ORM class name
 </%doc>\
 % if database_config:
 from fastapi import APIRouter, Depends, HTTPException
@@ -23,11 +24,19 @@ for view in views:
 has_path_params = any(view.path_params for view in views)
 has_query_params = any(view.query_params for view in views)
 has_no_response = any(not view.response_model for view in views)
-orm_model_names = sorted(set(
+orm_model_names_from_response = {
     orm_model_map[view.response_model]
     for view in views
     if view.response_model and orm_model_map and view.response_model in orm_model_map
-))
+}
+orm_model_names_from_pk = set()
+if orm_pk_map:
+    for view in views:
+        if view.method == "delete" and not view.response_model and view.path_params:
+            for p in view.path_params:
+                if p.snake_name in orm_pk_map:
+                    orm_model_names_from_pk.add(orm_pk_map[p.snake_name])
+orm_model_names = sorted(orm_model_names_from_response | orm_model_names_from_pk)
 %>
 % if has_no_response:
 from starlette.responses import Response
@@ -74,6 +83,13 @@ api_router = APIRouter()
     # Determine if this view's response model has an ORM model
     has_orm = orm_model_map and view.response_model and view.response_model in orm_model_map
     orm_class = orm_model_map.get(view.response_model, "") if orm_model_map and view.response_model else ""
+    # For delete without response model, resolve ORM class from path param PK
+    if not has_orm and view.method == "delete" and orm_pk_map and view.path_params:
+        for p in view.path_params:
+            if p.snake_name in orm_pk_map:
+                orm_class = orm_pk_map[p.snake_name]
+                has_orm = True
+                break
 %>
 @api_router.${view.method}(
     path="${view.path}",

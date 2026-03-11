@@ -178,9 +178,17 @@ class APIGenerator:
             orm_models = components.get("orm_models", [])
 
             # Build orm_model_map: response model name -> ORM class name
+            # Build orm_pk_map: primary key field name -> ORM class name
             orm_model_map = None
+            orm_pk_map = None
             if database_config and orm_models:
                 orm_model_map = {m.source_model: m.class_name for m in orm_models}
+                orm_pk_map = {
+                    f.name: m.class_name
+                    for m in orm_models
+                    for f in m.fields
+                    if f.primary_key
+                }
                 # Merge database dependencies into extra_deps
                 db_deps = collect_database_dependencies()
                 extra_deps = sorted(set(extra_deps + db_deps))
@@ -194,6 +202,7 @@ class APIGenerator:
                     self.templates["views"],
                     database_config=database_config,
                     orm_model_map=orm_model_map,
+                    orm_pk_map=orm_pk_map,
                 ),
                 "main.py": render_main(template_api, self.templates["main"]),
                 "pyproject.toml": render_pyproject(
