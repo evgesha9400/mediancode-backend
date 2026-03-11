@@ -138,7 +138,5 @@ endpoints:
 
 config:
   healthcheck: /healthcheck
-  response_placeholders: false
   database:
     enabled: true
-    seed_data: true

@@ -1,7 +1,5 @@
 from mako.template import Template
 
-from typing import Any
-
 from api_craft.models.template import (
     TemplateAPI,
     TemplateModel,
@@ -97,14 +95,6 @@ def render_orm_models(
 
 def render_database(api: TemplateAPI, template: Template) -> str:
     return template.render(api=api)
-
-
-def render_seed(
-    orm_models: list[TemplateORMModel],
-    seed_data: dict[str, dict[str, Any]],
-    template: Template,
-) -> str:
-    return template.render(orm_models=orm_models, seed_data=seed_data)
 
 
 def render_docker_compose(api: TemplateAPI, template: Template) -> str:

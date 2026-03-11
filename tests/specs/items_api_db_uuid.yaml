@@ -24,7 +24,5 @@ endpoints:
     response_shape: list
 
 config:
-  response_placeholders: false
   database:
     enabled: true
-    seed_data: true

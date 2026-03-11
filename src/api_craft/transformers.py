@@ -208,14 +208,6 @@ def transform_endpoint(
     )
 
 
-def _get_max_length(validators):
-    """Extract max_length value from validators list."""
-    for v in validators:
-        if v.name == "max_length" and v.params and "value" in v.params:
-            return v.params["value"]
-    return None
-
-
 # Map input type names to their correct Python type annotations for Mapped[].
 # Module-level names (datetime, uuid, decimal) must use qualified class names.
 ORM_PYTHON_TYPE_MAP = {
@@ -231,7 +223,7 @@ ORM_PYTHON_TYPE_MAP = {
 }
 
 
-def map_column_type(type_str: str, validators: list) -> str | None:
+def map_column_type(type_str: str) -> str | None:
     """Map a Python type string to a SQLAlchemy column type string.
 
     Returns None for types that cannot be mapped to columns (List, Dict, model refs).
@@ -243,27 +235,22 @@ def map_column_type(type_str: str, validators: list) -> str | None:
     base = type_str.split(".")[0] if "." in type_str else type_str
 
     type_map = {
-        "str": lambda: (
-            f"String({ml})" if (ml := _get_max_length(validators)) else "Text"
-        ),
-        "int": lambda: "Integer",
-        "float": lambda: "Float",
-        "bool": lambda: "Boolean",
-        "datetime": lambda: "DateTime",
-        "date": lambda: "Date",
-        "time": lambda: "Time",
-        "uuid": lambda: "Uuid",
-        "UUID": lambda: "Uuid",
-        "Decimal": lambda: "Numeric",
-        "decimal": lambda: "Numeric",
-        "EmailStr": lambda: "String(320)",
-        "HttpUrl": lambda: "Text",
+        "str": "Text",
+        "int": "Integer",
+        "float": "Float",
+        "bool": "Boolean",
+        "datetime": "DateTime",
+        "date": "Date",
+        "time": "Time",
+        "uuid": "Uuid",
+        "UUID": "Uuid",
+        "Decimal": "Numeric",
+        "decimal": "Numeric",
+        "EmailStr": "Text",
+        "HttpUrl": "Text",
     }
 
-    factory = type_map.get(base)
-    if factory is None:
-        return None
-    return factory()
+    return type_map.get(base)
 
 
 def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMModel]:
@@ -286,7 +273,7 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
         orm_fields = []
 
         for field in model.fields:
-            column_type = map_column_type(field.type, field.validators)
+            column_type = map_column_type(field.type)
             if column_type is None:
                 continue
 
@@ -364,7 +351,6 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
         snake_name = camel_to_snake(input_api.name)
         database_config = TemplateDatabaseConfig(
             enabled=True,
-            seed_data=input_api.config.database.seed_data,
             default_url=f"postgresql+asyncpg://postgres:postgres@localhost:5433/{snake_name}",
         )
 

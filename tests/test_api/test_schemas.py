@@ -7,13 +7,14 @@ from api.schemas.api import GenerateOptions
 class TestGenerateOptionsValidation:
     """Validation rules for GenerateOptions schema."""
 
-    def test_database_with_placeholders_raises(self):
-        """database_enabled + response_placeholders must raise."""
-        with pytest.raises(ValueError, match="Response placeholders cannot be enabled"):
-            GenerateOptions(
-                database_enabled=True,
-                response_placeholders=True,
-            )
+    def test_database_with_placeholders_passes(self):
+        """database_enabled + response_placeholders is now valid (mixed mode)."""
+        opts = GenerateOptions(
+            database_enabled=True,
+            response_placeholders=True,
+        )
+        assert opts.database_enabled is True
+        assert opts.response_placeholders is True
 
     def test_database_without_placeholders_passes(self):
         """database_enabled + no placeholders must succeed."""

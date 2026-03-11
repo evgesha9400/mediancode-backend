@@ -19,7 +19,7 @@ Phases:
 16. Verify ORM models content
 17. Verify database integration in generated code
 18. Verify generated Pydantic models retain constraints
-19. Verify seed data
+19. Verify no seed file
 20-26. Cleanup
 """
 
@@ -914,7 +914,6 @@ class TestShopApiFullE2E:
                 "src/path.py",
                 "src/orm_models.py",
                 "src/database.py",
-                "src/seed.py",
                 "pyproject.toml",
                 "Makefile",
                 "Dockerfile",
@@ -1019,22 +1018,12 @@ class TestShopApiFullE2E:
         # Model validators present
         assert "model_validator" in content
 
-    # --- Phase 19: Verify seed data ---
+    # --- Phase 19: Verify no seed file ---
 
-    def test_phase_19_seed_data(self):
-        """Verify seed.py excludes auto-generated PK fields."""
+    def test_phase_19_no_seed_file(self):
+        """Verify seed.py is NOT generated."""
         cls = TestShopApiFullE2E
-        content = (Path(cls.generated_dir) / "src" / "seed.py").read_text()
-
-        # Seed file imports ORM models
-        assert "ProductRecord" in content
-        assert "CustomerRecord" in content
-
-        # UUID PK (tracking_id) should be excluded from seed data
-        assert "tracking_id=" not in content
-
-        # Int PK (customer_id) should be excluded from seed data
-        assert "customer_id=" not in content
+        assert not (Path(cls.generated_dir) / "src" / "seed.py").exists()
 
     # --- Phase 20: Verify infrastructure files ---
 
@@ -1061,7 +1050,6 @@ class TestShopApiFullE2E:
         # Makefile has db targets
         makefile_content = (gen_path / "Makefile").read_text()
         assert "db-up:" in makefile_content
-        assert "db-seed:" in makefile_content
 
     # --- Phase 21: Clean up generated app ---
 

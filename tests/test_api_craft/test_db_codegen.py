@@ -1,7 +1,7 @@
 """Tests for database-enabled code generation.
 
 Validates that when database.enabled is true:
-- ORM models, database.py, seed.py are generated
+- ORM models, database.py are generated
 - Docker Compose, Alembic config are generated
 - Generated Python files compile without errors
 - views.py uses DB session injection
@@ -37,8 +37,9 @@ class TestDatabaseFilesGenerated:
     def test_database_py_exists(self, db_project: Path):
         assert (db_project / "src" / "database.py").exists()
 
-    def test_seed_py_exists(self, db_project: Path):
-        assert (db_project / "src" / "seed.py").exists()
+    def test_no_seed_py(self, db_project: Path):
+        """seed.py should NOT be generated."""
+        assert not (db_project / "src" / "seed.py").exists()
 
     def test_docker_compose_exists(self, db_project: Path):
         assert (db_project / "docker-compose.yml").exists()
@@ -58,7 +59,6 @@ class TestGeneratedCodeCompiles:
         [
             "src/orm_models.py",
             "src/database.py",
-            "src/seed.py",
             "src/models.py",
             "src/views.py",
             "src/main.py",
@@ -93,16 +93,11 @@ class TestOrmModelsContent:
         content = (db_project / "src" / "orm_models.py").read_text()
         assert "CreateItemRequestRecord" not in content
 
-    def test_str_with_max_length_uses_string_n(self, db_project: Path):
+    def test_str_fields_use_text(self, db_project: Path):
+        """All string fields should use Text, regardless of max_length validators."""
         content = (db_project / "src" / "orm_models.py").read_text()
-        assert "String(20)" in content  # sku has max_length=20
-
-    def test_str_without_max_length_uses_text(self, db_project: Path):
-        """Fields without max_length should use Text, not String."""
-        # All str fields in this spec have max_length, so this test checks
-        # that Text doesn't appear incorrectly. Covered by name using String(100).
-        content = (db_project / "src" / "orm_models.py").read_text()
-        assert "String(100)" in content  # name has max_length=100
+        assert "String" not in content
+        assert "Text" in content
 
 
 class TestDatabasePyContent:
@@ -161,11 +156,6 @@ class TestMainWithDatabase:
         content = (db_project / "src" / "main.py").read_text()
         assert "create_all" not in content
 
-    def test_main_no_seed_on_startup(self, db_project: Path):
-        """Seed runs via make db-seed, not on app startup."""
-        content = (db_project / "src" / "main.py").read_text()
-        assert "seed_database" not in content
-
 
 class TestMakefileWithDatabase:
     def test_makefile_has_db_targets(self, db_project: Path):
@@ -173,9 +163,13 @@ class TestMakefileWithDatabase:
         assert "db-up:" in content
         assert "db-init:" in content
         assert "db-upgrade:" in content
-        assert "db-seed:" in content
         assert "db-reset:" in content
         assert "db-downgrade:" in content
+
+    def test_makefile_no_db_seed(self, db_project: Path):
+        """db-seed target should NOT be generated."""
+        content = (db_project / "Makefile").read_text()
+        assert "db-seed:" not in content
 
 
 class TestDockerComposeContent:
@@ -242,11 +236,9 @@ class TestUuidPkCodegen:
         content = (uuid_db_project / "src" / "orm_models.py").read_text()
         compile(content, "orm_models.py", "exec")
 
-    def test_seed_excludes_uuid_pk(self, uuid_db_project: Path):
-        """UUID PK with default should be excluded from seed data."""
-        content = (uuid_db_project / "src" / "seed.py").read_text()
-        # The seed should not try to set the 'id' field
-        assert "id=" not in content.replace("existing_", "")
+    def test_no_seed_file(self, uuid_db_project: Path):
+        """seed.py should NOT be generated."""
+        assert not (uuid_db_project / "src" / "seed.py").exists()
 
 
 class TestIntPkNoUuidImport:
@@ -308,3 +300,93 @@ class TestDatabaseDependencies:
         assert "sqlalchemy" not in content
         assert "asyncpg" not in content
         assert "alembic" not in content
+
+
+class TestMixedMode:
+    """Verify mixed mode: DB-backed endpoints coexist with placeholder endpoints."""
+
+    @pytest.fixture(scope="class")
+    def mixed_project(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
+        """Generate an API with both PK and non-PK objects, placeholders enabled."""
+        from api_craft.models.input import (
+            InputAPI,
+            InputApiConfig,
+            InputDatabaseConfig,
+            InputEndpoint,
+            InputField,
+            InputModel,
+        )
+
+        api_input = InputAPI(
+            name="MixedApi",
+            objects=[
+                InputModel(
+                    name="Item",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+                InputModel(
+                    name="StatusResponse",
+                    fields=[
+                        InputField(name="status", type="str"),
+                        InputField(name="version", type="str"),
+                    ],
+                ),
+            ],
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems",
+                    path="/items",
+                    method="GET",
+                    response="Item",
+                    response_shape="list",
+                ),
+                InputEndpoint(
+                    name="GetStatus",
+                    path="/status",
+                    method="GET",
+                    response="StatusResponse",
+                ),
+            ],
+            config=InputApiConfig(
+                response_placeholders=True,
+                database=InputDatabaseConfig(enabled=True),
+            ),
+        )
+        tmp_path = tmp_path_factory.mktemp("mixed_api")
+        APIGenerator().generate(api_input, path=str(tmp_path))
+        return tmp_path / "mixed-api"
+
+    def test_orm_model_exists_for_pk_object(self, mixed_project: Path):
+        content = (mixed_project / "src" / "orm_models.py").read_text()
+        assert "class ItemRecord(Base):" in content
+
+    def test_no_orm_model_for_non_pk_object(self, mixed_project: Path):
+        content = (mixed_project / "src" / "orm_models.py").read_text()
+        assert "StatusResponseRecord" not in content
+
+    def test_db_backed_endpoint_uses_session(self, mixed_project: Path):
+        content = (mixed_project / "src" / "views.py").read_text()
+        assert "select(" in content
+        assert "session.execute" in content
+
+    def test_non_pk_endpoint_uses_placeholders(self, mixed_project: Path):
+        content = (mixed_project / "src" / "views.py").read_text()
+        # StatusResponse endpoint should have placeholder values
+        assert "StatusResponse(" in content
+
+    def test_no_seed_file(self, mixed_project: Path):
+        assert not (mixed_project / "src" / "seed.py").exists()
+
+    def test_database_files_exist(self, mixed_project: Path):
+        assert (mixed_project / "src" / "orm_models.py").exists()
+        assert (mixed_project / "src" / "database.py").exists()
+        assert (mixed_project / "docker-compose.yml").exists()
+        assert (mixed_project / "alembic.ini").exists()
+
+    def test_all_python_files_compile(self, mixed_project: Path):
+        for py_file in mixed_project.rglob("*.py"):
+            source = py_file.read_text()
+            compile(source, str(py_file), "exec")

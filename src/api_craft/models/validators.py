@@ -218,17 +218,10 @@ def validate_database_config(
 
     :param config: API configuration containing database and placeholder settings.
     :param objects: Collection of declared objects.
-    :raises ValueError: If database is enabled with response placeholders,
-        or if database is enabled but no object has a primary key.
+    :raises ValueError: If database is enabled but no object has a primary key.
     """
     if not config.database.enabled:
         return
-
-    if config.response_placeholders:
-        raise ValueError(
-            "Response placeholders cannot be enabled when database generation is active. "
-            "Disable response placeholders or disable database generation."
-        )
 
     has_any_pk = any(any(field.pk for field in obj.fields) for obj in objects)
     if not has_any_pk:

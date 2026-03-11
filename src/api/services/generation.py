@@ -320,11 +320,8 @@ def _convert_to_input_api(
         config=InputApiConfig(
             healthcheck=options.healthcheck,
             response_placeholders=options.response_placeholders,
-            format_code=options.format_code,
-            generate_swagger=options.generate_swagger,
             database=InputDatabaseConfig(
                 enabled=options.database_enabled,
-                seed_data=options.database_seed_data,
             ),
         ),
     )

@@ -3,7 +3,7 @@
 - api: TemplateApi
 </%doc>\
 % if api.database_config:
-.PHONY: install run-local build clean run-container swagger db-up db-down db-init db-upgrade db-downgrade db-seed db-reset run-stack
+.PHONY: install run-local build clean run-container swagger db-up db-down db-init db-upgrade db-downgrade db-reset run-stack
 % else:
 .PHONY: install run-local build clean run-container swagger
 % endif
@@ -51,9 +51,6 @@ db-upgrade: db-up
 
 db-downgrade:
 	@PYTHONPATH=src poetry run alembic downgrade -1
-
-db-seed: db-upgrade
-	@PYTHONPATH=src poetry run python -c "import asyncio; from database import async_session; from seed import seed_database; asyncio.run(seed_database(async_session()))"
 
 db-reset: db-down db-up
 	@PYTHONPATH=src poetry run alembic upgrade head

@@ -6,8 +6,6 @@ fully scaffolded FastAPI project using Mako templates.
 
 import logging
 import os
-import subprocess
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -42,11 +40,10 @@ from api_craft.renderers import (
     render_pyproject,
     render_query_params,
     render_readme,
-    render_seed,
     render_views,
 )
 from api_craft.transformers import transform_api
-from api_craft.utils import camel_to_kebab, copy_file, create_dir, write_file
+from api_craft.utils import camel_to_kebab, create_dir, write_file
 
 # Configure logging
 logging.basicConfig(level="INFO")
@@ -67,35 +64,6 @@ def format_python_files(directory: Path) -> None:
             logger.debug(f"Formatted {py_file}")
         except black.InvalidInput as e:
             logger.warning(f"Could not format {py_file}: {e}")
-
-
-def generate_swagger(project_dir: Path) -> None:
-    """Generate swagger.yaml by running the swagger.py script.
-
-    :param project_dir: Path to the generated project directory.
-    """
-    swagger_script = project_dir / "swagger.py"
-    src_dir = project_dir / "src"
-
-    if not swagger_script.exists():
-        logger.warning(f"swagger.py not found at {swagger_script}")
-        return
-
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(src_dir)
-
-    result = subprocess.run(
-        [sys.executable, str(swagger_script)],
-        cwd=str(project_dir),
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-
-    if result.returncode != 0:
-        logger.warning(f"Swagger generation failed: {result.stderr}")
-    else:
-        logger.debug(f"Swagger generated: {result.stdout}")
 
 
 class APIGenerator:
@@ -143,7 +111,6 @@ class APIGenerator:
                 "readme": "readme.mako",
                 "orm_models": "orm_models.mako",
                 "database": "database.mako",
-                "seed": "seed.mako",
                 "docker_compose": "docker_compose.mako",
                 "alembic_ini": "alembic_ini.mako",
                 "alembic_env": "alembic_env.mako",
@@ -264,9 +231,6 @@ class APIGenerator:
                 rendered_components["database.py"] = render_database(
                     template_api, self.templates["database"]
                 )
-                rendered_components["seed.py"] = render_seed(
-                    orm_models, {}, self.templates["seed"]
-                )
                 rendered_components["docker-compose.yml"] = render_docker_compose(
                     template_api, self.templates["docker_compose"]
                 )
@@ -327,12 +291,6 @@ class APIGenerator:
                     file_path = os.path.join(src_directory, filename)
                 write_file(file_path, content)
 
-            # Copy static files
-            static_dir = os.path.join(self.template_dir, "static")
-            copy_file(
-                os.path.join(static_dir, "swagger.py"),
-                os.path.join(project_directory, "swagger.py"),
-            )
         except Exception as e:
             logger.error(f"Failed to write files: {str(e)}")
             raise IOError("File writing failed") from e
@@ -372,15 +330,9 @@ class APIGenerator:
 
                 project_dir = Path(output_path) / camel_to_kebab(api.name)
 
-                # 6. Format code if enabled
-                if template_api.config.format_code:
-                    logger.info("Formatting generated code...")
-                    format_python_files(project_dir)
-
-                # 7. Generate swagger if enabled
-                if template_api.config.generate_swagger:
-                    logger.info("Generating swagger.yaml...")
-                    generate_swagger(project_dir)
+                # 6. Format generated code
+                logger.info("Formatting generated code...")
+                format_python_files(project_dir)
 
                 logger.info("API generation completed successfully.")
             else:

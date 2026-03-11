@@ -81,51 +81,33 @@ class TestGenerateOptions:
         opts = GenerateOptions()
         assert opts.healthcheck == "/health"
         assert opts.response_placeholders is True
-        assert opts.format_code is True
-        assert opts.generate_swagger is True
         assert opts.database_enabled is False
-        assert opts.database_seed_data is True
 
     def test_override_all_fields(self):
         opts = GenerateOptions(
             healthcheck=None,
             response_placeholders=False,
-            format_code=False,
-            generate_swagger=False,
             database_enabled=True,
-            database_seed_data=False,
         )
         assert opts.healthcheck is None
         assert opts.response_placeholders is False
-        assert opts.format_code is False
-        assert opts.generate_swagger is False
         assert opts.database_enabled is True
-        assert opts.database_seed_data is False
 
     def test_camel_case_alias(self):
         opts = GenerateOptions.model_validate(
             {
                 "responsePlaceholders": False,
-                "formatCode": False,
-                "generateSwagger": False,
                 "databaseEnabled": True,
-                "databaseSeedData": False,
             }
         )
         assert opts.response_placeholders is False
-        assert opts.format_code is False
-        assert opts.generate_swagger is False
         assert opts.database_enabled is True
-        assert opts.database_seed_data is False
 
     def test_empty_body_uses_defaults(self):
         opts = GenerateOptions.model_validate({})
         assert opts.healthcheck == "/health"
         assert opts.response_placeholders is True
-        assert opts.format_code is True
-        assert opts.generate_swagger is True
         assert opts.database_enabled is False
-        assert opts.database_seed_data is True
 
     def test_custom_healthcheck_path(self):
         opts = GenerateOptions(healthcheck="/status")
@@ -148,10 +130,7 @@ class TestConvertToInputApiOptions:
         result = _convert_to_input_api(api, {}, {}, opts)
         assert result.config.healthcheck == "/health"
         assert result.config.response_placeholders is True
-        assert result.config.format_code is True
-        assert result.config.generate_swagger is True
         assert result.config.database.enabled is False
-        assert result.config.database.seed_data is True
 
     def test_database_enabled_passed_through(self):
         api = self._make_api_model()
@@ -175,12 +154,9 @@ class TestConvertToInputApiOptions:
         obj.description = "Test item"
         obj.field_associations = [assoc]
         obj.validators = []
-        opts = GenerateOptions(
-            database_enabled=True, database_seed_data=False, response_placeholders=False
-        )
+        opts = GenerateOptions(database_enabled=True, response_placeholders=False)
         result = _convert_to_input_api(api, {"obj-1": obj}, {"field-1": field}, opts)
         assert result.config.database.enabled is True
-        assert result.config.database.seed_data is False
 
     def test_healthcheck_none_disables_it(self):
         api = self._make_api_model()
@@ -193,18 +169,6 @@ class TestConvertToInputApiOptions:
         opts = GenerateOptions(response_placeholders=False)
         result = _convert_to_input_api(api, {}, {}, opts)
         assert result.config.response_placeholders is False
-
-    def test_format_code_false_passed_through(self):
-        api = self._make_api_model()
-        opts = GenerateOptions(format_code=False)
-        result = _convert_to_input_api(api, {}, {}, opts)
-        assert result.config.format_code is False
-
-    def test_generate_swagger_false_passed_through(self):
-        api = self._make_api_model()
-        opts = GenerateOptions(generate_swagger=False)
-        result = _convert_to_input_api(api, {}, {}, opts)
-        assert result.config.generate_swagger is False
 
 
 class TestGenerateApiZipSignature:

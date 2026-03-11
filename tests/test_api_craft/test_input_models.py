@@ -26,15 +26,10 @@ class TestDatabaseConfig:
     def test_database_config_defaults(self):
         config = InputApiConfig()
         assert config.database.enabled is False
-        assert config.database.seed_data is True
 
     def test_database_enabled(self):
         config = InputApiConfig(database={"enabled": True})
         assert config.database.enabled is True
-
-    def test_database_seed_disabled(self):
-        config = InputApiConfig(database={"enabled": True, "seed_data": False})
-        assert config.database.seed_data is False
 
 
 class TestPrimaryKeyValidation:
@@ -121,7 +116,6 @@ class TestTemplateORMModels:
     def test_database_config(self):
         config = TemplateDatabaseConfig(
             enabled=True,
-            seed_data=True,
             default_url="postgresql+asyncpg://postgres:postgres@localhost:5432/test",
         )
         assert config.enabled is True
@@ -240,27 +234,28 @@ class TestPrimaryKeyTypeRestriction:
 class TestDatabaseConfigValidation:
     """Validation rules for database generation configuration."""
 
-    def test_database_with_placeholders_raises(self):
-        """Database enabled + response_placeholders=True must raise."""
-        with pytest.raises(ValueError, match="Response placeholders cannot be enabled"):
-            InputAPI(
-                name="TestApi",
-                objects=[
-                    InputModel(
-                        name="Item",
-                        fields=[InputField(name="id", type="int", pk=True)],
-                    ),
-                ],
-                endpoints=[
-                    InputEndpoint(
-                        name="GetItems", path="/items", method="GET", response="Item"
-                    ),
-                ],
-                config=InputApiConfig(
-                    response_placeholders=True,
-                    database=InputDatabaseConfig(enabled=True),
+    def test_database_with_placeholders_passes(self):
+        """Database enabled + response_placeholders=True is now valid (mixed mode)."""
+        api = InputAPI(
+            name="TestApi",
+            objects=[
+                InputModel(
+                    name="Item",
+                    fields=[InputField(name="id", type="int", pk=True)],
                 ),
-            )
+            ],
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems", path="/items", method="GET", response="Item"
+                ),
+            ],
+            config=InputApiConfig(
+                response_placeholders=True,
+                database=InputDatabaseConfig(enabled=True),
+            ),
+        )
+        assert api.config.database.enabled is True
+        assert api.config.response_placeholders is True
 
     def test_database_without_placeholders_passes(self):
         """Database enabled + response_placeholders=False must succeed."""
@@ -323,7 +318,6 @@ class TestDatabaseConfigValidation:
                     ),
                 ],
                 config=InputApiConfig(
-                    response_placeholders=False,
                     database=InputDatabaseConfig(enabled=True),
                 ),
             )
@@ -347,7 +341,6 @@ class TestDatabaseConfigValidation:
                 ),
             ],
             config=InputApiConfig(
-                response_placeholders=False,
                 database=InputDatabaseConfig(enabled=True),
             ),
         )

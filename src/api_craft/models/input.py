@@ -175,11 +175,9 @@ class InputDatabaseConfig(BaseModel):
     """Database configuration for the generated API.
 
     :ivar enabled: Whether to generate database support.
-    :ivar seed_data: Whether to generate seed data helpers.
     """
 
     enabled: bool = False
-    seed_data: bool = True
 
 
 class InputApiConfig(BaseModel):
@@ -187,15 +185,11 @@ class InputApiConfig(BaseModel):
 
     :ivar healthcheck: Optional path used to expose a healthcheck route.
     :ivar response_placeholders: Toggle for generating placeholder response bodies.
-    :ivar format_code: Toggle for formatting generated code with Black.
-    :ivar generate_swagger: Toggle for auto-generating swagger.yaml from the API.
     :ivar database: Database configuration for the generated API.
     """
 
     healthcheck: str | None = None
     response_placeholders: bool = True
-    format_code: bool = True
-    generate_swagger: bool = True
     database: InputDatabaseConfig = InputDatabaseConfig()
 
 

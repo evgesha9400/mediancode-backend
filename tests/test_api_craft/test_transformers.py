@@ -184,9 +184,9 @@ class TestTypeMapping:
             )
         ]
         result = transform_orm_models(models)
-        assert result[0].fields[1].column_type == "String(100)"
+        assert result[0].fields[1].column_type == "Text"
 
-    def test_email_str_maps_to_string_320(self):
+    def test_email_str_maps_to_text(self):
         models = [
             _make_model(
                 "Item",
@@ -197,7 +197,7 @@ class TestTypeMapping:
             )
         ]
         result = transform_orm_models(models)
-        assert result[0].fields[1].column_type == "String(320)"
+        assert result[0].fields[1].column_type == "Text"
 
     def test_optional_field_is_nullable(self):
         models = [
@@ -352,7 +352,7 @@ class TestTransformApiWithDatabase:
                 )
             ],
             config=InputApiConfig(
-                database={"enabled": True}, response_placeholders=False
+                database={"enabled": True},
             ),
         )
         result = transform_api(api)
@@ -379,7 +379,7 @@ class TestTransformApiWithDatabase:
                 )
             ],
             config=InputApiConfig(
-                database={"enabled": True}, response_placeholders=False
+                database={"enabled": True},
             ),
         )
         result = transform_api(api)
@@ -406,7 +406,7 @@ class TestDatabaseValidation:
                     ),
                 ],
                 config=InputApiConfig(
-                    database={"enabled": True}, response_placeholders=False
+                    database={"enabled": True},
                 ),
             )
 
@@ -429,7 +429,7 @@ class TestDatabaseValidation:
                 ),
             ],
             config=InputApiConfig(
-                database={"enabled": True}, response_placeholders=False
+                database={"enabled": True},
             ),
         )
         result = transform_api(api_input)

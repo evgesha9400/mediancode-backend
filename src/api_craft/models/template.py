@@ -103,8 +103,6 @@ class TemplateAPIConfig(BaseModel):
 
     healthcheck: str | None
     response_placeholders: bool
-    format_code: bool = True
-    generate_swagger: bool = True
 
 
 class TemplateORMField(BaseModel):
@@ -132,7 +130,6 @@ class TemplateDatabaseConfig(BaseModel):
     """Database configuration for template rendering."""
 
     enabled: bool
-    seed_data: bool
     default_url: str
 
 
