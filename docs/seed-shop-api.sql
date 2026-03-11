@@ -229,7 +229,7 @@ SELECT gen_random_uuid(), ns.id, '9d17b505-af9d-4a19-a519-a7b89a6ed14d',
        'ShopApi', '1.0.0', 'Complete online shop API', '', '', now(), now()
 FROM ns;
 
--- 9. Endpoints (7)
+-- 9. Endpoints (9)
 WITH ns AS (
   SELECT id FROM namespaces
   WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
@@ -283,6 +283,17 @@ VALUES
   (gen_random_uuid(), (SELECT id FROM a), 'GET', '/customers',
    'List all customers', 'Customers', '[]',
    NULL, (SELECT id FROM customer_id), false, 'list'),
+
+  -- POST /customers
+  (gen_random_uuid(), (SELECT id FROM a), 'POST', '/customers',
+   'Create a customer', 'Customers', '[]',
+   (SELECT id FROM customer_id), (SELECT id FROM customer_id), false, 'object'),
+
+  -- GET /customers/{email}
+  (gen_random_uuid(), (SELECT id FROM a), 'GET', '/customers/{email}',
+   'Get customer by email', 'Customers',
+   (SELECT json_build_array(json_build_object('name', 'email', 'fieldId', id::text))::jsonb FROM email_id),
+   NULL, (SELECT id FROM customer_id), false, 'object'),
 
   -- PATCH /customers/{email}
   (gen_random_uuid(), (SELECT id FROM a), 'PATCH', '/customers/{email}',

@@ -108,7 +108,7 @@ async def ${view.snake_name}():
 <%
     pk_param = view.path_params[0].snake_name if view.path_params else "id"
 %>\
-    result = await session.execute(select(${orm_class}).where(${orm_class}.id == ${pk_param}))
+    result = await session.execute(select(${orm_class}).where(${orm_class}.${pk_param} == ${pk_param}))
     record = result.scalars().first()
     if not record:
         raise HTTPException(status_code=404, detail="${view.response_model} not found")
@@ -123,7 +123,7 @@ async def ${view.snake_name}():
 <%
     pk_param = view.path_params[0].snake_name if view.path_params else "id"
 %>\
-    result = await session.execute(select(${orm_class}).where(${orm_class}.id == ${pk_param}))
+    result = await session.execute(select(${orm_class}).where(${orm_class}.${pk_param} == ${pk_param}))
     record = result.scalars().first()
     if not record:
         raise HTTPException(status_code=404, detail="${view.response_model} not found")
@@ -136,7 +136,7 @@ async def ${view.snake_name}():
 <%
     pk_param = view.path_params[0].snake_name if view.path_params else "id"
 %>\
-    result = await session.execute(select(${orm_class}).where(${orm_class}.id == ${pk_param}))
+    result = await session.execute(select(${orm_class}).where(${orm_class}.${pk_param} == ${pk_param}))
     record = result.scalars().first()
     if not record:
         raise HTTPException(status_code=404, detail="Not found")

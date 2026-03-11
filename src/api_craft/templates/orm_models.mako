@@ -7,11 +7,16 @@
 sa_imports = sorted(set(imports))
 all_types = {f.python_type.replace(" | None", "") for m in orm_models for f in m.fields}
 stdlib_modules = sorted({t.split(".")[0] for t in all_types if "." in t})
+pydantic_types = sorted({t for t in all_types if t in ("EmailStr", "HttpUrl")})
 %>\
 % for mod in stdlib_modules:
 import ${mod}
 % endfor
 % if stdlib_modules:
+
+% endif
+% if pydantic_types:
+from pydantic import ${', '.join(pydantic_types)}
 
 % endif
 from sqlalchemy import ${', '.join(sa_imports)}

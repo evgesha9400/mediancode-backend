@@ -221,11 +221,13 @@ def _get_max_length(validators):
 ORM_PYTHON_TYPE_MAP = {
     "datetime": "datetime.datetime",
     "date": "datetime.date",
-    "time": "datetime.time",
+    "time": "str",
     "uuid": "uuid.UUID",
     "UUID": "uuid.UUID",
     "decimal": "decimal.Decimal",
     "Decimal": "decimal.Decimal",
+    "EmailStr": "str",
+    "HttpUrl": "str",
 }
 
 
@@ -238,8 +240,6 @@ def map_column_type(type_str: str, validators: list) -> str | None:
     if type_str.startswith(("List[", "Dict[", "Set[", "Tuple[")):
         return None
 
-    base = type_str.split(".")[0] if "." in type_str else type_str
-
     type_map = {
         "str": lambda: (
             f"String({ml})" if (ml := _get_max_length(validators)) else "Text"
@@ -248,17 +248,26 @@ def map_column_type(type_str: str, validators: list) -> str | None:
         "float": lambda: "Float",
         "bool": lambda: "Boolean",
         "datetime": lambda: "DateTime",
+        "datetime.datetime": lambda: "DateTime",
+        "datetime.date": lambda: "Date",
+        "datetime.time": lambda: "Text",
         "date": lambda: "Date",
-        "time": lambda: "Time",
+        "time": lambda: "Text",
         "uuid": lambda: "Uuid",
+        "uuid.UUID": lambda: "Uuid",
         "UUID": lambda: "Uuid",
-        "Decimal": lambda: "Numeric",
         "decimal": lambda: "Numeric",
+        "decimal.Decimal": lambda: "Numeric",
+        "Decimal": lambda: "Numeric",
         "EmailStr": lambda: "String(320)",
         "HttpUrl": lambda: "Text",
     }
 
-    factory = type_map.get(base)
+    # Try full qualified name first (e.g. "datetime.date"), then base module name
+    factory = type_map.get(type_str)
+    if factory is None:
+        base = type_str.split(".")[0] if "." in type_str else type_str
+        factory = type_map.get(base)
     if factory is None:
         return None
     return factory()
