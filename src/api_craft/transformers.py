@@ -360,10 +360,11 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
     if input_api.config.database.enabled:
         orm_models = transform_orm_models(input_api.objects)
         snake_name = camel_to_snake(input_api.name)
+        db_port = 5433
         database_config = TemplateDatabaseConfig(
             enabled=True,
-            seed_data=input_api.config.database.seed_data,
-            default_url=f"postgresql+asyncpg://postgres:postgres@localhost:5432/{snake_name}",
+            default_url=f"postgresql+asyncpg://postgres:postgres@localhost:{db_port}/{snake_name}",
+            db_port=db_port,
         )
 
     return TemplateAPI(

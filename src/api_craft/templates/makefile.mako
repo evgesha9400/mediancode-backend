@@ -2,13 +2,20 @@
 - Template Parameters:
 - api: TemplateApi
 </%doc>\
+-include .env
+export
+
 % if api.database_config:
-.PHONY: install run-local build clean run-container swagger db-up db-down db-init db-upgrade db-downgrade db-seed db-reset run-stack
+.PHONY: install run-local build clean run-container swagger db-up db-down db-init db-upgrade db-downgrade db-reset run-stack
 % else:
 .PHONY: install run-local build clean run-container swagger
 % endif
 
 PROJECT_NAME=${api.snake_name}
+APP_PORT ?= ${api.app_port}
+% if api.database_config:
+DB_PORT ?= ${api.database_config.db_port}
+% endif
 
 install:
 	@poetry install
@@ -18,7 +25,7 @@ run-local: install db-up
 % else:
 run-local: install
 % endif
-	@PYTHONPATH=src poetry run uvicorn main:app --reload --port 8000
+	@PYTHONPATH=src poetry run uvicorn main:app --reload --port $(APP_PORT)
 
 build:
 	@docker build -t $(PROJECT_NAME) .
@@ -29,7 +36,7 @@ clean:
 	-@docker rmi $(PROJECT_NAME) 2>/dev/null || true
 
 run-container: install clean build
-	@docker run --name $(PROJECT_NAME) -p 8000:80 -d $(PROJECT_NAME):latest
+	@docker run --name $(PROJECT_NAME) -p $(APP_PORT):80 -d $(PROJECT_NAME):latest
 
 swagger: install
 	@PYTHONPATH=src poetry run python swagger.py
@@ -51,9 +58,6 @@ db-upgrade: db-up
 
 db-downgrade:
 	@PYTHONPATH=src poetry run alembic downgrade -1
-
-db-seed: db-upgrade
-	@PYTHONPATH=src poetry run python -c "import asyncio; from database import async_session; from seed import seed_database; asyncio.run(seed_database(async_session()))"
 
 db-reset: db-down db-up
 	@PYTHONPATH=src poetry run alembic upgrade head

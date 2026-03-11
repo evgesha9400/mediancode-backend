@@ -132,8 +132,8 @@ class TemplateDatabaseConfig(BaseModel):
     """Database configuration for template rendering."""
 
     enabled: bool
-    seed_data: bool
     default_url: str
+    db_port: int = 5433
 
 
 class TemplateAPI(BaseModel):
@@ -146,6 +146,7 @@ class TemplateAPI(BaseModel):
     version: str
     author: str
     description: str
+    app_port: int = 8001
     models: list[TemplateModel]
     views: list[TemplateView]
     tags: list[TemplateTag] = []
