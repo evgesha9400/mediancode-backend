@@ -116,9 +116,10 @@ class TestTemplateORMModels:
     def test_database_config(self):
         config = TemplateDatabaseConfig(
             enabled=True,
-            default_url="postgresql+asyncpg://postgres:postgres@localhost:5432/test",
+            default_url="postgresql+asyncpg://postgres:postgres@localhost:5433/test",
         )
         assert config.enabled is True
+        assert config.db_port == 5433
 
 
 class TestPrimaryKeyTypeRestriction:

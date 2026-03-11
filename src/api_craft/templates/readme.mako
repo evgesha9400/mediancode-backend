@@ -101,6 +101,17 @@ ${"###"} Run Full Stack (Docker Compose)
 ```bash
 make run-stack
 ```
+
+${"###"} Port Configuration
+
+Default ports are configured in `.env`:
+
+${"```"}
+DB_PORT=${api.database_config.db_port}
+APP_PORT=${api.app_port}
+${"```"}
+
+Change these values to avoid conflicts with other services.
 % endif
 
 ${"##"} API Documentation
@@ -135,6 +146,7 @@ ${api.kebab_name}/
 ├── Makefile             # Common commands
 ├── Dockerfile           # Container configuration
 % if api.database_config:
+├── .env                 # Port configuration
 ├── docker-compose.yml   # Docker Compose for DB + API
 ├── alembic.ini          # Alembic configuration
 ├── migrations/          # Alembic migration files

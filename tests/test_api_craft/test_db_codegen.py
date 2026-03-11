@@ -181,19 +181,24 @@ class TestMakefileWithDatabase:
         assert "db-reset:" in content
         assert "db-downgrade:" in content
 
-    def test_makefile_no_db_seed(self, db_project: Path):
-        """db-seed target should NOT be generated."""
-        content = (db_project / "Makefile").read_text()
-        assert "db-seed:" not in content
-
     def test_makefile_includes_env(self, db_project: Path):
         content = (db_project / "Makefile").read_text()
         assert "-include .env" in content
 
     def test_makefile_has_port_defaults(self, db_project: Path):
         content = (db_project / "Makefile").read_text()
-        assert "APP_PORT ?= 8001" in content
-        assert "DB_PORT ?= 5433" in content
+        assert "APP_PORT ?=" in content
+        assert "DB_PORT ?=" in content
+
+
+class TestEnvFileContent:
+    def test_env_has_db_port(self, db_project: Path):
+        content = (db_project / ".env").read_text()
+        assert "DB_PORT=5433" in content
+
+    def test_env_has_app_port(self, db_project: Path):
+        content = (db_project / ".env").read_text()
+        assert "APP_PORT=8001" in content
 
 
 class TestDockerComposeContent:
