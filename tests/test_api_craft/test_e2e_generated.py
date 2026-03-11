@@ -1,0 +1,419 @@
+# tests/test_api_craft/test_e2e_generated.py
+"""End-to-end test: generate ShopApi, start with Docker Compose, validate endpoints.
+
+This test catches runtime bugs invisible to unit tests: missing dependencies,
+broken imports, port conflicts, ORM mapping errors, validator failures.
+"""
+
+import subprocess
+import time
+import uuid
+from pathlib import Path
+
+import httpx
+import pytest
+import yaml
+
+from api_craft.main import generate_fastapi
+from api_craft.models.input import InputAPI
+
+pytestmark = pytest.mark.e2e
+
+SPECS_DIR = Path(__file__).parent.parent / "specs"
+E2E_APP_PORT = 8002
+E2E_DB_PORT = 5434
+BASE_URL = f"http://localhost:{E2E_APP_PORT}"
+STARTUP_TIMEOUT = 120  # seconds
+
+
+def _load_input(filename: str) -> InputAPI:
+    with open(SPECS_DIR / filename) as f:
+        data = yaml.safe_load(f)
+    return InputAPI(**data)
+
+
+@pytest.fixture(scope="session")
+def generated_shop_api(tmp_path_factory):
+    """Generate ShopApi, start with Docker Compose, yield base URL, tear down."""
+    tmp_dir = tmp_path_factory.mktemp("e2e_shop")
+    input_api = _load_input("shop_api.yaml")
+
+    # 1. Generate project
+    generate_fastapi(input_api, str(tmp_dir))
+    project_dir = tmp_dir / "shop-api"
+    assert project_dir.exists(), f"Generated project not found at {project_dir}"
+
+    # 2. Override .env with test ports
+    (project_dir / ".env").write_text(
+        f"DB_PORT={E2E_DB_PORT}\nAPP_PORT={E2E_APP_PORT}\n"
+    )
+
+    # 3. Docker compose up
+    try:
+        subprocess.run(
+            ["docker", "compose", "up", "-d", "--build"],
+            cwd=str(project_dir),
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+    except subprocess.CalledProcessError as e:
+        pytest.fail(
+            f"docker compose up failed:\nstdout: {e.stdout}\nstderr: {e.stderr}"
+        )
+
+    # 4. Wait for readiness
+    deadline = time.time() + STARTUP_TIMEOUT
+    ready = False
+    while time.time() < deadline:
+        try:
+            r = httpx.get(f"{BASE_URL}/openapi.json", timeout=3)
+            if r.status_code == 200:
+                ready = True
+                break
+        except (httpx.ConnectError, httpx.ReadTimeout):
+            pass
+        time.sleep(2)
+
+    if not ready:
+        logs = subprocess.run(
+            ["docker", "compose", "logs"],
+            cwd=str(project_dir),
+            capture_output=True,
+            text=True,
+        )
+        # Tear down before failing
+        subprocess.run(
+            ["docker", "compose", "down", "-v"],
+            cwd=str(project_dir),
+            capture_output=True,
+        )
+        pytest.fail(
+            f"Generated API not ready within {STARTUP_TIMEOUT}s.\n"
+            f"Logs:\n{logs.stdout}\n{logs.stderr}"
+        )
+
+    yield BASE_URL
+
+    # 5. Teardown
+    subprocess.run(
+        ["docker", "compose", "down", "-v", "--remove-orphans"],
+        cwd=str(project_dir),
+        capture_output=True,
+        timeout=60,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Payload builders
+# ---------------------------------------------------------------------------
+
+
+def valid_product(**overrides) -> dict:
+    """Build a valid product payload. All required fields included."""
+    base = {
+        "name": "Test Widget",
+        "sku": "AB-1234",
+        "price": 29.99,
+        "weight": 0.5,
+        "quantity": 100,
+        "min_order_quantity": 1,
+        "in_stock": True,
+        "product_url": "https://example.com/widget",
+        "release_date": "2026-01-15",
+        "created_at": "2026-01-01T00:00:00",
+        "tracking_id": str(uuid.uuid4()),
+    }
+    base.update(overrides)
+    return base
+
+
+def valid_customer(**overrides) -> dict:
+    """Build a valid customer payload. All required fields included."""
+    base = {
+        "customer_id": 1,
+        "customer_name": "John Doe",
+        "email": "john@example.com",
+        "phone": "1234567890",
+        "date_of_birth": "1990-05-15",
+        "last_login_time": "14:30:00",
+        "is_active": True,
+        "registered_at": "2026-01-01T00:00:00",
+    }
+    base.update(overrides)
+    return base
+
+
+# ---------------------------------------------------------------------------
+# CRUD round-trip tests
+# ---------------------------------------------------------------------------
+
+
+class TestCrudRoundTrip:
+    """CRUD operations: create, read, update, delete with data verification."""
+
+    product_tracking_id: str | None = None
+    customer_id: int | None = None
+    customer_email: str = "john@example.com"
+
+    def test_phase_01_create_product(self, generated_shop_api):
+        payload = valid_product()
+        TestCrudRoundTrip.product_tracking_id = payload["tracking_id"]
+        r = httpx.post(f"{generated_shop_api}/products", json=payload)
+        assert r.status_code == 200, f"Create product failed: {r.status_code} {r.text}"
+        data = r.json()
+        assert data["tracking_id"] == TestCrudRoundTrip.product_tracking_id
+
+    def test_phase_02_list_products(self, generated_shop_api):
+        r = httpx.get(f"{generated_shop_api}/products")
+        assert r.status_code == 200
+        data = r.json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+
+    def test_phase_03_get_product(self, generated_shop_api):
+        tid = TestCrudRoundTrip.product_tracking_id
+        r = httpx.get(f"{generated_shop_api}/products/{tid}")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["tracking_id"] == tid
+        assert data["name"] == "Test Widget"
+
+    def test_phase_04_update_product(self, generated_shop_api):
+        tid = TestCrudRoundTrip.product_tracking_id
+        updated = valid_product(name="Updated Widget", price=39.99, tracking_id=tid)
+        r = httpx.put(f"{generated_shop_api}/items/{tid}", json=updated)
+        assert r.status_code == 200, f"Update product failed: {r.status_code} {r.text}"
+        data = r.json()
+        assert data["name"] == "Updated Widget"
+
+    def test_phase_05_delete_product(self, generated_shop_api):
+        tid = TestCrudRoundTrip.product_tracking_id
+        r = httpx.delete(f"{generated_shop_api}/products/{tid}")
+        assert r.status_code == 204, f"Delete failed: {r.status_code} {r.text}"
+
+    def test_phase_06_get_deleted_product(self, generated_shop_api):
+        tid = TestCrudRoundTrip.product_tracking_id
+        r = httpx.get(f"{generated_shop_api}/products/{tid}")
+        assert r.status_code == 404
+
+    def test_phase_07_create_customer(self, generated_shop_api):
+        r = httpx.post(f"{generated_shop_api}/customers", json=valid_customer())
+        assert r.status_code == 200, f"Create customer failed: {r.status_code} {r.text}"
+        data = r.json()
+        assert "customer_id" in data
+        TestCrudRoundTrip.customer_id = data["customer_id"]
+
+    def test_phase_08_list_customers(self, generated_shop_api):
+        r = httpx.get(f"{generated_shop_api}/customers")
+        assert r.status_code == 200
+        data = r.json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+
+    def test_phase_09_get_customer(self, generated_shop_api):
+        email = TestCrudRoundTrip.customer_email
+        r = httpx.get(f"{generated_shop_api}/customers/{email}")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["customer_name"] == "John Doe"
+
+    def test_phase_10_update_customer(self, generated_shop_api):
+        email = TestCrudRoundTrip.customer_email
+        r = httpx.patch(
+            f"{generated_shop_api}/customers/{email}",
+            json=valid_customer(customer_name="Jane Smith", phone="9876543210"),
+        )
+        assert r.status_code == 200, f"Update customer failed: {r.status_code} {r.text}"
+
+    def test_phase_11_get_updated_customer(self, generated_shop_api):
+        email = TestCrudRoundTrip.customer_email
+        r = httpx.get(f"{generated_shop_api}/customers/{email}")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["customer_name"] == "Jane Smith"
+
+
+# ---------------------------------------------------------------------------
+# Constraint violation tests (each expects 422)
+# ---------------------------------------------------------------------------
+
+
+class TestConstraintViolations:
+    def _post_product(self, base_url, **overrides):
+        return httpx.post(f"{base_url}/products", json=valid_product(**overrides))
+
+    def _post_customer(self, base_url, **overrides):
+        return httpx.post(f"{base_url}/customers", json=valid_customer(**overrides))
+
+    def test_name_min_length(self, generated_shop_api):
+        assert self._post_product(generated_shop_api, name="").status_code == 422
+
+    def test_name_max_length(self, generated_shop_api):
+        assert self._post_product(generated_shop_api, name="A" * 151).status_code == 422
+
+    def test_sku_pattern(self, generated_shop_api):
+        assert self._post_product(generated_shop_api, sku="test-01").status_code == 422
+
+    def test_price_gt_zero(self, generated_shop_api):
+        assert self._post_product(generated_shop_api, price=0).status_code == 422
+
+    def test_sale_price_ge_zero(self, generated_shop_api):
+        assert self._post_product(generated_shop_api, sale_price=-1).status_code == 422
+
+    def test_weight_ge_zero(self, generated_shop_api):
+        # The clamp_weight validator (mode=before) clamps to max(0, ...),
+        # so -0.1 becomes 0.0 which passes ge=0. Use a value that bypasses
+        # the clamp but fails the constraint -- not possible here because
+        # the clamp always runs first. Instead verify the clamp accepts it.
+        # We test the lt=1000 boundary instead for a true rejection.
+        r = self._post_product(generated_shop_api, weight=-0.1)
+        # Clamped to 0.0, passes ge=0 -- should succeed
+        assert r.status_code == 200
+
+    def test_weight_lt_1000(self, generated_shop_api):
+        # Clamped to min(1000, 1000)=1000, but lt=1000 rejects 1000
+        assert self._post_product(generated_shop_api, weight=1000).status_code == 422
+
+    def test_quantity_ge_zero(self, generated_shop_api):
+        assert self._post_product(generated_shop_api, quantity=-1).status_code == 422
+
+    def test_min_order_ge_one(self, generated_shop_api):
+        assert (
+            self._post_product(generated_shop_api, min_order_quantity=0).status_code
+            == 422
+        )
+
+    def test_max_order_le_1000(self, generated_shop_api):
+        assert (
+            self._post_product(generated_shop_api, max_order_quantity=1001).status_code
+            == 422
+        )
+
+    def test_discount_percent_ge_zero(self, generated_shop_api):
+        assert (
+            self._post_product(generated_shop_api, discount_percent=-5).status_code
+            == 422
+        )
+
+    def test_discount_percent_le_100(self, generated_shop_api):
+        assert (
+            self._post_product(generated_shop_api, discount_percent=105).status_code
+            == 422
+        )
+
+    def test_discount_percent_multiple_of_5(self, generated_shop_api):
+        assert (
+            self._post_product(generated_shop_api, discount_percent=3).status_code
+            == 422
+        )
+
+    def test_discount_amount_ge_zero(self, generated_shop_api):
+        assert (
+            self._post_product(generated_shop_api, discount_amount=-1).status_code
+            == 422
+        )
+
+    def test_customer_name_min_length(self, generated_shop_api):
+        assert (
+            self._post_customer(generated_shop_api, customer_name="").status_code == 422
+        )
+
+    def test_phone_min_length(self, generated_shop_api):
+        assert self._post_customer(generated_shop_api, phone="123").status_code == 422
+
+    def test_phone_max_length(self, generated_shop_api):
+        assert (
+            self._post_customer(generated_shop_api, phone="1" * 16).status_code == 422
+        )
+
+
+# ---------------------------------------------------------------------------
+# Field validator tests
+# ---------------------------------------------------------------------------
+
+
+class TestFieldValidators:
+    def test_name_trim_normalize(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/products",
+            json=valid_product(name="  hello   world  "),
+        )
+        assert r.status_code == 200
+        assert r.json()["name"] == "hello world"
+
+    def test_sku_uppercase(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/products",
+            json=valid_product(sku="ab-1234"),
+        )
+        assert r.status_code == 200
+        assert r.json()["sku"] == "AB-1234"
+
+    def test_price_round_decimal(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/products",
+            json=valid_product(price=9.999),
+        )
+        assert r.status_code == 200
+        assert float(r.json()["price"]) == 10.0
+
+    def test_weight_clamp_negative(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/products",
+            json=valid_product(weight=-5),
+        )
+        # clamp_weight (mode=before) converts -5 to 0.0, passes ge=0
+        assert r.status_code == 200
+        assert float(r.json()["weight"]) == 0.0
+
+    def test_customer_name_trim_title(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/customers",
+            json=valid_customer(customer_name="  john doe  "),
+        )
+        assert r.status_code == 200
+        assert r.json()["customer_name"] == "John Doe"
+
+
+# ---------------------------------------------------------------------------
+# Model validator tests
+# ---------------------------------------------------------------------------
+
+
+class TestModelValidators:
+    def test_field_comparison_rejects(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/products",
+            json=valid_product(min_order_quantity=10, max_order_quantity=5),
+        )
+        assert r.status_code == 422
+
+    def test_mutual_exclusivity_rejects(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/products",
+            json=valid_product(discount_percent=10, discount_amount=5),
+        )
+        assert r.status_code == 422
+
+    def test_all_or_none_rejects_partial(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/products",
+            json=valid_product(sale_price=10),
+        )
+        assert r.status_code == 422
+
+    def test_conditional_required_rejects(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/products",
+            json=valid_product(discount_percent=10),
+        )
+        assert r.status_code == 422
+
+    def test_at_least_one_required_rejects(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/customers",
+            json=valid_customer(email=None, phone=None),
+        )
+        assert r.status_code == 422
