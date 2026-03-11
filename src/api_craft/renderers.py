@@ -109,3 +109,7 @@ def render_alembic_ini(api: TemplateAPI, template: Template) -> str:
 
 def render_alembic_env(api: TemplateAPI, template: Template) -> str:
     return template.render(api=api)
+
+
+def render_env(api: TemplateAPI, template: Template) -> str:
+    return template.render(api=api)

@@ -3,6 +3,7 @@
 
 import importlib.util
 import sys
+import types
 import uuid
 from pathlib import Path
 
@@ -24,24 +25,105 @@ def load_input(filename: str) -> InputAPI:
     return InputAPI.model_validate(api_data)
 
 
+def _create_test_db_module(orm_module, prefix: str):
+    """Create a fake database module backed by in-memory SQLite.
+
+    Uses SQLAlchemy's async engine with aiosqlite to support
+    the async session pattern used by generated views.
+    """
+    from sqlalchemy.ext.asyncio import (
+        AsyncSession,
+        async_sessionmaker,
+        create_async_engine,
+    )
+    from sqlalchemy.pool import StaticPool
+
+    import datetime
+    import sqlite3
+
+    from pydantic import HttpUrl
+
+    # Register SQLite adapters for types not natively supported
+    sqlite3.register_adapter(HttpUrl, str)
+    sqlite3.register_adapter(datetime.time, lambda t: t.isoformat())
+
+    async_engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    test_async_session = async_sessionmaker(
+        async_engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    db_module = types.ModuleType(f"{prefix}_database")
+
+    async def get_session():
+        async with test_async_session() as session:
+            yield session
+
+    db_module.get_session = get_session
+    db_module.engine = async_engine
+    db_module.async_session = test_async_session
+
+    return db_module, async_engine, orm_module
+
+
 def load_app(src_path: Path):
     """Dynamically import the FastAPI app from a generated project.
 
     Uses unique module names to avoid conflicts between different
     generated projects in the same test session.
+
+    For database-enabled projects, replaces the async PostgreSQL session
+    with an in-memory SQLite session so tests run without a real database.
     """
+    import asyncio
+
     # Generate unique prefix for this import
     prefix = f"_gen_{uuid.uuid4().hex[:8]}"
 
     # Add src_path to sys.path so relative imports work
     sys.path.insert(0, str(src_path))
 
+    has_database = (src_path / "database.py").exists()
+    has_orm_models = (src_path / "orm_models.py").exists()
+
     modules_to_cleanup = []
     try:
+        # If database-enabled, set up in-memory SQLite before loading modules
+        if has_database and has_orm_models:
+            # Load orm_models first to get the Base class
+            orm_spec = importlib.util.spec_from_file_location(
+                f"{prefix}_orm_models", src_path / "orm_models.py"
+            )
+            orm_module = importlib.util.module_from_spec(orm_spec)
+            sys.modules[f"{prefix}_orm_models"] = orm_module
+            sys.modules["orm_models"] = orm_module
+            modules_to_cleanup.extend([f"{prefix}_orm_models", "orm_models"])
+            orm_spec.loader.exec_module(orm_module)
+
+            # Create fake database module with in-memory SQLite
+            db_module, async_engine, orm_mod = _create_test_db_module(
+                orm_module, prefix
+            )
+            sys.modules[f"{prefix}_database"] = db_module
+            sys.modules["database"] = db_module
+            modules_to_cleanup.extend([f"{prefix}_database", "database"])
+
+            # Create tables using async engine
+            async def _create_tables():
+                async with async_engine.begin() as conn:
+                    await conn.run_sync(orm_mod.Base.metadata.create_all)
+
+            asyncio.get_event_loop().run_until_complete(_create_tables())
+
         # Load modules in dependency order with unique names
         module_files = [
             "orm_models",
             "database",
+            "seed",
             "models",
             "path",
             "query",
@@ -50,6 +132,14 @@ def load_app(src_path: Path):
         ]
 
         for module_name in module_files:
+            # Skip orm_models and database if already loaded for DB projects
+            if (
+                has_database
+                and has_orm_models
+                and module_name in ("orm_models", "database")
+            ):
+                continue
+
             module_path = src_path / f"{module_name}.py"
             if not module_path.exists():
                 continue

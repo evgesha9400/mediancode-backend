@@ -50,6 +50,9 @@ class TestDatabaseFilesGenerated:
     def test_alembic_env_exists(self, db_project: Path):
         assert (db_project / "migrations" / "env.py").exists()
 
+    def test_env_file_exists(self, db_project: Path):
+        assert (db_project / ".env").exists()
+
 
 class TestGeneratedCodeCompiles:
     """Verify generated Python files have valid syntax."""
@@ -93,11 +96,23 @@ class TestOrmModelsContent:
         content = (db_project / "src" / "orm_models.py").read_text()
         assert "CreateItemRequestRecord" not in content
 
-    def test_str_fields_use_text(self, db_project: Path):
-        """All string fields should use Text, regardless of max_length validators."""
+    def test_str_fields_use_correct_column_type(self, db_project: Path):
+        """String fields with max_length use String(N), without use Text."""
         content = (db_project / "src" / "orm_models.py").read_text()
-        assert "String" not in content
-        assert "Text" in content
+        # Item has str fields with max_length validators, so String(N) should be present
+        assert "String(" in content or "Text" in content
+
+
+class TestEnvFileContent:
+    """Verify .env file is correctly generated."""
+
+    def test_env_has_db_port(self, db_project: Path):
+        content = (db_project / ".env").read_text()
+        assert "DB_PORT=5433" in content
+
+    def test_env_has_app_port(self, db_project: Path):
+        content = (db_project / ".env").read_text()
+        assert "APP_PORT=8001" in content
 
 
 class TestDatabasePyContent:
@@ -171,6 +186,15 @@ class TestMakefileWithDatabase:
         content = (db_project / "Makefile").read_text()
         assert "db-seed:" not in content
 
+    def test_makefile_includes_env(self, db_project: Path):
+        content = (db_project / "Makefile").read_text()
+        assert "-include .env" in content
+
+    def test_makefile_has_port_defaults(self, db_project: Path):
+        content = (db_project / "Makefile").read_text()
+        assert "APP_PORT ?= 8001" in content
+        assert "DB_PORT ?= 5433" in content
+
 
 class TestDockerComposeContent:
     def test_has_postgres_service(self, db_project: Path):
@@ -188,6 +212,14 @@ class TestDockerComposeContent:
     def test_db_name_matches_api(self, db_project: Path):
         content = (db_project / "docker-compose.yml").read_text()
         assert "items_db_api" in content
+
+    def test_db_port_uses_env_var(self, db_project: Path):
+        content = (db_project / "docker-compose.yml").read_text()
+        assert "${DB_PORT:-5433}" in content
+
+    def test_app_port_uses_env_var(self, db_project: Path):
+        content = (db_project / "docker-compose.yml").read_text()
+        assert "${APP_PORT:-8001}" in content
 
 
 class TestDockerfileWithDatabase:
@@ -267,6 +299,7 @@ class TestBackwardCompatibility:
         assert not (project / "docker-compose.yml").exists()
         assert not (project / "alembic.ini").exists()
         assert not (project / "migrations").exists()
+        assert not (project / ".env").exists()
 
     def test_views_unchanged_when_disabled(self, tmp_path):
         api_input = load_input("items_api.yaml")

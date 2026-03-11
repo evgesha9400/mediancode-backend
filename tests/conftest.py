@@ -2,6 +2,7 @@
 """Pytest configuration and shared fixtures."""
 
 import socket
+import subprocess
 
 import pytest
 import pytest_asyncio
@@ -31,29 +32,44 @@ def _check_database_available() -> bool:
         return False
 
 
+def _check_docker_available() -> bool:
+    """Check whether Docker Compose is available."""
+    try:
+        result = subprocess.run(
+            ["docker", "compose", "version"],
+            capture_output=True,
+            timeout=5,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
 def pytest_collection_modifyitems(
     config: pytest.Config, items: list[pytest.Item]
 ) -> None:
-    """Skip integration tests when the database is unreachable.
+    """Skip integration/e2e tests when required services are unavailable.
 
     Runs a single TCP check against PostgreSQL at collection time. If the
     connection fails, every test marked ``integration`` is skipped with a
-    clear message. Non-integration tests are left untouched.
+    clear message. Similarly, if Docker Compose is unavailable, every test
+    marked ``e2e`` is skipped. Other tests are left untouched.
     """
     integration_items = [
         item for item in items if item.get_closest_marker("integration")
     ]
-    if not integration_items:
-        return
+    if integration_items and not _check_database_available():
+        skip_marker = pytest.mark.skip(
+            reason=f"PostgreSQL not available at {_DB_HOST}:{_DB_PORT} - start Docker Desktop to run integration tests"
+        )
+        for item in integration_items:
+            item.add_marker(skip_marker)
 
-    if _check_database_available():
-        return
-
-    skip_marker = pytest.mark.skip(
-        reason=f"PostgreSQL not available at {_DB_HOST}:{_DB_PORT} - start Docker Desktop to run integration tests"
-    )
-    for item in integration_items:
-        item.add_marker(skip_marker)
+    e2e_items = [item for item in items if item.get_closest_marker("e2e")]
+    if e2e_items and not _check_docker_available():
+        skip_e2e = pytest.mark.skip(reason="Docker not available")
+        for item in e2e_items:
+            item.add_marker(skip_e2e)
 
 
 # --- Integration test (database) fixtures ---

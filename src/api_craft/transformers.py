@@ -213,7 +213,7 @@ def transform_endpoint(
 ORM_PYTHON_TYPE_MAP = {
     "datetime": "datetime.datetime",
     "date": "datetime.date",
-    "time": "datetime.time",
+    "time": "str",
     "uuid": "uuid.UUID",
     "UUID": "uuid.UUID",
     "decimal": "decimal.Decimal",
@@ -223,7 +223,15 @@ ORM_PYTHON_TYPE_MAP = {
 }
 
 
-def map_column_type(type_str: str) -> str | None:
+def _get_max_length(validators):
+    """Extract max_length value from validators list."""
+    for v in validators:
+        if v.name == "max_length" and v.params and "value" in v.params:
+            return v.params["value"]
+    return None
+
+
+def map_column_type(type_str: str, validators: list) -> str | None:
     """Map a Python type string to a SQLAlchemy column type string.
 
     Returns None for types that cannot be mapped to columns (List, Dict, model refs).
@@ -232,25 +240,37 @@ def map_column_type(type_str: str) -> str | None:
     if type_str.startswith(("List[", "Dict[", "Set[", "Tuple[")):
         return None
 
-    base = type_str.split(".")[0] if "." in type_str else type_str
-
     type_map = {
-        "str": "Text",
-        "int": "Integer",
-        "float": "Float",
-        "bool": "Boolean",
-        "datetime": "DateTime",
-        "date": "Date",
-        "time": "Time",
-        "uuid": "Uuid",
-        "UUID": "Uuid",
-        "Decimal": "Numeric",
-        "decimal": "Numeric",
-        "EmailStr": "Text",
-        "HttpUrl": "Text",
+        "str": lambda: (
+            f"String({ml})" if (ml := _get_max_length(validators)) else "Text"
+        ),
+        "int": lambda: "Integer",
+        "float": lambda: "Float",
+        "bool": lambda: "Boolean",
+        "datetime": lambda: "DateTime",
+        "datetime.datetime": lambda: "DateTime",
+        "datetime.date": lambda: "Date",
+        "datetime.time": lambda: "Text",
+        "date": lambda: "Date",
+        "time": lambda: "Text",
+        "uuid": lambda: "Uuid",
+        "uuid.UUID": lambda: "Uuid",
+        "UUID": lambda: "Uuid",
+        "decimal": lambda: "Numeric",
+        "decimal.Decimal": lambda: "Numeric",
+        "Decimal": lambda: "Numeric",
+        "EmailStr": lambda: "String(320)",
+        "HttpUrl": lambda: "Text",
     }
 
-    return type_map.get(base)
+    # Try full qualified name first (e.g. "datetime.date"), then base module name
+    factory = type_map.get(type_str)
+    if factory is None:
+        base = type_str.split(".")[0] if "." in type_str else type_str
+        factory = type_map.get(base)
+    if factory is None:
+        return None
+    return factory()
 
 
 def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMModel]:
@@ -273,7 +293,7 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
         orm_fields = []
 
         for field in model.fields:
-            column_type = map_column_type(field.type)
+            column_type = map_column_type(field.type, field.validators)
             if column_type is None:
                 continue
 
@@ -349,9 +369,11 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
     if input_api.config.database.enabled:
         orm_models = transform_orm_models(input_api.objects)
         snake_name = camel_to_snake(input_api.name)
+        db_port = 5433
         database_config = TemplateDatabaseConfig(
             enabled=True,
-            default_url=f"postgresql+asyncpg://postgres:postgres@localhost:5433/{snake_name}",
+            default_url=f"postgresql+asyncpg://postgres:postgres@localhost:{db_port}/{snake_name}",
+            db_port=db_port,
         )
 
     return TemplateAPI(

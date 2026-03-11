@@ -54,7 +54,7 @@ ${"###"} Local Development
 make run-local
 ```
 
-The API will be available at [http://localhost:8001](http://localhost:8001)
+The API will be available at [http://localhost:${api.app_port}](http://localhost:${api.app_port})
 
 ${"###"} Docker Container
 
@@ -62,7 +62,7 @@ ${"###"} Docker Container
 make run-container
 ```
 
-The API will be available at [http://localhost:8001](http://localhost:8001)
+The API will be available at [http://localhost:${api.app_port}](http://localhost:${api.app_port})
 % if api.database_config:
 
 ${"##"} Database
@@ -81,12 +81,20 @@ make db-init
 # Apply migrations
 make db-upgrade
 
-# Seed database with sample data
-make db-seed
-
 # Reset database (drop and recreate)
 make db-reset
 ```
+
+${"###"} Port Configuration
+
+Default ports are configured in `.env`:
+
+${"```"}
+DB_PORT=${api.database_config.db_port}
+APP_PORT=${api.app_port}
+${"```"}
+
+Change these values to avoid conflicts with other services.
 
 ${"###"} Run Full Stack (Docker Compose)
 
@@ -99,9 +107,9 @@ ${"##"} API Documentation
 
 Once running, interactive API documentation is available at:
 
-- **Swagger UI:** [http://localhost:8001/docs](http://localhost:8001/docs)
-- **ReDoc:** [http://localhost:8001/redoc](http://localhost:8001/redoc)
-- **OpenAPI JSON:** [http://localhost:8001/openapi.json](http://localhost:8001/openapi.json)
+- **Swagger UI:** [http://localhost:${api.app_port}/docs](http://localhost:${api.app_port}/docs)
+- **ReDoc:** [http://localhost:${api.app_port}/redoc](http://localhost:${api.app_port}/redoc)
+- **OpenAPI JSON:** [http://localhost:${api.app_port}/openapi.json](http://localhost:${api.app_port}/openapi.json)
 
 ${"##"} Project Structure
 
@@ -120,9 +128,9 @@ ${api.kebab_name}/
 % if api.database_config:
 │   ├── orm_models.py    # SQLAlchemy ORM models
 │   ├── database.py      # Database engine and session
-│   ├── seed.py          # Database seed data
 % endif
 │   └── ...
+├── .env                 # Port configuration
 ├── pyproject.toml       # Project dependencies
 ├── Makefile             # Common commands
 ├── Dockerfile           # Container configuration
@@ -150,7 +158,6 @@ ${"##"} Available Commands
 | `make db-init` | Create initial Alembic migration |
 | `make db-upgrade` | Apply pending migrations |
 | `make db-downgrade` | Rollback last migration |
-| `make db-seed` | Seed database with sample data |
 | `make db-reset` | Reset database (drop + migrate) |
 | `make run-stack` | Run full stack via Docker Compose |
 % endif

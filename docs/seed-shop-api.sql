@@ -1,26 +1,20 @@
--- Seed Shop API for user with email aleshiner@mail.ru
+-- Seed Shop API for user 9d17b505-af9d-4a19-a519-a7b89a6ed14d
+-- Clerk ID: user_39LzgEEnF5YQRTke3nSdPMEvoKT
 -- Recreates the same setup as test_e2e_shop_full.py (final state)
--- Prerequisite: the user must already exist (log in once after DB reset).
 -- Plain SQL — runs in any PostgreSQL client.
 
 BEGIN;
 
 -- 1. Namespace
-WITH u AS (
-  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
-)
 INSERT INTO namespaces (id, user_id, name, is_default)
-SELECT gen_random_uuid(), u.id, 'Shop', false FROM u;
+VALUES (gen_random_uuid(), '9d17b505-af9d-4a19-a519-a7b89a6ed14d', 'Shop', false);
 
--- 2. Fields (24 total)
+-- 2. Fields (23 total)
 -- We need stable IDs to reference later, so we use WITH clauses per group.
 
-WITH u AS (
-  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
-),
-ns AS (
+WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = (SELECT id FROM u) AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 ),
 sys_ns AS (
   SELECT id FROM namespaces WHERE user_id IS NULL LIMIT 1
@@ -43,7 +37,7 @@ t AS (
     (SELECT id FROM types WHERE name = 'time')     AS time
 )
 INSERT INTO fields (id, namespace_id, user_id, name, type_id)
-SELECT gen_random_uuid(), ns.id, (SELECT id FROM u), v.name, v.type_id
+SELECT gen_random_uuid(), ns.id, '9d17b505-af9d-4a19-a519-a7b89a6ed14d', v.name, v.type_id
 FROM ns, (VALUES
   ('name',               (SELECT str      FROM t)),
   ('sku',                (SELECT str      FROM t)),
@@ -67,17 +61,13 @@ FROM ns, (VALUES
   ('date_of_birth',      (SELECT date     FROM t)),
   ('last_login_time',    (SELECT time     FROM t)),
   ('is_active',          (SELECT bool     FROM t)),
-  ('registered_at',      (SELECT datetime FROM t)),
-  ('customer_id',        (SELECT int      FROM t))
+  ('registered_at',      (SELECT datetime FROM t))
 ) AS v(name, type_id);
 
 -- 3. Field constraints
-WITH u AS (
-  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
-),
-ns AS (
+WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = (SELECT id FROM u) AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 ),
 f AS (
   SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
@@ -115,12 +105,9 @@ FROM (VALUES
 ) AS v(fname, cname, val);
 
 -- 4. Field validators
-WITH u AS (
-  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
-),
-ns AS (
+WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = (SELECT id FROM u) AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 ),
 f AS (
   SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
@@ -143,27 +130,21 @@ FROM (VALUES
 ) AS v(fname, tname, params, pos);
 
 -- 5. Objects
-WITH u AS (
-  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
-),
-ns AS (
+WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = (SELECT id FROM u) AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 )
 INSERT INTO objects (id, namespace_id, user_id, name, description)
-SELECT gen_random_uuid(), ns.id, (SELECT id FROM u), v.name, v.descr
+SELECT gen_random_uuid(), ns.id, '9d17b505-af9d-4a19-a519-a7b89a6ed14d', v.name, v.descr
 FROM ns, (VALUES
   ('Product',  'Shop product'),
   ('Customer', 'Shop customer')
 ) AS v(name, descr);
 
 -- 6. Fields on objects
-WITH u AS (
-  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
-),
-ns AS (
+WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = (SELECT id FROM u) AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 ),
 f AS (
   SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
@@ -171,49 +152,44 @@ f AS (
 o AS (
   SELECT o.name, o.id FROM objects o JOIN ns ON o.namespace_id = ns.id
 )
-INSERT INTO fields_on_objects (id, object_id, field_id, optional, position, is_pk)
+INSERT INTO fields_on_objects (id, object_id, field_id, optional, position)
 SELECT gen_random_uuid(),
        (SELECT id FROM o WHERE o.name = v.obj),
        (SELECT id FROM f WHERE f.name = v.fname),
        v.opt,
-       v.pos,
-       v.pk
+       v.pos
 FROM (VALUES
-  -- Product (16 fields, tracking_id is PK)
-  ('Product', 'name',               false, 0,  false),
-  ('Product', 'sku',                false, 1,  false),
-  ('Product', 'price',              false, 2,  false),
-  ('Product', 'sale_price',         true,  3,  false),
-  ('Product', 'sale_end_date',      true,  4,  false),
-  ('Product', 'weight',             false, 5,  false),
-  ('Product', 'quantity',           false, 6,  false),
-  ('Product', 'min_order_quantity', false, 7,  false),
-  ('Product', 'max_order_quantity', true,  8,  false),
-  ('Product', 'discount_percent',   true,  9,  false),
-  ('Product', 'discount_amount',    true,  10, false),
-  ('Product', 'in_stock',           false, 11, false),
-  ('Product', 'product_url',        false, 12, false),
-  ('Product', 'release_date',       false, 13, false),
-  ('Product', 'created_at',         false, 14, false),
-  ('Product', 'tracking_id',        false, 15, true),
-  -- Customer (8 fields, customer_id is PK)
-  ('Customer', 'customer_id',       false, 0,  true),
-  ('Customer', 'customer_name',     false, 1,  false),
-  ('Customer', 'email',             true,  2,  false),
-  ('Customer', 'phone',             true,  3,  false),
-  ('Customer', 'date_of_birth',     false, 4,  false),
-  ('Customer', 'last_login_time',   false, 5,  false),
-  ('Customer', 'is_active',         false, 6,  false),
-  ('Customer', 'registered_at',     false, 7,  false)
-) AS v(obj, fname, opt, pos, pk);
+  -- Product (16 fields)
+  ('Product', 'name',               false, 0),
+  ('Product', 'sku',                false, 1),
+  ('Product', 'price',              false, 2),
+  ('Product', 'sale_price',         true,  3),
+  ('Product', 'sale_end_date',      true,  4),
+  ('Product', 'weight',             false, 5),
+  ('Product', 'quantity',           false, 6),
+  ('Product', 'min_order_quantity', false, 7),
+  ('Product', 'max_order_quantity', true,  8),
+  ('Product', 'discount_percent',   true,  9),
+  ('Product', 'discount_amount',    true,  10),
+  ('Product', 'in_stock',           false, 11),
+  ('Product', 'product_url',        false, 12),
+  ('Product', 'release_date',       false, 13),
+  ('Product', 'created_at',         false, 14),
+  ('Product', 'tracking_id',        false, 15),
+  -- Customer (7 fields)
+  ('Customer', 'customer_name',     false, 0),
+  ('Customer', 'email',             true,  1),
+  ('Customer', 'phone',             true,  2),
+  ('Customer', 'date_of_birth',     false, 3),
+  ('Customer', 'last_login_time',   false, 4),
+  ('Customer', 'is_active',         false, 5),
+  ('Customer', 'registered_at',     false, 6)
+) AS v(obj, fname, opt, pos);
 
 -- 7. Model validators
-WITH u AS (
-  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
-),
-ns AS (
+WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = (SELECT id FROM u) AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 ),
 o AS (
   SELECT o.name, o.id FROM objects o JOIN ns ON o.namespace_id = ns.id
@@ -244,29 +220,23 @@ FROM (VALUES
 ) AS v(obj, tname, params, mappings, pos);
 
 -- 8. API
-WITH u AS (
-  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
-),
-ns AS (
+WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = (SELECT id FROM u) AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 )
 INSERT INTO apis (id, namespace_id, user_id, title, version, description, base_url, server_url, created_at, updated_at)
-SELECT gen_random_uuid(), ns.id, (SELECT id FROM u),
+SELECT gen_random_uuid(), ns.id, '9d17b505-af9d-4a19-a519-a7b89a6ed14d',
        'ShopApi', '1.0.0', 'Complete online shop API', '', '', now(), now()
 FROM ns;
 
--- 9. Endpoints (7)
-WITH u AS (
-  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
-),
-ns AS (
+-- 9. Endpoints (9)
+WITH ns AS (
   SELECT id FROM namespaces
-  WHERE user_id = (SELECT id FROM u) AND name = 'Shop'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
 ),
 a AS (
   SELECT id FROM apis
-  WHERE user_id = (SELECT id FROM u) AND title = 'ShopApi'
+  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND title = 'ShopApi'
 ),
 f AS (
   SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
@@ -313,6 +283,17 @@ VALUES
   (gen_random_uuid(), (SELECT id FROM a), 'GET', '/customers',
    'List all customers', 'Customers', '[]',
    NULL, (SELECT id FROM customer_id), false, 'list'),
+
+  -- POST /customers
+  (gen_random_uuid(), (SELECT id FROM a), 'POST', '/customers',
+   'Create a customer', 'Customers', '[]',
+   (SELECT id FROM customer_id), (SELECT id FROM customer_id), false, 'object'),
+
+  -- GET /customers/{email}
+  (gen_random_uuid(), (SELECT id FROM a), 'GET', '/customers/{email}',
+   'Get customer by email', 'Customers',
+   (SELECT json_build_array(json_build_object('name', 'email', 'fieldId', id::text))::jsonb FROM email_id),
+   NULL, (SELECT id FROM customer_id), false, 'object'),
 
   -- PATCH /customers/{email}
   (gen_random_uuid(), (SELECT id FROM a), 'PATCH', '/customers/{email}',

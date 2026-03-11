@@ -6,6 +6,7 @@ Tests the full generation pipeline with a rich Shop API featuring:
 - Field validators (trim, normalize, clamp)
 - Model validators (range comparison, mutual exclusivity, all-or-none, conditional)
 - Multiple type support (decimal.Decimal, datetime.time, EmailStr, HttpUrl)
+- Database generation (ORM models, migrations, docker-compose)
 """
 
 import logging
@@ -78,25 +79,25 @@ class TestShopApiArtifacts:
         data = api_input.model_dump()
 
         assert data["name"] == "ShopApi"
-        assert len(data["objects"]) == 6
-        assert len(data["endpoints"]) == 7
+        assert len(data["objects"]) == 2
+        assert len(data["endpoints"]) == 9
         assert len(data["tags"]) == 2
 
-        # Verify Product has 17 fields
+        # Verify Product has 16 fields
         product = next(o for o in data["objects"] if o["name"] == "Product")
-        assert len(product["fields"]) == 17
+        assert len(product["fields"]) == 16
 
-        # Verify Customer has 7 fields
+        # Verify Customer has 8 fields
         customer = next(o for o in data["objects"] if o["name"] == "Customer")
-        assert len(customer["fields"]) == 7
+        assert len(customer["fields"]) == 8
 
         # Verify model validators on Product
         assert len(product["model_validators"]) == 4
 
-        # Customer has no model validators
-        assert len(customer["model_validators"]) == 0
+        # Customer has 1 model validator
+        assert len(customer["model_validators"]) == 1
 
-        logger.info("InputAPI dump verified: 6 objects, 7 endpoints, 2 tags")
+        logger.info("InputAPI dump verified: 2 objects, 9 endpoints, 2 tags")
 
     def test_template_api_dump(self):
         """Transform InputAPI and verify TemplateAPI naming conventions."""
@@ -108,8 +109,8 @@ class TestShopApiArtifacts:
         assert data["kebab_name"] == "shop-api"
         assert data["camel_name"] == "ShopApi"
 
-        assert len(data["models"]) == 6
-        assert len(data["views"]) == 7
+        assert len(data["models"]) == 2
+        assert len(data["views"]) == 9
 
         logger.info("TemplateAPI dump verified: naming and counts correct")
 
@@ -122,13 +123,22 @@ class TestShopApiArtifacts:
         src_dir = project_dir / "src"
 
         expected_files = [
+            # Standard src files
             src_dir / "models.py",
             src_dir / "views.py",
             src_dir / "main.py",
             src_dir / "path.py",
+            # Database files
+            src_dir / "orm_models.py",
+            src_dir / "database.py",
+            # Project root files
             project_dir / "pyproject.toml",
             project_dir / "Makefile",
             project_dir / "Dockerfile",
+            project_dir / "docker-compose.yml",
+            project_dir / "alembic.ini",
+            # Migrations
+            project_dir / "migrations" / "env.py",
         ]
 
         for f in expected_files:
@@ -174,25 +184,27 @@ class TestShopApiEndpoints:
         response = shop_api_client.get("/products")
         assert_valid_response(response)
         data = response.json()
-        assert "products" in data
-        assert "total" in data
+        assert isinstance(data, list)
 
-    def test_get_product(self, shop_api_client: TestClient):
-        log_test("GET /products/{tracking_id}")
-        response = shop_api_client.get("/products/abc-123")
-        assert_valid_response(response)
+    def test_get_product_not_found(self, shop_api_client: TestClient):
+        log_test("GET /products/{tracking_id} - not found")
+        response = shop_api_client.get("/products/00000000-0000-0000-0000-000000000001")
+        assert response.status_code == 404
 
     def test_create_product_valid(self, shop_api_client: TestClient):
         log_test("POST /products - valid payload")
         payload = {
             "name": "Widget",
-            "sku": "WDG-001",
+            "sku": "WD-0001",
             "price": 29.99,
+            "weight": 1.5,
             "quantity": 100,
             "min_order_quantity": 1,
-            "max_order_quantity": 500,
-            "is_active": True,
+            "in_stock": True,
+            "product_url": "https://example.com/widget",
+            "release_date": "2026-01-01",
             "created_at": "2026-01-01T00:00:00",
+            "tracking_id": "00000000-0000-0000-0000-000000000099",
         }
         response = shop_api_client.post("/products", json=payload)
         assert_valid_response(response)
@@ -202,14 +214,40 @@ class TestShopApiEndpoints:
         response = shop_api_client.get("/customers")
         assert_valid_response(response)
         data = response.json()
-        assert "customers" in data
-        assert "total" in data
+        assert isinstance(data, list)
 
-    def test_update_customer_valid(self, shop_api_client: TestClient):
-        log_test("PATCH /customers/{email}")
-        payload = {"customer_name": "Jane Doe", "phone": "1234567890"}
-        response = shop_api_client.patch("/customers/test@example.com", json=payload)
+    def test_create_customer_valid(self, shop_api_client: TestClient):
+        log_test("POST /customers - valid payload")
+        payload = {
+            "customer_id": 1,
+            "customer_name": "Jane Doe",
+            "email": "jane@example.com",
+            "date_of_birth": "1990-01-15",
+            "last_login_time": "14:30:00",
+            "is_active": True,
+            "registered_at": "2026-01-01T00:00:00",
+        }
+        response = shop_api_client.post("/customers", json=payload)
         assert_valid_response(response)
+
+    def test_get_customer_not_found(self, shop_api_client: TestClient):
+        log_test("GET /customers/{email} - not found")
+        response = shop_api_client.get("/customers/test@example.com")
+        assert response.status_code == 404
+
+    def test_update_customer_not_found(self, shop_api_client: TestClient):
+        log_test("PATCH /customers/{email} - not found")
+        payload = {
+            "customer_id": 1,
+            "customer_name": "Jane Doe",
+            "email": "jane@example.com",
+            "date_of_birth": "1990-01-15",
+            "last_login_time": "14:30:00",
+            "is_active": True,
+            "registered_at": "2026-01-01T00:00:00",
+        }
+        response = shop_api_client.patch("/customers/test@example.com", json=payload)
+        assert response.status_code == 404
 
 
 # =============================================================================
@@ -224,13 +262,16 @@ class TestProductConstraints:
         """Build a valid product payload with optional overrides."""
         base = {
             "name": "Test Product",
-            "sku": "TST-001",
+            "sku": "TS-0001",
             "price": 29.99,
+            "weight": 1.5,
             "quantity": 50,
             "min_order_quantity": 1,
-            "max_order_quantity": 500,
-            "is_active": True,
+            "in_stock": True,
+            "product_url": "https://example.com/product",
+            "release_date": "2026-01-01",
             "created_at": "2026-01-01T00:00:00",
+            "tracking_id": "00000000-0000-0000-0000-000000000001",
         }
         base.update(overrides)
         return base
@@ -241,14 +282,14 @@ class TestProductConstraints:
         assert_validation_error(response, expected_field="name")
 
     def test_name_too_long_rejected(self, shop_api_client: TestClient):
-        """Name over 200 chars (max_length=200) is rejected."""
+        """Name over 150 chars (max_length=150) is rejected."""
         response = shop_api_client.post(
-            "/products", json=self._valid_product(name="A" * 201)
+            "/products", json=self._valid_product(name="A" * 151)
         )
         assert_validation_error(response, expected_field="name")
 
     def test_sku_invalid_pattern_rejected(self, shop_api_client: TestClient):
-        """SKU not matching ^[A-Z0-9-]+$ is rejected (after uppercase normalization)."""
+        """SKU not matching ^[A-Z]{2}-\\d{4}$ is rejected (after uppercase normalization)."""
         response = shop_api_client.post(
             "/products", json=self._valid_product(sku="invalid sku!")
         )
@@ -292,7 +333,9 @@ class TestProductConstraints:
         response = shop_api_client.post(
             "/products",
             json=self._valid_product(
-                discount_percent=7, is_on_sale=True, sale_start="2026-01-01"
+                discount_percent=7,
+                sale_price=19.99,
+                sale_end_date="2026-06-01",
             ),
         )
         assert_validation_error(response, expected_field="discount_percent")
@@ -302,17 +345,21 @@ class TestProductConstraints:
         response = shop_api_client.post(
             "/products",
             json=self._valid_product(
-                discount_percent=105, is_on_sale=True, sale_start="2026-01-01"
+                discount_percent=105,
+                sale_price=19.99,
+                sale_end_date="2026-06-01",
             ),
         )
         assert_validation_error(response, expected_field="discount_percent")
 
-    def test_weight_negative_rejected(self, shop_api_client: TestClient):
-        """Negative weight (ge=0) is rejected."""
+    def test_weight_clamped_by_validator(self, shop_api_client: TestClient):
+        """Negative weight is clamped to 0 by the clamp_weight field validator."""
         response = shop_api_client.post(
             "/products", json=self._valid_product(weight=-1.0)
         )
-        assert_validation_error(response, expected_field="weight")
+        # The clamp_weight field validator (mode=before) clamps the value to [0, 1000],
+        # so -1.0 becomes 0.0, which passes the ge=0 constraint.
+        assert_valid_response(response)
 
 
 # =============================================================================
@@ -323,16 +370,32 @@ class TestProductConstraints:
 class TestCustomerConstraints:
     """Tests for Customer field constraint validation."""
 
+    def _valid_customer(self, **overrides) -> dict:
+        """Build a valid customer payload with optional overrides."""
+        base = {
+            "customer_id": 1,
+            "customer_name": "Test Customer",
+            "email": "test@example.com",
+            "date_of_birth": "1990-01-15",
+            "last_login_time": "14:30:00",
+            "is_active": True,
+            "registered_at": "2026-01-01T00:00:00",
+        }
+        base.update(overrides)
+        return base
+
     def test_name_empty_rejected(self, shop_api_client: TestClient):
         """Empty customer_name (min_length=1) is rejected."""
-        payload = {"customer_name": "", "phone": "1234567890"}
-        response = shop_api_client.patch("/customers/test@example.com", json=payload)
+        response = shop_api_client.post(
+            "/customers", json=self._valid_customer(customer_name="")
+        )
         assert_validation_error(response, expected_field="customer_name")
 
     def test_phone_too_short_rejected(self, shop_api_client: TestClient):
         """Phone shorter than min_length=7 is rejected."""
-        payload = {"phone": "123"}
-        response = shop_api_client.patch("/customers/test@example.com", json=payload)
+        response = shop_api_client.post(
+            "/customers", json=self._valid_customer(phone="123")
+        )
         assert_validation_error(response, expected_field="phone")
 
 
@@ -347,13 +410,16 @@ class TestProductModelValidators:
     def _valid_product(self, **overrides) -> dict:
         base = {
             "name": "Test Product",
-            "sku": "TST-001",
+            "sku": "TS-0001",
             "price": 29.99,
+            "weight": 1.5,
             "quantity": 50,
             "min_order_quantity": 1,
-            "max_order_quantity": 500,
-            "is_active": True,
+            "in_stock": True,
+            "product_url": "https://example.com/product",
+            "release_date": "2026-01-01",
             "created_at": "2026-01-01T00:00:00",
+            "tracking_id": "00000000-0000-0000-0000-000000000001",
         }
         base.update(overrides)
         return base
@@ -370,28 +436,31 @@ class TestProductModelValidators:
     def test_discount_mutual_exclusivity_rejects_both(
         self, shop_api_client: TestClient
     ):
-        """Having both discount_percent and is_on_sale=True is rejected."""
+        """Having both discount_percent and discount_amount is rejected."""
         log_test("Model validator: discount exclusivity")
         response = shop_api_client.post(
             "/products",
             json=self._valid_product(
-                discount_percent=10, is_on_sale=True, sale_start="2026-01-01"
+                discount_percent=10,
+                discount_amount=5.00,
+                sale_price=19.99,
+                sale_end_date="2026-06-01",
             ),
         )
         assert_validation_error(response)
 
     def test_sale_fields_all_or_none_rejects_partial(self, shop_api_client: TestClient):
-        """Providing is_on_sale without sale_start is rejected."""
+        """Providing sale_price without sale_end_date is rejected."""
         log_test("Model validator: sale fields all-or-none")
         response = shop_api_client.post(
             "/products",
-            json=self._valid_product(is_on_sale=True),
+            json=self._valid_product(sale_price=19.99),
         )
         assert_validation_error(response)
 
     def test_discount_conditional_required_rejects(self, shop_api_client: TestClient):
-        """discount_percent without is_on_sale set is rejected."""
-        log_test("Model validator: discount requires is_on_sale")
+        """discount_percent without sale_price set is rejected."""
+        log_test("Model validator: discount requires sale_price")
         response = shop_api_client.post(
             "/products",
             json=self._valid_product(discount_percent=10),

@@ -49,7 +49,11 @@ db-reset: ## Reset database: delete all data, restart, re-migrate
 
 .PHONY: test
 test: ## Run tests
-	@$(POETRY) run pytest tests/ -v
+	@$(POETRY) run pytest tests/ -v -m "not e2e and not manual"
+
+.PHONY: test-e2e
+test-e2e: ## Run end-to-end tests (requires Docker)
+	@$(POETRY) run pytest -m e2e -v
 
 .PHONY: test-codegen
 test-codegen: ## Run codegen tests (fast, no DB needed)

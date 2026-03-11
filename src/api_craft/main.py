@@ -32,6 +32,7 @@ from api_craft.renderers import (
     render_database,
     render_docker_compose,
     render_dockerfile,
+    render_env,
     render_main,
     render_makefile,
     render_models,
@@ -114,6 +115,7 @@ class APIGenerator:
                 "docker_compose": "docker_compose.mako",
                 "alembic_ini": "alembic_ini.mako",
                 "alembic_env": "alembic_env.mako",
+                "env": "env.mako",
             }
 
             self.templates = {
@@ -249,6 +251,9 @@ class APIGenerator:
                 rendered_components["alembic_env.py"] = render_alembic_env(
                     template_api, self.templates["alembic_env"]
                 )
+                rendered_components[".env"] = render_env(
+                    template_api, self.templates["env"]
+                )
 
             return rendered_components
         except Exception as e:
@@ -281,6 +286,7 @@ class APIGenerator:
                 "README.md",
                 "docker-compose.yml",
                 "alembic.ini",
+                ".env",
             }
 
             # Create migrations directory if alembic_env.py is present

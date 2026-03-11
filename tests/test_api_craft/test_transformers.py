@@ -102,7 +102,7 @@ class TestTypeMapping:
             ("bool", "Boolean"),
             ("datetime", "DateTime"),
             ("date", "Date"),
-            ("time", "Time"),
+            ("time", "Text"),
             ("uuid", "Uuid"),
             ("Decimal", "Numeric"),
             ("HttpUrl", "Text"),
@@ -131,13 +131,11 @@ class TestTypeMapping:
             ("bool", "bool"),
             ("datetime", "datetime.datetime"),
             ("date", "datetime.date"),
-            ("time", "datetime.time"),
+            ("time", "str"),
             ("uuid", "uuid.UUID"),
             ("UUID", "uuid.UUID"),
             ("decimal", "decimal.Decimal"),
             ("Decimal", "decimal.Decimal"),
-            ("EmailStr", "str"),
-            ("HttpUrl", "str"),
         ],
     )
     def test_orm_python_type_annotation(self, input_type, expected_python_type):
@@ -184,9 +182,9 @@ class TestTypeMapping:
             )
         ]
         result = transform_orm_models(models)
-        assert result[0].fields[1].column_type == "Text"
+        assert result[0].fields[1].column_type == "String(100)"
 
-    def test_email_str_maps_to_text(self):
+    def test_email_str_maps_to_string_320(self):
         models = [
             _make_model(
                 "Item",
@@ -197,7 +195,7 @@ class TestTypeMapping:
             )
         ]
         result = transform_orm_models(models)
-        assert result[0].fields[1].column_type == "Text"
+        assert result[0].fields[1].column_type == "String(320)"
 
     def test_optional_field_is_nullable(self):
         models = [
@@ -352,7 +350,7 @@ class TestTransformApiWithDatabase:
                 )
             ],
             config=InputApiConfig(
-                database={"enabled": True},
+                database={"enabled": True}, response_placeholders=False
             ),
         )
         result = transform_api(api)
@@ -379,7 +377,7 @@ class TestTransformApiWithDatabase:
                 )
             ],
             config=InputApiConfig(
-                database={"enabled": True},
+                database={"enabled": True}, response_placeholders=False
             ),
         )
         result = transform_api(api)
@@ -406,7 +404,7 @@ class TestDatabaseValidation:
                     ),
                 ],
                 config=InputApiConfig(
-                    database={"enabled": True},
+                    database={"enabled": True}, response_placeholders=False
                 ),
             )
 
@@ -429,7 +427,7 @@ class TestDatabaseValidation:
                 ),
             ],
             config=InputApiConfig(
-                database={"enabled": True},
+                database={"enabled": True}, response_placeholders=False
             ),
         )
         result = transform_api(api_input)

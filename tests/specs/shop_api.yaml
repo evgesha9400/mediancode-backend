@@ -1,526 +1,274 @@
 name: ShopApi
-version: "0.1.0"
+version: "1.0.0"
 author: Median Code
-description: E-commerce Shop API with products and customers
+description: Complete online shop API
 
 tags:
   - name: Products
-    description: Product management operations
   - name: Customers
-    description: Customer management operations
 
 objects:
-  # --- Product ---
   - name: Product
-    description: Product with comprehensive field types and validation
+    description: Shop product
     fields:
+      - name: name
+        type: str
+        validators:
+          - name: min_length
+            params: { value: 1 }
+          - name: max_length
+            params: { value: 150 }
+        field_validators:
+          - function_name: trim_name
+            mode: before
+            function_body: "        v = v.strip()\n        return v"
+          - function_name: normalize_whitespace_name
+            mode: before
+            function_body: "        import re\n        v = re.sub(r'\\s+', ' ', v).strip()\n        return v"
+      - name: sku
+        type: str
+        validators:
+          - name: pattern
+            params: { value: "^[A-Z]{2}-\\d{4}$" }
+        field_validators:
+          - function_name: normalize_case_sku
+            mode: before
+            function_body: "        v = v.upper()\n        return v"
+      - name: price
+        type: decimal.Decimal
+        validators:
+          - name: gt
+            params: { value: 0 }
+        field_validators:
+          - function_name: round_decimal_price
+            mode: after
+            function_body: "        v = round(v, 2)\n        return v"
+      - name: sale_price
+        type: decimal.Decimal
+        optional: true
+        validators:
+          - name: ge
+            params: { value: 0 }
+      - name: sale_end_date
+        type: datetime.date
+        optional: true
+      - name: weight
+        type: float
+        validators:
+          - name: ge
+            params: { value: 0 }
+          - name: lt
+            params: { value: 1000 }
+        field_validators:
+          - function_name: clamp_weight
+            mode: before
+            function_body: "        v = max(0, min(float(v), 1000))\n        return v"
+      - name: quantity
+        type: int
+        validators:
+          - name: ge
+            params: { value: 0 }
+      - name: min_order_quantity
+        type: int
+        validators:
+          - name: ge
+            params: { value: 1 }
+      - name: max_order_quantity
+        type: int
+        optional: true
+        validators:
+          - name: le
+            params: { value: 1000 }
+      - name: discount_percent
+        type: int
+        optional: true
+        validators:
+          - name: ge
+            params: { value: 0 }
+          - name: le
+            params: { value: 100 }
+          - name: multiple_of
+            params: { value: 5 }
+      - name: discount_amount
+        type: decimal.Decimal
+        optional: true
+        validators:
+          - name: ge
+            params: { value: 0 }
+      - name: in_stock
+        type: bool
+      - name: product_url
+        type: HttpUrl
+      - name: release_date
+        type: datetime.date
+      - name: created_at
+        type: datetime.datetime
       - name: tracking_id
         type: uuid.UUID
-        optional: false
-        description: Unique tracking identifier
-
-      - name: name
-        type: str
-        optional: false
-        description: Product display name
-        validators:
-          - name: min_length
-            params: { value: 1 }
-          - name: max_length
-            params: { value: 200 }
-        field_validators:
-          - function_name: trim_name
-            mode: before
-            function_body: "        v = v.strip()\n        return v"
-          - function_name: normalize_whitespace_name
-            mode: before
-            function_body: "        import re\n        v = re.sub(r'\\s+', ' ', v).strip()\n        return v"
-
-      - name: sku
-        type: str
-        optional: false
-        description: Stock keeping unit code
-        validators:
-          - name: min_length
-            params: { value: 3 }
-          - name: max_length
-            params: { value: 20 }
-          - name: pattern
-            params: { value: "^[A-Z0-9-]+$" }
-        field_validators:
-          - function_name: normalize_case_sku
-            mode: before
-            function_body: "        v = v.upper()\n        return v"
-
-      - name: description
-        type: str
-        optional: true
-        description: Detailed product description
-
-      - name: price
-        type: float
-        optional: false
-        description: Product price in dollars
-        validators:
-          - name: gt
-            params: { value: 0 }
-        field_validators:
-          - function_name: round_decimal_price
-            mode: after
-            function_body: "        v = round(v, 2)\n        return v"
-
-      - name: cost
-        type: decimal.Decimal
-        optional: true
-        description: Product cost (wholesale)
-
-      - name: quantity
-        type: int
-        optional: false
-        description: Available stock quantity
-        validators:
-          - name: ge
-            params: { value: 0 }
-
-      - name: min_order_quantity
-        type: int
-        optional: false
-        description: Minimum order quantity
-        validators:
-          - name: ge
-            params: { value: 1 }
-
-      - name: max_order_quantity
-        type: int
-        optional: false
-        description: Maximum order quantity
-        validators:
-          - name: ge
-            params: { value: 2 }
-          - name: le
-            params: { value: 1000 }
-
-      - name: discount_percent
-        type: int
-        optional: true
-        description: Discount percentage (multiples of 5, 0-100)
-        validators:
-          - name: ge
-            params: { value: 0 }
-          - name: le
-            params: { value: 100 }
-          - name: multiple_of
-            params: { value: 5 }
-
-      - name: weight
-        type: float
-        optional: true
-        description: Product weight in kg
-        validators:
-          - name: ge
-            params: { value: 0 }
-        field_validators:
-          - function_name: clamp_to_range_weight
-            mode: after
-            function_body: "        v = max(0, min(1000, v))\n        return v"
-
-      - name: is_active
-        type: bool
-        optional: false
-        description: Whether the product is active
-
-      - name: created_at
-        type: datetime.datetime
-        optional: false
-        description: Creation timestamp
-
-      - name: release_date
-        type: datetime.date
-        optional: true
-        description: Product release date
-
-      - name: website_url
-        type: HttpUrl
-        optional: true
-        description: Product website URL
-
-      - name: is_on_sale
-        type: bool
-        optional: true
-        description: Whether the product is on sale
-
-      - name: sale_start
-        type: datetime.date
-        optional: true
-        description: Sale start date
-
+        pk: true
     model_validators:
       - function_name: validate_order_quantity_range
         mode: after
-        function_body: "        if self.min_order_quantity >= self.max_order_quantity:\n            raise ValueError('min_order_quantity must be less than max_order_quantity')\n        return self"
+        function_body: "        if self.max_order_quantity is not None and self.min_order_quantity >= self.max_order_quantity:\n            raise ValueError('min_order_quantity must be less than max_order_quantity')\n        return self"
       - function_name: validate_discount_exclusivity
         mode: after
-        function_body: "        if self.discount_percent is not None and self.is_on_sale:\n            raise ValueError('Cannot have both discount_percent and is_on_sale')\n        return self"
+        function_body: "        if self.discount_percent is not None and self.discount_amount is not None:\n            raise ValueError('Cannot have both discount_percent and discount_amount')\n        return self"
       - function_name: validate_sale_fields
         mode: after
-        function_body: "        sale_fields = [self.is_on_sale, self.sale_start]\n        filled = [f for f in sale_fields if f is not None]\n        if 0 < len(filled) < len(sale_fields):\n            raise ValueError('All or none of sale fields (is_on_sale, sale_start) must be provided')\n        return self"
+        function_body: "        sale_fields = [self.sale_price, self.sale_end_date]\n        filled = [f for f in sale_fields if f is not None]\n        if 0 < len(filled) < len(sale_fields):\n            raise ValueError('All or none of sale fields (sale_price, sale_end_date) must be provided')\n        return self"
       - function_name: validate_discount_requires_sale
         mode: after
-        function_body: "        if self.discount_percent is not None and self.is_on_sale is None:\n            raise ValueError('discount_percent requires is_on_sale to be set')\n        return self"
+        function_body: "        if self.discount_percent is not None and self.sale_price is None:\n            raise ValueError('discount_percent requires sale_price to be set')\n        return self"
 
-  # --- Product list response ---
-  - name: ProductList
-    description: Response containing a list of products
-    fields:
-      - name: products
-        type: List[Product]
-        optional: false
-        description: List of product objects
-      - name: total
-        type: int
-        optional: false
-        description: Total number of products
-        validators:
-          - name: ge
-            params: { value: 0 }
-
-  # --- Create product request ---
-  - name: CreateProductRequest
-    description: Request body for creating a new product
-    fields:
-      - name: name
-        type: str
-        optional: false
-        description: Product name
-        validators:
-          - name: min_length
-            params: { value: 1 }
-          - name: max_length
-            params: { value: 200 }
-        field_validators:
-          - function_name: trim_name
-            mode: before
-            function_body: "        v = v.strip()\n        return v"
-          - function_name: normalize_whitespace_name
-            mode: before
-            function_body: "        import re\n        v = re.sub(r'\\s+', ' ', v).strip()\n        return v"
-
-      - name: sku
-        type: str
-        optional: false
-        description: Stock keeping unit code
-        validators:
-          - name: min_length
-            params: { value: 3 }
-          - name: max_length
-            params: { value: 20 }
-          - name: pattern
-            params: { value: "^[A-Z0-9-]+$" }
-        field_validators:
-          - function_name: normalize_case_sku
-            mode: before
-            function_body: "        v = v.upper()\n        return v"
-
-      - name: price
-        type: float
-        optional: false
-        description: Product price
-        validators:
-          - name: gt
-            params: { value: 0 }
-        field_validators:
-          - function_name: round_decimal_price
-            mode: after
-            function_body: "        v = round(v, 2)\n        return v"
-
-      - name: cost
-        type: decimal.Decimal
-        optional: true
-        description: Product cost
-
-      - name: quantity
-        type: int
-        optional: false
-        description: Stock quantity
-        validators:
-          - name: ge
-            params: { value: 0 }
-
-      - name: min_order_quantity
-        type: int
-        optional: false
-        description: Minimum order quantity
-        validators:
-          - name: ge
-            params: { value: 1 }
-
-      - name: max_order_quantity
-        type: int
-        optional: false
-        description: Maximum order quantity
-        validators:
-          - name: ge
-            params: { value: 2 }
-          - name: le
-            params: { value: 1000 }
-
-      - name: discount_percent
-        type: int
-        optional: true
-        description: Discount percentage
-        validators:
-          - name: ge
-            params: { value: 0 }
-          - name: le
-            params: { value: 100 }
-          - name: multiple_of
-            params: { value: 5 }
-
-      - name: weight
-        type: float
-        optional: true
-        description: Product weight in kg
-        validators:
-          - name: ge
-            params: { value: 0 }
-        field_validators:
-          - function_name: clamp_to_range_weight
-            mode: after
-            function_body: "        v = max(0, min(1000, v))\n        return v"
-
-      - name: is_active
-        type: bool
-        optional: false
-        description: Whether the product is active
-
-      - name: created_at
-        type: datetime.datetime
-        optional: false
-        description: Creation timestamp
-
-      - name: release_date
-        type: datetime.date
-        optional: true
-        description: Product release date
-
-      - name: website_url
-        type: HttpUrl
-        optional: true
-        description: Product website URL
-
-      - name: is_on_sale
-        type: bool
-        optional: true
-        description: Whether the product is on sale
-
-      - name: sale_start
-        type: datetime.date
-        optional: true
-        description: Sale start date
-
-    model_validators:
-      - function_name: validate_order_quantity_range
-        mode: after
-        function_body: "        if self.min_order_quantity >= self.max_order_quantity:\n            raise ValueError('min_order_quantity must be less than max_order_quantity')\n        return self"
-      - function_name: validate_discount_exclusivity
-        mode: after
-        function_body: "        if self.discount_percent is not None and self.is_on_sale:\n            raise ValueError('Cannot have both discount_percent and is_on_sale')\n        return self"
-      - function_name: validate_sale_fields
-        mode: after
-        function_body: "        sale_fields = [self.is_on_sale, self.sale_start]\n        filled = [f for f in sale_fields if f is not None]\n        if 0 < len(filled) < len(sale_fields):\n            raise ValueError('All or none of sale fields (is_on_sale, sale_start) must be provided')\n        return self"
-      - function_name: validate_discount_requires_sale
-        mode: after
-        function_body: "        if self.discount_percent is not None and self.is_on_sale is None:\n            raise ValueError('discount_percent requires is_on_sale to be set')\n        return self"
-
-  # --- Customer ---
   - name: Customer
-    description: Customer with contact information
+    description: Shop customer
     fields:
+      - name: customer_id
+        type: int
+        pk: true
+      - name: customer_name
+        type: str
+        validators:
+          - name: min_length
+            params: { value: 1 }
+          - name: max_length
+            params: { value: 100 }
+        field_validators:
+          - function_name: trim_customer_name
+            mode: before
+            function_body: "        v = v.strip()\n        return v"
+          - function_name: normalize_case_customer_name
+            mode: before
+            function_body: "        v = v.title()\n        return v"
+          - function_name: trim_to_length_customer_name
+            mode: after
+            function_body: "        v = v[:100]\n        return v"
       - name: email
         type: EmailStr
-        optional: false
-        description: Customer email address
-
-      - name: customer_name
-        type: str
-        optional: false
-        description: Customer full name
-        validators:
-          - name: min_length
-            params: { value: 1 }
-          - name: max_length
-            params: { value: 100 }
-        field_validators:
-          - function_name: trim_customer_name
-            mode: before
-            function_body: "        v = v.strip()\n        return v"
-          - function_name: normalize_case_customer_name
-            mode: before
-            function_body: "        v = v.title()\n        return v"
-
+        optional: true
       - name: phone
         type: str
         optional: true
-        description: Customer phone number
         validators:
           - name: min_length
             params: { value: 7 }
           - name: max_length
-            params: { value: 20 }
-
-      - name: preferred_contact_time
+            params: { value: 15 }
+      - name: date_of_birth
+        type: datetime.date
+      - name: last_login_time
         type: datetime.time
-        optional: true
-        description: Preferred time for contact
-
       - name: is_active
         type: bool
-        optional: false
-        description: Whether the customer account is active
-
       - name: registered_at
         type: datetime.datetime
-        optional: false
-        description: Registration timestamp
-
-      - name: website
-        type: HttpUrl
-        optional: true
-        description: Customer website
-
-  # --- Customer list response ---
-  - name: CustomerList
-    description: Response containing a list of customers
-    fields:
-      - name: customers
-        type: List[Customer]
-        optional: false
-        description: List of customer objects
-      - name: total
-        type: int
-        optional: false
-        description: Total number of customers
-        validators:
-          - name: ge
-            params: { value: 0 }
-
-  # --- Update customer request ---
-  - name: UpdateCustomerRequest
-    description: Request body for updating a customer
-    fields:
-      - name: customer_name
-        type: str
-        optional: true
-        description: Customer full name
-        validators:
-          - name: min_length
-            params: { value: 1 }
-          - name: max_length
-            params: { value: 100 }
-        field_validators:
-          - function_name: trim_customer_name
-            mode: before
-            function_body: "        v = v.strip()\n        return v"
-          - function_name: normalize_case_customer_name
-            mode: before
-            function_body: "        v = v.title()\n        return v"
-
-      - name: phone
-        type: str
-        optional: true
-        description: Customer phone number
-        validators:
-          - name: min_length
-            params: { value: 7 }
-          - name: max_length
-            params: { value: 20 }
-
-      - name: is_active
-        type: bool
-        optional: true
-        description: Whether the customer account is active
+    model_validators:
+      - function_name: validate_contact_required
+        mode: after
+        function_body: "        if self.email is None and self.phone is None:\n            raise ValueError('At least one of email or phone must be provided')\n        return self"
 
 endpoints:
   - name: ListProducts
     path: /products
     method: GET
+    response: Product
     tag: Products
     description: List all products
-    response: ProductList
-    response_shape: object
-    use_envelope: true
+    use_envelope: false
+    response_shape: list
 
   - name: GetProduct
     path: /products/{tracking_id}
     method: GET
-    tag: Products
-    description: Retrieve a single product by tracking ID
     response: Product
+    tag: Products
+    description: Get product by tracking ID
+    use_envelope: false
     response_shape: object
-    use_envelope: true
     path_params:
       - name: tracking_id
-        type: str
-        description: Product tracking UUID
+        type: uuid.UUID
 
   - name: CreateProduct
     path: /products
     method: POST
-    tag: Products
-    description: Create a new product
+    request: Product
     response: Product
-    request: CreateProductRequest
+    tag: Products
+    description: Create a product
+    use_envelope: false
     response_shape: object
-    use_envelope: true
+
+  - name: UpdateProduct
+    path: /items/{tracking_id}
+    method: PUT
+    request: Product
+    response: Product
+    tag: Products
+    description: Update a product
+    use_envelope: false
+    response_shape: object
+    path_params:
+      - name: tracking_id
+        type: uuid.UUID
 
   - name: DeleteProduct
     path: /products/{tracking_id}
     method: DELETE
     tag: Products
     description: Delete a product
-    response: Product
-    response_shape: object
     use_envelope: false
+    response_shape: object
     path_params:
       - name: tracking_id
-        type: str
-        description: Product tracking UUID
+        type: uuid.UUID
 
   - name: ListCustomers
     path: /customers
     method: GET
+    response: Customer
     tag: Customers
     description: List all customers
-    response: CustomerList
+    use_envelope: false
+    response_shape: list
+
+  - name: CreateCustomer
+    path: /customers
+    method: POST
+    request: Customer
+    response: Customer
+    tag: Customers
+    description: Create a customer
+    use_envelope: false
     response_shape: object
-    use_envelope: true
 
   - name: GetCustomer
     path: /customers/{email}
     method: GET
-    tag: Customers
-    description: Retrieve a customer by email
     response: Customer
+    tag: Customers
+    description: Get customer by email
+    use_envelope: false
     response_shape: object
-    use_envelope: true
     path_params:
       - name: email
-        type: str
-        description: Customer email address
+        type: EmailStr
 
   - name: UpdateCustomer
     path: /customers/{email}
     method: PATCH
-    tag: Customers
-    description: Update customer details
+    request: Customer
     response: Customer
-    request: UpdateCustomerRequest
+    tag: Customers
+    description: Update a customer by email
+    use_envelope: false
     response_shape: object
-    use_envelope: true
     path_params:
       - name: email
-        type: str
-        description: Customer email address
+        type: EmailStr
 
 config:
   healthcheck: /healthcheck
+  response_placeholders: false
+  database:
+    enabled: true
