@@ -18,7 +18,7 @@ run-local: install db-up
 % else:
 run-local: install
 % endif
-	@PYTHONPATH=src poetry run uvicorn main:app --reload --port 8000
+	@PYTHONPATH=src poetry run uvicorn main:app --reload --port 8001
 
 build:
 	@docker build -t $(PROJECT_NAME) .
@@ -29,7 +29,7 @@ clean:
 	-@docker rmi $(PROJECT_NAME) 2>/dev/null || true
 
 run-container: install clean build
-	@docker run --name $(PROJECT_NAME) -p 8000:80 -d $(PROJECT_NAME):latest
+	@docker run --name $(PROJECT_NAME) -p 8001:80 -d $(PROJECT_NAME):latest
 
 swagger: install
 	@PYTHONPATH=src poetry run python swagger.py

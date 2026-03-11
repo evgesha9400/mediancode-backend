@@ -54,7 +54,7 @@ ${"###"} Local Development
 make run-local
 ```
 
-The API will be available at [http://localhost:8000](http://localhost:8000)
+The API will be available at [http://localhost:8001](http://localhost:8001)
 
 ${"###"} Docker Container
 
@@ -62,7 +62,7 @@ ${"###"} Docker Container
 make run-container
 ```
 
-The API will be available at [http://localhost:8000](http://localhost:8000)
+The API will be available at [http://localhost:8001](http://localhost:8001)
 % if api.database_config:
 
 ${"##"} Database
@@ -99,9 +99,9 @@ ${"##"} API Documentation
 
 Once running, interactive API documentation is available at:
 
-- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
-- **OpenAPI JSON:** [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
+- **Swagger UI:** [http://localhost:8001/docs](http://localhost:8001/docs)
+- **ReDoc:** [http://localhost:8001/redoc](http://localhost:8001/redoc)
+- **OpenAPI JSON:** [http://localhost:8001/openapi.json](http://localhost:8001/openapi.json)
 
 ${"##"} Project Structure
 

@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ${api.snake_name}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
   api:
     build: .
     ports:
-      - "8000:80"
+      - "8001:80"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/${api.snake_name}
     depends_on:

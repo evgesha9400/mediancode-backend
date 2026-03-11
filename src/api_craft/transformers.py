@@ -363,7 +363,7 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
         database_config = TemplateDatabaseConfig(
             enabled=True,
             seed_data=input_api.config.database.seed_data,
-            default_url=f"postgresql+asyncpg://postgres:postgres@localhost:5432/{snake_name}",
+            default_url=f"postgresql+asyncpg://postgres:postgres@localhost:5433/{snake_name}",
         )
 
     return TemplateAPI(

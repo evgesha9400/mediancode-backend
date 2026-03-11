@@ -4,7 +4,7 @@
 </%doc>\
 [alembic]
 script_location = migrations
-sqlalchemy.url = postgresql+asyncpg://postgres:postgres@localhost:5432/${api.snake_name}
+sqlalchemy.url = postgresql+asyncpg://postgres:postgres@localhost:5433/${api.snake_name}
 
 [loggers]
 keys = root,sqlalchemy,alembic
