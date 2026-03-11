@@ -59,4 +59,5 @@ markers = [
     "integration: tests requiring database or external services",
     "codegen: code generation pipeline tests that generate and boot full applications",
     "api: HTTP endpoint tests using TestClient against the api service",
+    "e2e: end-to-end tests that generate and run full API projects (requires Docker)",
 ]

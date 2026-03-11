@@ -3,6 +3,7 @@
 
 PYTHON := python3
 POETRY := poetry
+PORT ?= 8001
 
 .DEFAULT_GOAL := help
 
@@ -25,8 +26,8 @@ setup: ## First-time setup: install deps, start DB, run migrations
 	@echo "✓ Setup complete! Run 'make dev' to start the backend."
 
 .PHONY: dev
-dev: ## Start backend server with hot reload (localhost:8000)
-	@PYTHONPATH=src $(POETRY) run uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+dev: ## Start backend server with hot reload (localhost:$(PORT))
+	@PYTHONPATH=src $(POETRY) run uvicorn api.main:app --reload --host 0.0.0.0 --port $(PORT)
 
 .PHONY: db
 db: ## Start PostgreSQL database (Docker)
@@ -48,7 +49,11 @@ db-reset: ## Reset database: delete all data, restart, re-migrate
 
 .PHONY: test
 test: ## Run tests
-	@$(POETRY) run pytest tests/ -v
+	@$(POETRY) run pytest tests/ -v -m "not e2e and not manual"
+
+.PHONY: test-e2e
+test-e2e: ## Run e2e tests (requires Docker)
+	@$(POETRY) run pytest -m e2e -v
 
 .PHONY: test-codegen
 test-codegen: ## Run codegen tests (fast, no DB needed)
@@ -98,8 +103,8 @@ docker-build: ## Build Docker image locally (prunes old layers)
 	@docker image prune -f
 
 .PHONY: docker-run
-docker-run: ## Run Docker image locally (port 8000)
-	@docker run -p 8000:80 median-code-backend
+docker-run: ## Run Docker image locally (port $(PORT))
+	@docker run -p $(PORT):80 median-code-backend
 
 # =============================================================================
 #  HELP
@@ -113,7 +118,7 @@ help: ## Show this help message
 	@echo ""
 	@echo "LOCAL DEVELOPMENT:"
 	@echo "  make setup           First-time setup: install deps, start DB, run migrations"
-	@echo "  make dev             Start backend server with hot reload (localhost:8000)"
+	@echo "  make dev             Start backend server with hot reload (localhost:$(PORT))"
 	@echo "  make db              Start PostgreSQL database (Docker)"
 	@echo "  make db-stop         Stop PostgreSQL database"
 	@echo "  make db-reset        Reset database: delete data, restart, re-migrate"
