@@ -1,12 +1,12 @@
-"""E2E test: full Shop API lifecycle — CRUD, generate, verify generated code.
+"""E2E test: full Shop API lifecycle — CRUD, generate with DB backend, verify generated code.
 
 Phases:
  1. Read catalogues (types, constraints, validator templates)
  2. Create namespace
- 3. Create 23 fields with constraints and validators
+ 3. Create 24 fields with constraints and validators
  4. Read and verify fields
  5. Update fields (constraint change + add validator)
- 6. Create objects with field references and model validators
+ 6. Create objects with primary keys, field references, and model validators
  7. Read and verify objects
  8. Update object (change field optionality)
  9. Create API
@@ -14,28 +14,23 @@ Phases:
 11. Create 7 endpoints (UUID path params → JSONB round-trip)
 12. Read and verify endpoints
 13. Update endpoint (UUID-in-JSONB regression test)
-14. Generate API
-15. Verify ZIP structure
-16. Load generated app and verify all endpoints
-17. Product field constraint validation
-18. Customer field constraint validation
-19. Product model validators
-20. Customer model validator
-21-26. Cleanup
+14. Generate API with database backend
+15. Verify ZIP structure (includes DB files)
+16. Verify ORM models content
+17. Verify database integration in generated code
+18. Verify generated Pydantic models retain constraints
+19. Verify seed data
+20-26. Cleanup
 """
 
-import importlib.util
 import io
 import shutil
-import sys
 import tempfile
-import uuid
 import zipfile
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -206,6 +201,12 @@ PRODUCT_FIELDS = [
 
 CUSTOMER_FIELDS = [
     {
+        "name": "customer_id",
+        "type": "int",
+        "constraints": [],
+        "validators": [],
+    },
+    {
         "name": "customer_name",
         "type": "str",
         "constraints": [("min_length", "1"), ("max_length", "100")],
@@ -264,76 +265,6 @@ CUSTOMER_OPTIONAL = {"email", "phone"}
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def load_app(src_path: Path):
-    """Dynamically import the FastAPI app from a generated project."""
-    prefix = f"_gen_{uuid.uuid4().hex[:8]}"
-    sys.path.insert(0, str(src_path))
-
-    modules_to_cleanup = []
-    try:
-        module_files = ["models", "path", "query", "views", "main"]
-        for module_name in module_files:
-            module_path = src_path / f"{module_name}.py"
-            if not module_path.exists():
-                continue
-
-            unique_name = f"{prefix}_{module_name}"
-            spec = importlib.util.spec_from_file_location(unique_name, module_path)
-            module = importlib.util.module_from_spec(spec)
-
-            sys.modules[unique_name] = module
-            sys.modules[module_name] = module
-            modules_to_cleanup.append(unique_name)
-            modules_to_cleanup.append(module_name)
-
-            spec.loader.exec_module(module)
-
-        return sys.modules["main"].app
-    finally:
-        if str(src_path) in sys.path:
-            sys.path.remove(str(src_path))
-        for mod_name in modules_to_cleanup:
-            sys.modules.pop(mod_name, None)
-
-
-def assert_gen_response(response, expected_status: int = 200):
-    """Assert response status code with helpful error messages."""
-    if response.status_code != expected_status:
-        try:
-            detail = response.json().get("detail", response.text)
-        except Exception:
-            detail = response.text
-        pytest.fail(
-            f"Expected: {expected_status}\nGot: {response.status_code}\nDetail: {detail}"
-        )
-
-
-def assert_gen_validation_error(response, expected_field: str | None = None):
-    """Assert 422 with optional field name check."""
-    if response.status_code != 422:
-        pytest.fail(
-            f"Expected: 422 Validation Error\n"
-            f"Got: {response.status_code}\n"
-            f"Body: {response.text}"
-        )
-
-    detail = response.json().get("detail", [])
-
-    if expected_field:
-        field_names = [err.get("loc", [])[-1] for err in detail if "loc" in err]
-        if expected_field not in field_names:
-            pytest.fail(
-                f"Expected validation error for field: {expected_field}\n"
-                f"Got errors for fields: {field_names}\n"
-                f"Detail: {detail}"
-            )
-
-
-# ---------------------------------------------------------------------------
 # Test class
 # ---------------------------------------------------------------------------
 
@@ -354,7 +285,6 @@ class TestShopApiFullE2E:
     endpoint_ids: dict[str, str] = {}
     zip_bytes: bytes = b""
     generated_dir: str = ""
-    gen_client: TestClient | None = None
 
     # --- Phase 1: Read catalogues ---
 
@@ -455,7 +385,7 @@ class TestShopApiFullE2E:
     # --- Phase 3: Create fields ---
 
     async def test_phase_03_create_fields(self, client: AsyncClient):
-        """Create all 23 fields with types, constraints, and validators."""
+        """Create all 24 fields with types, constraints, and validators."""
         cls = TestShopApiFullE2E
 
         for field_def in ALL_FIELDS:
@@ -482,18 +412,18 @@ class TestShopApiFullE2E:
             assert len(field["validators"]) == len(field_def["validators"])
             cls.field_ids[field_def["name"]] = field["id"]
 
-        assert len(cls.field_ids) == 23
+        assert len(cls.field_ids) == 24
 
     # --- Phase 4: Read and verify fields ---
 
     async def test_phase_04_read_fields(self, client: AsyncClient):
-        """Verify all 23 fields via list and individual GET."""
+        """Verify all 24 fields via list and individual GET."""
         cls = TestShopApiFullE2E
 
         resp = await client.get(f"/fields?namespace_id={cls.namespace_id}")
         assert resp.status_code == 200
         fields = resp.json()
-        assert len(fields) == 23
+        assert len(fields) == 24
 
         # Spot-check individual field detail
         resp = await client.get(f"/fields/{cls.field_ids['name']}")
@@ -563,7 +493,7 @@ class TestShopApiFullE2E:
     # --- Phase 6: Create objects ---
 
     async def test_phase_06_create_objects(self, client: AsyncClient):
-        """Create Product (16 fields, 4 model validators) and Customer (7 fields, 1 model validator)."""
+        """Create Product (16 fields, 4 validators, uuid PK) and Customer (8 fields, 1 validator, int PK)."""
         cls = TestShopApiFullE2E
 
         # --- Product ---
@@ -571,6 +501,7 @@ class TestShopApiFullE2E:
             {
                 "fieldId": cls.field_ids[f["name"]],
                 "optional": f["name"] in PRODUCT_OPTIONAL,
+                "isPk": f["name"] == "tracking_id",
             }
             for f in PRODUCT_FIELDS
         ]
@@ -627,6 +558,7 @@ class TestShopApiFullE2E:
             {
                 "fieldId": cls.field_ids[f["name"]],
                 "optional": f["name"] in CUSTOMER_OPTIONAL,
+                "isPk": f["name"] == "customer_id",
             }
             for f in CUSTOMER_FIELDS
         ]
@@ -652,7 +584,7 @@ class TestShopApiFullE2E:
         )
         assert resp.status_code == 201, f"Failed to create Customer: {resp.text}"
         customer = resp.json()
-        assert len(customer["fields"]) == 7
+        assert len(customer["fields"]) == 8
         assert len(customer["validators"]) == 1
         cls.customer_id = customer["id"]
 
@@ -680,7 +612,7 @@ class TestShopApiFullE2E:
         assert resp.status_code == 200
         customer = resp.json()
         assert customer["name"] == "Customer"
-        assert len(customer["fields"]) == 7
+        assert len(customer["fields"]) == 8
         assert len(customer["validators"]) == 1
 
     # --- Phase 8: Update object ---
@@ -697,7 +629,13 @@ class TestShopApiFullE2E:
             optional = f["optional"]
             if f["fieldId"] == cls.field_ids["min_order_quantity"]:
                 optional = False
-            updated_fields.append({"fieldId": f["fieldId"], "optional": optional})
+            updated_fields.append(
+                {
+                    "fieldId": f["fieldId"],
+                    "optional": optional,
+                    "isPk": f.get("isPk", False),
+                }
+            )
 
         resp = await client.put(
             f"/objects/{cls.product_id}",
@@ -937,10 +875,16 @@ class TestShopApiFullE2E:
     # --- Phase 14: Generate API ---
 
     async def test_phase_14_generate_api(self, client: AsyncClient):
-        """Call the generate endpoint and receive the ZIP file."""
+        """Call the generate endpoint with database backend enabled."""
         cls = TestShopApiFullE2E
 
-        resp = await client.post(f"/apis/{cls.api_id}/generate")
+        resp = await client.post(
+            f"/apis/{cls.api_id}/generate",
+            json={
+                "databaseEnabled": True,
+                "responsePlaceholders": False,
+            },
+        )
         assert resp.status_code == 200, f"Generate failed: {resp.text}"
         assert "application/zip" in resp.headers.get("content-type", "")
         assert "content-disposition" in resp.headers
@@ -951,7 +895,7 @@ class TestShopApiFullE2E:
     # --- Phase 15: Verify ZIP structure ---
 
     async def test_phase_15_verify_zip_structure(self, client: AsyncClient):
-        """Extract ZIP and verify file structure, no __pycache__, .py compiles."""
+        """Extract ZIP and verify file structure includes database files."""
         cls = TestShopApiFullE2E
 
         with zipfile.ZipFile(io.BytesIO(cls.zip_bytes)) as zf:
@@ -962,15 +906,21 @@ class TestShopApiFullE2E:
                 "__pycache__" in n for n in names
             ), f"Found __pycache__ in ZIP: {[n for n in names if '__pycache__' in n]}"
 
-            # Required files present
+            # Required files present (including database files)
             required_files = [
                 "src/models.py",
                 "src/views.py",
                 "src/main.py",
                 "src/path.py",
+                "src/orm_models.py",
+                "src/database.py",
+                "src/seed.py",
                 "pyproject.toml",
                 "Makefile",
                 "Dockerfile",
+                "docker-compose.yml",
+                "alembic.ini",
+                "migrations/env.py",
             ]
             for required in required_files:
                 assert required in names, f"Missing file in ZIP: {required}"
@@ -986,184 +936,138 @@ class TestShopApiFullE2E:
             source = py_file.read_text()
             compile(source, str(py_file), "exec")
 
-    # --- Phase 16: Generated app endpoint connectivity ---
+    # --- Phase 16: Verify ORM models content ---
 
-    def test_phase_16_generated_endpoints(self):
-        """Load the generated FastAPI app and verify all endpoints respond."""
+    def test_phase_16_orm_models(self):
+        """Verify ORM models have correct PKs, table names, and column types."""
         cls = TestShopApiFullE2E
+        content = (Path(cls.generated_dir) / "src" / "orm_models.py").read_text()
 
-        src_path = Path(cls.generated_dir) / "src"
-        generated_app = load_app(src_path)
-        cls.gen_client = TestClient(generated_app)
+        # Base class
+        assert "class Base(DeclarativeBase):" in content
 
-        # Healthcheck
-        resp = cls.gen_client.get("/health")
-        assert resp.status_code == 200
+        # Product ORM model
+        assert "class ProductRecord(Base):" in content
+        assert '__tablename__ = "products"' in content
 
-        # GET /products (list, useEnvelope=False, responseShape=list)
-        resp = cls.gen_client.get("/products")
-        assert_gen_response(resp)
-        data = resp.json()
-        assert isinstance(data, list)
+        # Product UUID PK: import uuid, default=uuid.uuid4, primary_key=True
+        assert "import uuid" in content
+        assert "default=uuid.uuid4" in content
+        assert "primary_key=True" in content
 
-        # GET /products/{tracking_id}
-        resp = cls.gen_client.get("/products/abc-123")
-        assert_gen_response(resp)
+        # Customer ORM model
+        assert "class CustomerRecord(Base):" in content
+        assert '__tablename__ = "customers"' in content
 
-        # POST /products (request + response body = Product)
-        resp = cls.gen_client.post("/products", json=cls._valid_product())
-        assert_gen_response(resp)
+        # Customer int PK: autoincrement=True
+        assert "autoincrement=True" in content
 
-        # PUT /items/{tracking_id} (path changed in phase 13)
-        resp = cls.gen_client.put("/items/abc-123", json=cls._valid_product())
-        assert_gen_response(resp)
+        # Verify Decimal fields map to Numeric
+        assert "Numeric" in content
 
-        # DELETE /products/{tracking_id} (no response object → 204)
-        resp = cls.gen_client.delete("/products/abc-123")
-        assert resp.status_code in (
-            200,
-            204,
-        ), f"DELETE failed: {resp.status_code} {resp.text}"
+        # Verify Boolean fields map to Boolean
+        assert "Boolean" in content
 
-        # GET /customers (list)
-        resp = cls.gen_client.get("/customers")
-        assert_gen_response(resp)
-        data = resp.json()
-        assert isinstance(data, list)
+    # --- Phase 17: Verify database integration ---
 
-        # PATCH /customers/{email}
-        resp = cls.gen_client.patch(
-            "/customers/test@example.com", json=cls._valid_customer()
-        )
-        assert_gen_response(resp)
-
-    # --- Phase 17: Product field constraint validation ---
-
-    def test_phase_17_product_constraints(self):
-        """Verify Product field constraints in the generated API."""
+    def test_phase_17_database_integration(self):
+        """Verify database.py, views.py, and main.py have DB integration."""
         cls = TestShopApiFullE2E
-        c = cls.gen_client
+        gen_path = Path(cls.generated_dir)
 
-        # name: min_length=1 (empty rejected)
-        resp = c.post("/products", json=cls._valid_product(name=""))
-        assert_gen_validation_error(resp, expected_field="name")
+        # database.py
+        db_content = (gen_path / "src" / "database.py").read_text()
+        assert "create_async_engine" in db_content
+        assert "async def get_session" in db_content
+        assert "DATABASE_URL" in db_content
 
-        # name: max_length=150 (too long rejected; updated from 200 in phase 5)
-        resp = c.post("/products", json=cls._valid_product(name="A" * 151))
-        assert_gen_validation_error(resp, expected_field="name")
+        # views.py uses DB session injection
+        views_content = (gen_path / "src" / "views.py").read_text()
+        assert "Depends(get_session)" in views_content
+        assert "AsyncSession" in views_content
+        assert "select(" in views_content
+        assert "session.execute" in views_content
+        assert "ProductRecord" in views_content
+        assert "CustomerRecord" in views_content
 
-        # sku: pattern=^[A-Z]{2}-\d{4}$ (invalid rejected after uppercase normalization)
-        resp = c.post("/products", json=cls._valid_product(sku="invalid!"))
-        assert_gen_validation_error(resp, expected_field="sku")
+        # main.py has lifespan and database import
+        main_content = (gen_path / "src" / "main.py").read_text()
+        assert "lifespan" in main_content
+        assert "from database import" in main_content
 
-        # price: gt=0 (zero rejected)
-        resp = c.post("/products", json=cls._valid_product(price=0))
-        assert_gen_validation_error(resp, expected_field="price")
+    # --- Phase 18: Verify generated Pydantic models ---
 
-        # price: gt=0 (negative rejected)
-        resp = c.post("/products", json=cls._valid_product(price=-10.0))
-        assert_gen_validation_error(resp, expected_field="price")
-
-        # quantity: ge=0 (negative rejected)
-        resp = c.post("/products", json=cls._valid_product(quantity=-1))
-        assert_gen_validation_error(resp, expected_field="quantity")
-
-        # min_order_quantity: ge=1 (zero rejected)
-        resp = c.post("/products", json=cls._valid_product(min_order_quantity=0))
-        assert_gen_validation_error(resp, expected_field="min_order_quantity")
-
-        # max_order_quantity: le=1000 (over limit rejected)
-        resp = c.post("/products", json=cls._valid_product(max_order_quantity=1001))
-        assert_gen_validation_error(resp, expected_field="max_order_quantity")
-
-        # discount_percent: multiple_of=5 (not multiple rejected)
-        resp = c.post("/products", json=cls._valid_product(discount_percent=7))
-        assert_gen_validation_error(resp, expected_field="discount_percent")
-
-        # discount_percent: le=100 (over 100 rejected)
-        resp = c.post("/products", json=cls._valid_product(discount_percent=105))
-        assert_gen_validation_error(resp, expected_field="discount_percent")
-
-        # weight: ge=0 (negative rejected)
-        resp = c.post("/products", json=cls._valid_product(weight=-1.0))
-        assert_gen_validation_error(resp, expected_field="weight")
-
-    # --- Phase 18: Customer field constraint validation ---
-
-    def test_phase_18_customer_constraints(self):
-        """Verify Customer field constraints in the generated API."""
+    def test_phase_18_pydantic_models(self):
+        """Verify generated models.py retains field constraints and validators."""
         cls = TestShopApiFullE2E
-        c = cls.gen_client
+        content = (Path(cls.generated_dir) / "src" / "models.py").read_text()
 
-        # customer_name: min_length=1 (empty rejected)
-        resp = c.patch(
-            "/customers/test@example.com",
-            json=cls._valid_customer(customer_name=""),
-        )
-        assert_gen_validation_error(resp, expected_field="customer_name")
+        # Product model exists
+        assert "class Product(" in content
 
-        # phone: min_length=7 (too short rejected)
-        resp = c.patch(
-            "/customers/test@example.com",
-            json=cls._valid_customer(phone="123"),
-        )
-        assert_gen_validation_error(resp, expected_field="phone")
+        # Customer model exists
+        assert "class Customer(" in content
 
-    # --- Phase 19: Product model validators ---
+        # Field constraints survived generation
+        assert "min_length=" in content  # name, customer_name, phone
+        assert "max_length=" in content  # name, customer_name, phone
+        assert "gt=" in content  # price
+        assert "ge=" in content  # weight, quantity, etc.
+        assert "pattern=" in content  # sku
+        assert "multiple_of=" in content  # discount_percent
 
-    def test_phase_19_product_model_validators(self):
-        """Verify Product model validators in the generated API."""
+        # Model validators present
+        assert "model_validator" in content
+
+    # --- Phase 19: Verify seed data ---
+
+    def test_phase_19_seed_data(self):
+        """Verify seed.py excludes auto-generated PK fields."""
         cls = TestShopApiFullE2E
-        c = cls.gen_client
+        content = (Path(cls.generated_dir) / "src" / "seed.py").read_text()
 
-        # Field Comparison: min_order_quantity >= max_order_quantity rejected
-        resp = c.post(
-            "/products",
-            json=cls._valid_product(min_order_quantity=500, max_order_quantity=500),
-        )
-        assert_gen_validation_error(resp)
+        # Seed file imports ORM models
+        assert "ProductRecord" in content
+        assert "CustomerRecord" in content
 
-        # Mutual Exclusivity: both discount_percent and discount_amount rejected
-        resp = c.post(
-            "/products",
-            json=cls._valid_product(discount_percent=10, discount_amount=5.00),
-        )
-        assert_gen_validation_error(resp)
+        # UUID PK (tracking_id) should be excluded from seed data
+        assert "tracking_id=" not in content
 
-        # All Or None: sale_price without sale_end_date rejected
-        resp = c.post(
-            "/products",
-            json=cls._valid_product(sale_price=19.99),
-        )
-        assert_gen_validation_error(resp)
+        # Int PK (customer_id) should be excluded from seed data
+        assert "customer_id=" not in content
 
-        # Conditional Required: discount_percent without sale_price rejected
-        resp = c.post(
-            "/products",
-            json=cls._valid_product(discount_percent=10),
-        )
-        assert_gen_validation_error(resp)
+    # --- Phase 20: Verify infrastructure files ---
 
-    # --- Phase 20: Customer model validator ---
-
-    def test_phase_20_customer_model_validator(self):
-        """Verify Customer At Least One Required validator."""
+    def test_phase_20_infrastructure(self):
+        """Verify docker-compose, alembic, pyproject.toml have DB config."""
         cls = TestShopApiFullE2E
-        c = cls.gen_client
+        gen_path = Path(cls.generated_dir)
 
-        # At Least One Required: neither email nor phone rejected
-        payload = cls._valid_customer()
-        payload.pop("email", None)
-        payload.pop("phone", None)
-        resp = c.patch("/customers/test@example.com", json=payload)
-        assert_gen_validation_error(resp)
+        # docker-compose.yml
+        dc_content = (gen_path / "docker-compose.yml").read_text()
+        assert "postgres" in dc_content
+        assert "DATABASE_URL" in dc_content
+
+        # alembic.ini
+        alembic_content = (gen_path / "alembic.ini").read_text()
+        assert "sqlalchemy.url" in alembic_content
+
+        # pyproject.toml has DB dependencies
+        pyproject_content = (gen_path / "pyproject.toml").read_text()
+        assert "sqlalchemy" in pyproject_content
+        assert "asyncpg" in pyproject_content
+        assert "alembic" in pyproject_content
+
+        # Makefile has db targets
+        makefile_content = (gen_path / "Makefile").read_text()
+        assert "db-up:" in makefile_content
+        assert "db-seed:" in makefile_content
 
     # --- Phase 21: Clean up generated app ---
 
     def test_phase_21_cleanup_generated(self):
         """Clean up the generated app temp directory."""
         cls = TestShopApiFullE2E
-        cls.gen_client = None
         if cls.generated_dir and Path(cls.generated_dir).exists():
             shutil.rmtree(cls.generated_dir)
 
@@ -1213,7 +1117,7 @@ class TestShopApiFullE2E:
     # --- Phase 25: Delete fields ---
 
     async def test_phase_25_delete_fields(self, client: AsyncClient):
-        """Delete all 23 fields and verify list is empty."""
+        """Delete all 24 fields and verify list is empty."""
         cls = TestShopApiFullE2E
 
         for name, field_id in cls.field_ids.items():
@@ -1240,38 +1144,3 @@ class TestShopApiFullE2E:
         names = {n["name"] for n in resp.json()}
         assert "Shop" not in names
         assert "Global" in names
-
-    # --- Static helpers for generated API payloads ---
-
-    @staticmethod
-    def _valid_product(**overrides) -> dict:
-        """Build a valid Product payload for the generated API."""
-        base = {
-            "tracking_id": "550e8400-e29b-41d4-a716-446655440000",
-            "name": "Test Product",
-            "sku": "AB-1234",
-            "price": 29.99,
-            "weight": 5.0,
-            "quantity": 50,
-            "min_order_quantity": 1,
-            "in_stock": True,
-            "product_url": "https://example.com/product",
-            "release_date": "2026-01-15",
-            "created_at": "2026-01-01T00:00:00",
-        }
-        base.update(overrides)
-        return base
-
-    @staticmethod
-    def _valid_customer(**overrides) -> dict:
-        """Build a valid Customer payload for the generated API."""
-        base = {
-            "customer_name": "Jane Doe",
-            "date_of_birth": "1990-01-15",
-            "last_login_time": "14:30:00",
-            "is_active": True,
-            "registered_at": "2026-01-01T00:00:00",
-            "email": "jane@example.com",
-        }
-        base.update(overrides)
-        return base

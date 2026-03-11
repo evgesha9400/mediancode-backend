@@ -3,10 +3,10 @@
 Phases:
  1. Read catalogues (types, constraints, validator templates)
  2. Create namespace
- 3. Create 23 fields with constraints and validators
+ 3. Create 24 fields with constraints and validators
  4. Read and verify fields
  5. Update fields (constraint change + add validator)
- 6. Create objects with field references and model validators
+ 6. Create objects with primary keys, field references, and model validators
  7. Read and verify objects
  8. Update object (change field optionality)
  9. Create API
@@ -129,6 +129,12 @@ PRODUCT_FIELDS = [
 ]
 
 CUSTOMER_FIELDS = [
+    {
+        "name": "customer_id",
+        "type": "int",
+        "constraints": [],
+        "validators": [],
+    },
     {
         "name": "customer_name",
         "type": "str",
@@ -309,7 +315,7 @@ class TestShopApiE2E:
     # --- Phase 3: Create fields ---
 
     async def test_phase_03_create_fields(self, client: AsyncClient):
-        """Create all 23 fields with types, constraints, and validators."""
+        """Create all 24 fields with types, constraints, and validators."""
         cls = TestShopApiE2E
 
         for field_def in ALL_FIELDS:
@@ -336,18 +342,18 @@ class TestShopApiE2E:
             assert len(field["validators"]) == len(field_def["validators"])
             cls.field_ids[field_def["name"]] = field["id"]
 
-        assert len(cls.field_ids) == 23
+        assert len(cls.field_ids) == 24
 
     # --- Phase 4: Read and verify fields ---
 
     async def test_phase_04_read_fields(self, client: AsyncClient):
-        """Verify all 23 fields via list and individual GET."""
+        """Verify all 24 fields via list and individual GET."""
         cls = TestShopApiE2E
 
         resp = await client.get(f"/fields?namespace_id={cls.namespace_id}")
         assert resp.status_code == 200
         fields = resp.json()
-        assert len(fields) == 23
+        assert len(fields) == 24
 
         # Spot-check individual field detail
         resp = await client.get(f"/fields/{cls.field_ids['name']}")
@@ -417,7 +423,7 @@ class TestShopApiE2E:
     # --- Phase 6: Create objects ---
 
     async def test_phase_06_create_objects(self, client: AsyncClient):
-        """Create Product (16 fields, 4 model validators) and Customer (7 fields, 1 model validator)."""
+        """Create Product (16 fields, 4 validators, uuid PK) and Customer (8 fields, 1 validator, int PK)."""
         cls = TestShopApiE2E
 
         # --- Product ---
@@ -425,6 +431,7 @@ class TestShopApiE2E:
             {
                 "fieldId": cls.field_ids[f["name"]],
                 "optional": f["name"] in PRODUCT_OPTIONAL,
+                "isPk": f["name"] == "tracking_id",
             }
             for f in PRODUCT_FIELDS
         ]
@@ -481,6 +488,7 @@ class TestShopApiE2E:
             {
                 "fieldId": cls.field_ids[f["name"]],
                 "optional": f["name"] in CUSTOMER_OPTIONAL,
+                "isPk": f["name"] == "customer_id",
             }
             for f in CUSTOMER_FIELDS
         ]
@@ -506,7 +514,7 @@ class TestShopApiE2E:
         )
         assert resp.status_code == 201, f"Failed to create Customer: {resp.text}"
         customer = resp.json()
-        assert len(customer["fields"]) == 7
+        assert len(customer["fields"]) == 8
         assert len(customer["validators"]) == 1
         cls.customer_id = customer["id"]
 
@@ -534,7 +542,7 @@ class TestShopApiE2E:
         assert resp.status_code == 200
         customer = resp.json()
         assert customer["name"] == "Customer"
-        assert len(customer["fields"]) == 7
+        assert len(customer["fields"]) == 8
         assert len(customer["validators"]) == 1
 
     # --- Phase 8: Update object ---
@@ -551,7 +559,13 @@ class TestShopApiE2E:
             optional = f["optional"]
             if f["fieldId"] == cls.field_ids["min_order_quantity"]:
                 optional = False
-            updated_fields.append({"fieldId": f["fieldId"], "optional": optional})
+            updated_fields.append(
+                {
+                    "fieldId": f["fieldId"],
+                    "optional": optional,
+                    "isPk": f.get("isPk", False),
+                }
+            )
 
         resp = await client.put(
             f"/objects/{cls.product_id}",
@@ -834,7 +848,7 @@ class TestShopApiE2E:
     # --- Phase 17: Delete fields ---
 
     async def test_phase_17_delete_fields(self, client: AsyncClient):
-        """Delete all 23 fields and verify list is empty."""
+        """Delete all 24 fields and verify list is empty."""
         cls = TestShopApiE2E
 
         for name, field_id in cls.field_ids.items():

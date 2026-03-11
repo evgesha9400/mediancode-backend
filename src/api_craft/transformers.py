@@ -292,7 +292,7 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
             orm_type = ORM_PYTHON_TYPE_MAP.get(base_type, base_type)
             python_type = orm_type if not field.optional else f"{orm_type} | None"
 
-            is_uuid_pk = field.pk and field.type in ("uuid", "UUID")
+            is_uuid_pk = field.pk and base_type in ("uuid", "UUID")
             orm_fields.append(
                 TemplateORMField(
                     name=str(field.name),
@@ -300,7 +300,7 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
                     column_type=column_type,
                     primary_key=field.pk,
                     nullable=field.optional,
-                    autoincrement=field.pk and field.type in ("int",),
+                    autoincrement=field.pk and base_type in ("int",),
                     uuid_default=is_uuid_pk,
                 )
             )
