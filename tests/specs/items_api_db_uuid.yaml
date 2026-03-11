@@ -1,0 +1,30 @@
+# tests/specs/items_api_db_uuid.yaml
+name: ItemsDbUuidApi
+version: "0.1.0"
+author: Median Code
+description: Items API with UUID primary keys
+
+objects:
+  - name: Item
+    description: Product item with UUID PK
+    fields:
+      - name: id
+        type: uuid
+        pk: true
+      - name: name
+        type: str
+      - name: price
+        type: float
+
+endpoints:
+  - name: GetItems
+    path: /items
+    method: GET
+    response: Item
+    response_shape: list
+
+config:
+  response_placeholders: false
+  database:
+    enabled: true
+    seed_data: true

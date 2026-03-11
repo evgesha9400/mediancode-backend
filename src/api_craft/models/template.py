@@ -116,6 +116,7 @@ class TemplateORMField(BaseModel):
     primary_key: bool = False
     nullable: bool = False
     autoincrement: bool = False
+    uuid_default: bool = False
 
 
 class TemplateORMModel(BaseModel):

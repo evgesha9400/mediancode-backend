@@ -189,6 +189,27 @@ def validate_primary_keys(objects: Iterable["InputModel"]) -> None:
                 )
 
 
+ALLOWED_PK_TYPES = {"int", "uuid", "UUID"}
+
+
+def validate_pk_field_types(objects: Iterable["InputModel"]) -> None:
+    """Validate that PK fields use only supported types (int or uuid).
+
+    :param objects: Collection of declared objects.
+    :raises ValueError: If a PK field uses an unsupported type.
+    """
+    for obj in objects:
+        for field in obj.fields:
+            if not field.pk:
+                continue
+            base_type = field.type.split(".")[0] if "." in field.type else field.type
+            if base_type not in ALLOWED_PK_TYPES:
+                raise ValueError(
+                    f"Field '{obj.name}.{field.name}' is a primary key with unsupported type '{field.type}'. "
+                    f"Only 'int' and 'uuid' types are allowed for primary keys."
+                )
+
+
 def validate_database_config(
     config: "InputApiConfig",
     objects: Iterable["InputModel"],

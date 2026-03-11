@@ -127,6 +127,116 @@ class TestTemplateORMModels:
         assert config.enabled is True
 
 
+class TestPrimaryKeyTypeRestriction:
+    """Only int and uuid types are allowed for primary key fields."""
+
+    def test_int_pk_accepted(self):
+        api = InputAPI(
+            name="PkTest",
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems", path="/items", method="GET", response="Item"
+                )
+            ],
+            objects=[
+                InputModel(
+                    name="Item",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+        )
+        assert api.objects[0].fields[0].pk is True
+
+    def test_uuid_pk_accepted(self):
+        api = InputAPI(
+            name="PkTest",
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems", path="/items", method="GET", response="Item"
+                )
+            ],
+            objects=[
+                InputModel(
+                    name="Item",
+                    fields=[
+                        InputField(name="id", type="uuid", pk=True),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+        )
+        assert api.objects[0].fields[0].pk is True
+
+    def test_uuid_dotted_pk_accepted(self):
+        api = InputAPI(
+            name="PkTest",
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems", path="/items", method="GET", response="Item"
+                )
+            ],
+            objects=[
+                InputModel(
+                    name="Item",
+                    fields=[
+                        InputField(name="id", type="uuid.UUID", pk=True),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+        )
+        assert api.objects[0].fields[0].pk is True
+
+    @pytest.mark.parametrize(
+        "bad_type",
+        ["str", "datetime", "bool", "float", "date", "Decimal", "EmailStr"],
+    )
+    def test_unsupported_pk_type_rejected(self, bad_type):
+        with pytest.raises(ValueError, match="unsupported type"):
+            InputAPI(
+                name="PkTest",
+                endpoints=[
+                    InputEndpoint(
+                        name="GetItems",
+                        path="/items",
+                        method="GET",
+                        response="Item",
+                    )
+                ],
+                objects=[
+                    InputModel(
+                        name="Item",
+                        fields=[InputField(name="id", type=bad_type, pk=True)],
+                    ),
+                ],
+            )
+
+    def test_non_pk_field_any_type_allowed(self):
+        """Non-PK fields should not be restricted by PK type rules."""
+        api = InputAPI(
+            name="PkTest",
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems", path="/items", method="GET", response="Item"
+                )
+            ],
+            objects=[
+                InputModel(
+                    name="Item",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="created_at", type="datetime"),
+                        InputField(name="email", type="EmailStr"),
+                    ],
+                ),
+            ],
+        )
+        assert len(api.objects[0].fields) == 3
+
+
 class TestDatabaseConfigValidation:
     """Validation rules for database generation configuration."""
 

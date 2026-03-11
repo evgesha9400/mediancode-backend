@@ -18,8 +18,8 @@ async def seed_database(session: AsyncSession) -> None:
 % for model in orm_models:
 <%
     model_seed = seed_data.get(model.source_model, {})
-    # Filter to only fields that exist on the ORM model and are not PK with autoincrement
-    orm_field_names = {f.name for f in model.fields if not (f.primary_key and f.autoincrement)}
+    # Filter to only fields that exist on the ORM model and are not auto-generated PKs
+    orm_field_names = {f.name for f in model.fields if not (f.primary_key and (f.autoincrement or f.uuid_default))}
     seed_fields = {k: v for k, v in model_seed.items() if k in orm_field_names}
 %>\
 % if seed_fields:

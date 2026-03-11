@@ -13,6 +13,7 @@ from api_craft.models.validators import (
     validate_endpoint_references,
     validate_model_field_types,
     validate_path_parameters,
+    validate_pk_field_types,
     validate_primary_keys,
     validate_unique_object_names,
 )
@@ -232,5 +233,6 @@ class InputAPI(BaseModel):
         validate_model_field_types(self.objects, declared_object_names)
         validate_endpoint_references(self.endpoints, declared_object_names)
         validate_primary_keys(self.objects)
+        validate_pk_field_types(self.objects)
         validate_database_config(self.config, self.objects)
         return self

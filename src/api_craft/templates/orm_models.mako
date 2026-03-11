@@ -5,7 +5,12 @@
 </%doc>\
 <%
 sa_imports = sorted(set(imports))
+needs_uuid = any(f.uuid_default for m in orm_models for f in m.fields)
 %>\
+% if needs_uuid:
+import uuid
+
+% endif
 from sqlalchemy import ${', '.join(sa_imports)}
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -26,6 +31,8 @@ class ${model.class_name}(Base):
         parts.append("primary_key=True")
     if field.autoincrement:
         parts.append("autoincrement=True")
+    if field.uuid_default:
+        parts.append("default=uuid.uuid4")
     if field.nullable and not field.primary_key:
         parts.append("nullable=True")
 %>\

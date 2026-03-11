@@ -47,7 +47,7 @@ class TestTransformOrmModels:
         assert pk_field.primary_key is True
         assert pk_field.autoincrement is True
 
-    def test_uuid_pk_no_autoincrement(self):
+    def test_uuid_pk_has_uuid_default(self):
         models = [
             _make_model(
                 "Item",
@@ -60,7 +60,35 @@ class TestTransformOrmModels:
         pk_field = result[0].fields[0]
         assert pk_field.primary_key is True
         assert pk_field.autoincrement is False
+        assert pk_field.uuid_default is True
         assert pk_field.column_type == "Uuid"
+
+    def test_int_pk_no_uuid_default(self):
+        models = [
+            _make_model(
+                "Item",
+                [
+                    {"name": "id", "type": "int", "pk": True},
+                ],
+            )
+        ]
+        result = transform_orm_models(models)
+        pk_field = result[0].fields[0]
+        assert pk_field.uuid_default is False
+
+    def test_non_pk_uuid_no_uuid_default(self):
+        models = [
+            _make_model(
+                "Item",
+                [
+                    {"name": "id", "type": "int", "pk": True},
+                    {"name": "external_id", "type": "uuid"},
+                ],
+            )
+        ]
+        result = transform_orm_models(models)
+        uuid_field = result[0].fields[1]
+        assert uuid_field.uuid_default is False
 
 
 class TestTypeMapping:

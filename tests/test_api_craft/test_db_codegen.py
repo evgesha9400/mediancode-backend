@@ -210,6 +210,57 @@ class TestDockerfileWithDatabase:
         assert "alembic upgrade head" in content
 
 
+@pytest.fixture(scope="module")
+def uuid_db_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Generate the UUID PK API project and return its root path."""
+    tmp_path = tmp_path_factory.mktemp("items_db_uuid_api")
+    api_input = load_input("items_api_db_uuid.yaml")
+    APIGenerator().generate(api_input, path=str(tmp_path))
+    return tmp_path / "items-db-uuid-api"
+
+
+class TestUuidPkCodegen:
+    """Verify UUID PK generates import uuid and default=uuid.uuid4."""
+
+    def test_orm_models_import_uuid(self, uuid_db_project: Path):
+        content = (uuid_db_project / "src" / "orm_models.py").read_text()
+        assert "import uuid" in content
+
+    def test_uuid_pk_has_default(self, uuid_db_project: Path):
+        content = (uuid_db_project / "src" / "orm_models.py").read_text()
+        assert "default=uuid.uuid4" in content
+
+    def test_uuid_pk_has_primary_key(self, uuid_db_project: Path):
+        content = (uuid_db_project / "src" / "orm_models.py").read_text()
+        assert "primary_key=True" in content
+
+    def test_uuid_pk_no_autoincrement(self, uuid_db_project: Path):
+        content = (uuid_db_project / "src" / "orm_models.py").read_text()
+        assert "autoincrement" not in content
+
+    def test_orm_file_compiles(self, uuid_db_project: Path):
+        content = (uuid_db_project / "src" / "orm_models.py").read_text()
+        compile(content, "orm_models.py", "exec")
+
+    def test_seed_excludes_uuid_pk(self, uuid_db_project: Path):
+        """UUID PK with default should be excluded from seed data."""
+        content = (uuid_db_project / "src" / "seed.py").read_text()
+        # The seed should not try to set the 'id' field
+        assert "id=" not in content.replace("existing_", "")
+
+
+class TestIntPkNoUuidImport:
+    """Verify int PK does NOT generate import uuid."""
+
+    def test_no_uuid_import(self, db_project: Path):
+        content = (db_project / "src" / "orm_models.py").read_text()
+        assert "import uuid" not in content
+
+    def test_no_uuid_default(self, db_project: Path):
+        content = (db_project / "src" / "orm_models.py").read_text()
+        assert "uuid.uuid4" not in content
+
+
 class TestBackwardCompatibility:
     """Ensure database.enabled=false produces identical output."""
 
