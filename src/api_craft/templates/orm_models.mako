@@ -5,10 +5,13 @@
 </%doc>\
 <%
 sa_imports = sorted(set(imports))
-needs_uuid = any(f.uuid_default for m in orm_models for f in m.fields)
+all_types = {f.python_type.replace(" | None", "") for m in orm_models for f in m.fields}
+stdlib_modules = sorted({t.split(".")[0] for t in all_types if "." in t})
 %>\
-% if needs_uuid:
-import uuid
+% for mod in stdlib_modules:
+import ${mod}
+% endfor
+% if stdlib_modules:
 
 % endif
 from sqlalchemy import ${', '.join(sa_imports)}

@@ -122,6 +122,36 @@ class TestTypeMapping:
         value_field = result[0].fields[1]
         assert value_field.column_type == expected_col
 
+    @pytest.mark.parametrize(
+        "input_type,expected_python_type",
+        [
+            ("int", "int"),
+            ("str", "str"),
+            ("float", "float"),
+            ("bool", "bool"),
+            ("datetime", "datetime.datetime"),
+            ("date", "datetime.date"),
+            ("time", "datetime.time"),
+            ("uuid", "uuid.UUID"),
+            ("UUID", "uuid.UUID"),
+            ("decimal", "decimal.Decimal"),
+            ("Decimal", "decimal.Decimal"),
+        ],
+    )
+    def test_orm_python_type_annotation(self, input_type, expected_python_type):
+        models = [
+            _make_model(
+                "Item",
+                [
+                    {"name": "id", "type": "int", "pk": True},
+                    {"name": "value", "type": input_type},
+                ],
+            )
+        ]
+        result = transform_orm_models(models)
+        value_field = result[0].fields[1]
+        assert value_field.python_type == expected_python_type
+
     def test_str_without_max_length_maps_to_text(self):
         models = [
             _make_model(
