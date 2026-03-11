@@ -226,6 +226,8 @@ ORM_PYTHON_TYPE_MAP = {
     "UUID": "uuid.UUID",
     "decimal": "decimal.Decimal",
     "Decimal": "decimal.Decimal",
+    "EmailStr": "str",
+    "HttpUrl": "str",
 }
 
 
@@ -380,8 +382,6 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
         config=TemplateAPIConfig(
             healthcheck=input_api.config.healthcheck,
             response_placeholders=input_api.config.response_placeholders,
-            format_code=input_api.config.format_code,
-            generate_swagger=input_api.config.generate_swagger,
         ),
         orm_models=orm_models,
         database_config=database_config,

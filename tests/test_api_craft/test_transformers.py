@@ -136,6 +136,8 @@ class TestTypeMapping:
             ("UUID", "uuid.UUID"),
             ("decimal", "decimal.Decimal"),
             ("Decimal", "decimal.Decimal"),
+            ("EmailStr", "str"),
+            ("HttpUrl", "str"),
         ],
     )
     def test_orm_python_type_annotation(self, input_type, expected_python_type):
