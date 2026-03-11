@@ -5,6 +5,7 @@ import io
 
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from pydantic import ValidationError
 
 from api.deps import DbSession, ProvisionedUser
 from api.rate_limit import (
@@ -232,7 +233,14 @@ async def generate_api_code(
         )
 
     # Generate the ZIP file
-    zip_buffer = await generate_api_zip(api, db, options)
+    try:
+        zip_buffer = await generate_api_zip(api, db, options)
+    except ValidationError as exc:
+        messages = [e["msg"] for e in exc.errors()]
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="; ".join(messages),
+        )
 
     # Record generation event (always, even in beta)
     await user_service.record_generation(user, api.id)

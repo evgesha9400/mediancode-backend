@@ -61,7 +61,8 @@ FROM ns, (VALUES
   ('date_of_birth',      (SELECT date     FROM t)),
   ('last_login_time',    (SELECT time     FROM t)),
   ('is_active',          (SELECT bool     FROM t)),
-  ('registered_at',      (SELECT datetime FROM t))
+  ('registered_at',      (SELECT datetime FROM t)),
+  ('customer_id',        (SELECT int      FROM t))
 ) AS v(name, type_id);
 
 -- 3. Field constraints
@@ -152,39 +153,41 @@ f AS (
 o AS (
   SELECT o.name, o.id FROM objects o JOIN ns ON o.namespace_id = ns.id
 )
-INSERT INTO fields_on_objects (id, object_id, field_id, optional, position)
+INSERT INTO fields_on_objects (id, object_id, field_id, optional, position, is_pk)
 SELECT gen_random_uuid(),
        (SELECT id FROM o WHERE o.name = v.obj),
        (SELECT id FROM f WHERE f.name = v.fname),
        v.opt,
-       v.pos
+       v.pos,
+       v.pk
 FROM (VALUES
-  -- Product (16 fields)
-  ('Product', 'name',               false, 0),
-  ('Product', 'sku',                false, 1),
-  ('Product', 'price',              false, 2),
-  ('Product', 'sale_price',         true,  3),
-  ('Product', 'sale_end_date',      true,  4),
-  ('Product', 'weight',             false, 5),
-  ('Product', 'quantity',           false, 6),
-  ('Product', 'min_order_quantity', false, 7),
-  ('Product', 'max_order_quantity', true,  8),
-  ('Product', 'discount_percent',   true,  9),
-  ('Product', 'discount_amount',    true,  10),
-  ('Product', 'in_stock',           false, 11),
-  ('Product', 'product_url',        false, 12),
-  ('Product', 'release_date',       false, 13),
-  ('Product', 'created_at',         false, 14),
-  ('Product', 'tracking_id',        false, 15),
-  -- Customer (7 fields)
-  ('Customer', 'customer_name',     false, 0),
-  ('Customer', 'email',             true,  1),
-  ('Customer', 'phone',             true,  2),
-  ('Customer', 'date_of_birth',     false, 3),
-  ('Customer', 'last_login_time',   false, 4),
-  ('Customer', 'is_active',         false, 5),
-  ('Customer', 'registered_at',     false, 6)
-) AS v(obj, fname, opt, pos);
+  -- Product (16 fields, tracking_id is PK)
+  ('Product', 'name',               false, 0,  false),
+  ('Product', 'sku',                false, 1,  false),
+  ('Product', 'price',              false, 2,  false),
+  ('Product', 'sale_price',         true,  3,  false),
+  ('Product', 'sale_end_date',      true,  4,  false),
+  ('Product', 'weight',             false, 5,  false),
+  ('Product', 'quantity',           false, 6,  false),
+  ('Product', 'min_order_quantity', false, 7,  false),
+  ('Product', 'max_order_quantity', true,  8,  false),
+  ('Product', 'discount_percent',   true,  9,  false),
+  ('Product', 'discount_amount',    true,  10, false),
+  ('Product', 'in_stock',           false, 11, false),
+  ('Product', 'product_url',        false, 12, false),
+  ('Product', 'release_date',       false, 13, false),
+  ('Product', 'created_at',         false, 14, false),
+  ('Product', 'tracking_id',        false, 15, true),
+  -- Customer (8 fields, customer_id is PK)
+  ('Customer', 'customer_id',       false, 0,  true),
+  ('Customer', 'customer_name',     false, 1,  false),
+  ('Customer', 'email',             true,  2,  false),
+  ('Customer', 'phone',             true,  3,  false),
+  ('Customer', 'date_of_birth',     false, 4,  false),
+  ('Customer', 'last_login_time',   false, 5,  false),
+  ('Customer', 'is_active',         false, 6,  false),
+  ('Customer', 'registered_at',     false, 7,  false)
+) AS v(obj, fname, opt, pos, pk);
 
 -- 7. Model validators
 WITH ns AS (
