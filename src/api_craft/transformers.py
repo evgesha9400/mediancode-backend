@@ -236,6 +236,22 @@ def _get_max_length(validators):
     return None
 
 
+
+# Map input type names to their correct Python type annotations for Mapped[].
+# Module-level names (datetime, uuid, decimal) must use qualified class names.
+ORM_PYTHON_TYPE_MAP = {
+    "datetime": "datetime.datetime",
+    "date": "datetime.date",
+    "time": "str",
+    "uuid": "uuid.UUID",
+    "UUID": "uuid.UUID",
+    "decimal": "decimal.Decimal",
+    "Decimal": "decimal.Decimal",
+    "EmailStr": "str",
+    "HttpUrl": "str",
+}
+
+
 def map_column_type(type_str: str, validators: list) -> str | None:
     """Map a Python type string to a SQLAlchemy column type string.
 
@@ -255,9 +271,9 @@ def map_column_type(type_str: str, validators: list) -> str | None:
         "datetime": lambda: "DateTime",
         "datetime.datetime": lambda: "DateTime",
         "datetime.date": lambda: "Date",
-        "datetime.time": lambda: "Time",
+        "datetime.time": lambda: "Text",
         "date": lambda: "Date",
-        "time": lambda: "Time",
+        "time": lambda: "Text",
         "uuid": lambda: "Uuid",
         "uuid.UUID": lambda: "Uuid",
         "UUID": lambda: "Uuid",
