@@ -368,8 +368,6 @@ def test_field_validator_body_indentation(tmp_path):
         ],
         config=InputApiConfig(
             response_placeholders=False,
-            format_code=False,
-            generate_swagger=False,
         ),
     )
 
@@ -410,8 +408,6 @@ def test_decimal_type_generates_import(tmp_path):
         ],
         config=InputApiConfig(
             response_placeholders=False,
-            format_code=False,
-            generate_swagger=False,
         ),
     )
 
@@ -458,8 +454,6 @@ def test_clamp_to_range_renders_values(tmp_path):
         ],
         config=InputApiConfig(
             response_placeholders=False,
-            format_code=False,
-            generate_swagger=False,
         ),
     )
 
@@ -498,8 +492,6 @@ def test_list_response_shape_generates_list_type(tmp_path):
         ],
         config=InputApiConfig(
             response_placeholders=False,
-            format_code=False,
-            generate_swagger=False,
         ),
     )
 
@@ -545,8 +537,6 @@ def test_delete_endpoint_without_response_object(tmp_path):
         ],
         config=InputApiConfig(
             response_placeholders=False,
-            format_code=False,
-            generate_swagger=False,
         ),
     )
 
@@ -591,8 +581,6 @@ def test_path_param_uses_field_type(tmp_path):
         ],
         config=InputApiConfig(
             response_placeholders=False,
-            format_code=False,
-            generate_swagger=False,
         ),
     )
 
