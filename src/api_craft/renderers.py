@@ -113,3 +113,10 @@ def render_alembic_env(api: TemplateAPI, template: Template) -> str:
 
 def render_env(api: TemplateAPI, template: Template) -> str:
     return template.render(api=api)
+
+
+def render_initial_migration(
+    orm_models: list[TemplateORMModel],
+    template: Template,
+) -> str:
+    return template.render(orm_models=orm_models)

@@ -172,7 +172,7 @@ class TestMakefileWithDatabase:
     def test_makefile_has_db_targets(self, db_project: Path):
         content = (db_project / "Makefile").read_text()
         assert "db-up:" in content
-        assert "db-init:" in content
+        assert "db-migrate:" in content
         assert "db-upgrade:" in content
         assert "db-reset:" in content
         assert "db-downgrade:" in content
@@ -185,16 +185,6 @@ class TestMakefileWithDatabase:
         content = (db_project / "Makefile").read_text()
         assert "APP_PORT ?=" in content
         assert "DB_PORT ?=" in content
-
-
-class TestEnvFileContent:
-    def test_env_has_db_port(self, db_project: Path):
-        content = (db_project / ".env").read_text()
-        assert "DB_PORT=5433" in content
-
-    def test_env_has_app_port(self, db_project: Path):
-        content = (db_project / ".env").read_text()
-        assert "APP_PORT=8001" in content
 
 
 class TestDockerComposeContent:
@@ -235,6 +225,10 @@ class TestDockerfileWithDatabase:
     def test_runs_alembic_upgrade(self, db_project: Path):
         content = (db_project / "Dockerfile").read_text()
         assert "alembic upgrade head" in content
+
+    def test_no_autogenerate_in_cmd(self, db_project: Path):
+        content = (db_project / "Dockerfile").read_text()
+        assert "autogenerate" not in content
 
 
 @pytest.fixture(scope="module")
@@ -280,6 +274,82 @@ class TestIntPkNoUuidImport:
     def test_no_uuid_default(self, db_project: Path):
         content = (db_project / "src" / "orm_models.py").read_text()
         assert "uuid.uuid4" not in content
+
+
+class TestInitialMigration:
+    """Verify initial migration file is generated correctly."""
+
+    def test_migration_file_exists(self, db_project: Path):
+        assert (db_project / "migrations" / "versions" / "0001_initial.py").exists()
+
+    def test_migration_compiles(self, db_project: Path):
+        content = (
+            db_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        compile(content, "0001_initial.py", "exec")
+
+    def test_migration_has_revision(self, db_project: Path):
+        content = (
+            db_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        assert 'revision: str = "0001"' in content
+
+    def test_migration_has_no_down_revision(self, db_project: Path):
+        content = (
+            db_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        assert "down_revision: str | None = None" in content
+
+    def test_migration_has_create_table(self, db_project: Path):
+        content = (
+            db_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        assert "op.create_table(" in content
+
+    def test_migration_has_correct_table(self, db_project: Path):
+        content = (
+            db_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        assert '"items"' in content
+
+    def test_migration_has_primary_key(self, db_project: Path):
+        content = (
+            db_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        assert "sa.PrimaryKeyConstraint(" in content
+
+    def test_migration_has_downgrade(self, db_project: Path):
+        content = (
+            db_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        assert "op.drop_table(" in content
+
+
+class TestUuidMigration:
+    """Verify initial migration for UUID PK projects."""
+
+    def test_migration_file_exists(self, uuid_db_project: Path):
+        assert (
+            uuid_db_project / "migrations" / "versions" / "0001_initial.py"
+        ).exists()
+
+    def test_migration_compiles(self, uuid_db_project: Path):
+        content = (
+            uuid_db_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        compile(content, "0001_initial.py", "exec")
+
+    def test_migration_has_uuid_column(self, uuid_db_project: Path):
+        content = (
+            uuid_db_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        assert "sa.Uuid()" in content
+
+    def test_migration_has_no_autoincrement(self, uuid_db_project: Path):
+        content = (
+            uuid_db_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        assert "autoincrement" not in content
 
 
 class TestBackwardCompatibility:

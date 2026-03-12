@@ -139,10 +139,30 @@ class TestShopApiArtifacts:
             project_dir / "alembic.ini",
             # Migrations
             project_dir / "migrations" / "env.py",
+            project_dir / "migrations" / "versions" / "0001_initial.py",
         ]
 
         for f in expected_files:
             assert f.exists(), f"Missing generated file: {f}"
+
+        # Verify migration compiles and has correct content
+        migration = (
+            project_dir / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        compile(migration, "0001_initial.py", "exec")
+        assert 'op.create_table("products"' in migration or '"products"' in migration
+        assert 'op.create_table("customers"' in migration or '"customers"' in migration
+
+        # Verify downgrade drops tables in reverse order of creation
+        import re
+
+        upgrade_section = migration.split("def upgrade")[1].split("def downgrade")[0]
+        downgrade_section = migration.split("def downgrade")[1]
+        created = re.findall(r'op\.create_table\(\s*"(\w+)"', upgrade_section)
+        dropped = re.findall(r'op\.drop_table\(\s*"(\w+)"', downgrade_section)
+        assert len(created) == 2
+        assert len(dropped) == 2
+        assert created == list(reversed(dropped))
 
         # Verify pyproject.toml includes extra deps required by model types
         pyproject_content = (project_dir / "pyproject.toml").read_text()

@@ -75,14 +75,22 @@ ${"###"} Setup
 # Start PostgreSQL (Docker)
 make db-up
 
-# Create initial migration
-make db-init
-
-# Apply migrations
+# Apply migrations (initial migration ships pre-generated)
 make db-upgrade
 
 # Reset database (drop and recreate)
 make db-reset
+```
+
+${"###"} Creating New Migrations
+
+```bash
+# Generate a new migration with auto-numbered prefix
+make db-migrate DESC="add email index"
+# -> produces migrations/versions/0002_add_email_index.py
+
+# Review the generated migration, then apply
+make db-upgrade
 ```
 
 ${"###"} Port Configuration
@@ -101,17 +109,6 @@ ${"###"} Run Full Stack (Docker Compose)
 ```bash
 make run-stack
 ```
-
-${"###"} Port Configuration
-
-Default ports are configured in `.env`:
-
-${"```"}
-DB_PORT=${api.database_config.db_port}
-APP_PORT=${api.app_port}
-${"```"}
-
-Change these values to avoid conflicts with other services.
 % endif
 
 ${"##"} API Documentation
@@ -141,7 +138,6 @@ ${api.kebab_name}/
 │   ├── database.py      # Database engine and session
 % endif
 │   └── ...
-├── .env                 # Port configuration
 ├── pyproject.toml       # Project dependencies
 ├── Makefile             # Common commands
 ├── Dockerfile           # Container configuration
@@ -167,7 +163,7 @@ ${"##"} Available Commands
 % if api.database_config:
 | `make db-up` | Start PostgreSQL container |
 | `make db-down` | Stop Docker Compose services |
-| `make db-init` | Create initial Alembic migration |
+| `make db-migrate` | Create a new migration with auto-numbered prefix (requires DESC="...") |
 | `make db-upgrade` | Apply pending migrations |
 | `make db-downgrade` | Rollback last migration |
 | `make db-reset` | Reset database (drop + migrate) |

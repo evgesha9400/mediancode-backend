@@ -32,7 +32,7 @@ COPY alembic.ini .
 
 # Specify the command to run on container start
 % if api.database_config:
-CMD ["sh", "-c", "ls migrations/versions/*.py >/dev/null 2>&1 || alembic revision --autogenerate -m 'initial' && alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 80"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 80"]
 % else:
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
 % endif

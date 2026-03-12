@@ -6,7 +6,7 @@
 export
 
 % if api.database_config:
-.PHONY: install run-local build clean run-container swagger db-up db-down db-init db-upgrade db-downgrade db-reset run-stack
+.PHONY: install run-local build clean run-container swagger db-up db-down db-migrate db-upgrade db-downgrade db-reset run-stack
 % else:
 .PHONY: install run-local build clean run-container swagger
 % endif
@@ -50,8 +50,10 @@ db-up:
 db-down:
 	@docker compose down
 
-db-init: db-up
-	@PYTHONPATH=src poetry run alembic revision --autogenerate -m "initial"
+db-migrate: db-up
+	@test -n "$(DESC)" || (echo "Usage: make db-migrate DESC=\"description\""; exit 1)
+	@NEXT=$$(printf '%04d' $$(($$(ls -1 migrations/versions/[0-9]*.py 2>/dev/null | wc -l) + 1))); \
+	PYTHONPATH=src poetry run alembic revision --autogenerate --rev-id "$$NEXT" -m "$(DESC)"
 
 db-upgrade: db-up
 	@PYTHONPATH=src poetry run alembic upgrade head

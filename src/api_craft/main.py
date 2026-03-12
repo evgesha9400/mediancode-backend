@@ -33,6 +33,7 @@ from api_craft.renderers import (
     render_docker_compose,
     render_dockerfile,
     render_env,
+    render_initial_migration,
     render_main,
     render_makefile,
     render_models,
@@ -116,6 +117,7 @@ class APIGenerator:
                 "alembic_ini": "alembic_ini.mako",
                 "alembic_env": "alembic_env.mako",
                 "env": "env.mako",
+                "initial_migration": "initial_migration.mako",
             }
 
             self.templates = {
@@ -254,6 +256,10 @@ class APIGenerator:
                 rendered_components[".env"] = render_env(
                     template_api, self.templates["env"]
                 )
+                rendered_components["initial_migration.py"] = render_initial_migration(
+                    orm_models,
+                    self.templates["initial_migration"],
+                )
 
             return rendered_components
         except Exception as e:
@@ -325,6 +331,13 @@ class APIGenerator:
                 if filename == "alembic_env.py":
                     # alembic_env.py goes to migrations/env.py
                     file_path = os.path.join(project_directory, "migrations", "env.py")
+                elif filename == "initial_migration.py":
+                    file_path = os.path.join(
+                        project_directory,
+                        "migrations",
+                        "versions",
+                        "0001_initial.py",
+                    )
                 elif filename in root_files:
                     file_path = os.path.join(project_directory, filename)
                 else:

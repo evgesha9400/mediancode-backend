@@ -4,6 +4,7 @@
 </%doc>\
 [alembic]
 script_location = migrations
+file_template = %%(rev)s_%%(slug)s
 sqlalchemy.url = postgresql+asyncpg://postgres:postgres@localhost:${api.database_config.db_port}/${api.snake_name}
 
 [loggers]
