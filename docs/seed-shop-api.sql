@@ -7,7 +7,7 @@ BEGIN;
 
 -- 1. Namespace
 INSERT INTO namespaces (id, user_id, name, is_default)
-VALUES (gen_random_uuid(), '9d17b505-af9d-4a19-a519-a7b89a6ed14d', 'Shop', false);
+VALUES (gen_random_uuid(), '9d17b505-af9d-4a19-a519-a7b89a6ed14d', 'Shop', true);
 
 -- 2. Fields (23 total)
 -- We need stable IDs to reference later, so we use WITH clauses per group.
