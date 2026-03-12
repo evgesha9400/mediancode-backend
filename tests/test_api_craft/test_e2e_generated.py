@@ -85,7 +85,12 @@ def generated_shop_api(tmp_path_factory):
             if r.status_code == 200:
                 ready = True
                 break
-        except (httpx.ConnectError, httpx.ReadTimeout, httpx.ReadError, httpx.RemoteProtocolError):
+        except (
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.ReadError,
+            httpx.RemoteProtocolError,
+        ):
             pass
         time.sleep(2)
 
