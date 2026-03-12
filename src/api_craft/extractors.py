@@ -177,10 +177,6 @@ def collect_model_extra_dependencies(models: list[TemplateModel]) -> list[str]:
     return collect_extra_dependencies(types)
 
 
-# Column type patterns that need String(N) extraction
-_STRING_PATTERN = re.compile(r"String\(\d+\)")
-
-
 def collect_orm_imports(orm_models: list[TemplateORMModel]) -> list[str]:
     """Collect SQLAlchemy column type imports needed by ORM models.
 
@@ -190,10 +186,10 @@ def collect_orm_imports(orm_models: list[TemplateORMModel]) -> list[str]:
     imports = set()
     for model in orm_models:
         for field in model.fields:
-            # Normalize String(N) to String
+            # Normalize parameterized types: String(N) → String, DateTime(timezone=True) → DateTime
             col_type = field.column_type
-            if _STRING_PATTERN.match(col_type):
-                imports.add("String")
+            if "(" in col_type:
+                imports.add(col_type.split("(")[0])
             else:
                 imports.add(col_type)
 

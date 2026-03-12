@@ -100,7 +100,7 @@ class TestTypeMapping:
             ("int", "Integer"),
             ("float", "Float"),
             ("bool", "Boolean"),
-            ("datetime", "DateTime"),
+            ("datetime", "DateTime(timezone=True)"),
             ("datetime.date", "Date"),
             ("datetime.time", "Time"),
             ("uuid", "Uuid"),

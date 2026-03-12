@@ -21,7 +21,7 @@ install:
 	@poetry install
 
 % if api.database_config:
-run-local: install db-up
+run-local: install db-up db-upgrade
 % else:
 run-local: install
 % endif

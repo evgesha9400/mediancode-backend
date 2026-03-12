@@ -435,3 +435,57 @@ class TestModelValidators:
             json=valid_customer(email=None, phone=None),
         )
         assert r.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Timezone-aware datetime tests
+# ---------------------------------------------------------------------------
+
+
+class TestDatetimeTimezones:
+    """Datetime fields must accept timezone-aware strings (UTC, offsets, Z suffix).
+
+    Real API clients (Swagger UI, JS fetch, mobile apps) typically send
+    timezone-aware ISO 8601 strings. The generated API must handle these
+    without asyncpg raising 'can't subtract offset-naive and offset-aware
+    datetimes'.
+    """
+
+    def test_product_datetime_utc_offset(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/products",
+            json=valid_product(created_at="2026-06-01T12:00:00+00:00"),
+        )
+        assert r.status_code == 200, f"UTC offset failed: {r.status_code} {r.text}"
+
+    def test_product_datetime_z_suffix(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/products",
+            json=valid_product(created_at="2026-06-01T12:00:00Z"),
+        )
+        assert r.status_code == 200, f"Z suffix failed: {r.status_code} {r.text}"
+
+    def test_product_datetime_positive_offset(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/products",
+            json=valid_product(created_at="2026-06-01T17:30:00+05:30"),
+        )
+        assert r.status_code == 200, f"Positive offset failed: {r.status_code} {r.text}"
+
+    def test_product_datetime_negative_offset(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/products",
+            json=valid_product(created_at="2026-06-01T07:00:00-05:00"),
+        )
+        assert r.status_code == 200, f"Negative offset failed: {r.status_code} {r.text}"
+
+    def test_customer_datetime_utc_offset(self, generated_shop_api):
+        r = httpx.post(
+            f"{generated_shop_api}/customers",
+            json=valid_customer(
+                customer_id=500, registered_at="2026-06-01T12:00:00+00:00"
+            ),
+        )
+        assert (
+            r.status_code == 200
+        ), f"Customer UTC offset failed: {r.status_code} {r.text}"

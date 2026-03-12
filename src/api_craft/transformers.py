@@ -253,7 +253,7 @@ def map_column_type(type_str: str, validators: list) -> str | None:
         "int": lambda: "Integer",
         "float": lambda: "Float",
         "bool": lambda: "Boolean",
-        "datetime": lambda: "DateTime",
+        "datetime": lambda: "DateTime(timezone=True)",
         "datetime.date": lambda: "Date",
         "datetime.time": lambda: "Time",
         "uuid": lambda: "Uuid",
