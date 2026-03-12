@@ -242,9 +242,6 @@ class APIGenerator:
                 rendered_components["database.py"] = render_database(
                     template_api, self.templates["database"]
                 )
-                rendered_components["seed.py"] = render_seed(
-                    orm_models, {}, self.templates["seed"]
-                )
                 rendered_components["docker-compose.yml"] = render_docker_compose(
                     template_api, self.templates["docker_compose"]
                 )

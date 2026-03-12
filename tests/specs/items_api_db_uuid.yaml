@@ -9,7 +9,7 @@ objects:
     description: Product item with UUID PK
     fields:
       - name: id
-        type: uuid
+        type: uuid.UUID
         pk: true
       - name: name
         type: str

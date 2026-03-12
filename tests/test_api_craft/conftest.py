@@ -123,7 +123,6 @@ def load_app(src_path: Path):
         module_files = [
             "orm_models",
             "database",
-            "seed",
             "models",
             "path",
             "query",

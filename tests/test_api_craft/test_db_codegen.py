@@ -37,10 +37,6 @@ class TestDatabaseFilesGenerated:
     def test_database_py_exists(self, db_project: Path):
         assert (db_project / "src" / "database.py").exists()
 
-    def test_no_seed_py(self, db_project: Path):
-        """seed.py should NOT be generated."""
-        assert not (db_project / "src" / "seed.py").exists()
-
     def test_docker_compose_exists(self, db_project: Path):
         assert (db_project / "docker-compose.yml").exists()
 
@@ -273,10 +269,6 @@ class TestUuidPkCodegen:
         content = (uuid_db_project / "src" / "orm_models.py").read_text()
         compile(content, "orm_models.py", "exec")
 
-    def test_no_seed_file(self, uuid_db_project: Path):
-        """seed.py should NOT be generated."""
-        assert not (uuid_db_project / "src" / "seed.py").exists()
-
 
 class TestIntPkNoUuidImport:
     """Verify int PK does NOT generate import uuid."""
@@ -300,7 +292,6 @@ class TestBackwardCompatibility:
 
         assert not (project / "src" / "orm_models.py").exists()
         assert not (project / "src" / "database.py").exists()
-        assert not (project / "src" / "seed.py").exists()
         assert not (project / "docker-compose.yml").exists()
         assert not (project / "alembic.ini").exists()
         assert not (project / "migrations").exists()
@@ -414,9 +405,6 @@ class TestMixedMode:
         content = (mixed_project / "src" / "views.py").read_text()
         # StatusResponse endpoint should have placeholder values
         assert "StatusResponse(" in content
-
-    def test_no_seed_file(self, mixed_project: Path):
-        assert not (mixed_project / "src" / "seed.py").exists()
 
     def test_database_files_exist(self, mixed_project: Path):
         assert (mixed_project / "src" / "orm_models.py").exists()

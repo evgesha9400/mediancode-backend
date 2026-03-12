@@ -208,21 +208,22 @@ def transform_endpoint(
     )
 
 
-# Map input type names to their correct Python type annotations for Mapped[].
-# Module-level names (datetime, uuid, decimal) must use qualified class names.
+# Map input type names to Python type annotations for Mapped[].
+# Keys match the canonical python_type values from the system types table.
+# The fallback in transform_orm_models splits qualified names on "." and
+# retries with the base module (e.g. "decimal.Decimal" → "decimal"), so
+# entries like "datetime.date" are required to avoid resolving to the
+# wrong base entry ("datetime" → "datetime.datetime").
 ORM_PYTHON_TYPE_MAP = {
+    "str": "str",
+    "int": "int",
+    "float": "float",
+    "bool": "bool",
     "datetime": "datetime.datetime",
-    "datetime.datetime": "datetime.datetime",
     "datetime.date": "datetime.date",
     "datetime.time": "datetime.time",
-    "date": "datetime.date",
-    "time": "datetime.time",
     "uuid": "uuid.UUID",
-    "uuid.UUID": "uuid.UUID",
-    "UUID": "uuid.UUID",
     "decimal": "decimal.Decimal",
-    "decimal.Decimal": "decimal.Decimal",
-    "Decimal": "decimal.Decimal",
     "EmailStr": "str",
     "HttpUrl": "str",
 }
@@ -234,22 +235,6 @@ def _get_max_length(validators):
         if v.name == "max_length" and v.params and "value" in v.params:
             return v.params["value"]
     return None
-
-
-
-# Map input type names to their correct Python type annotations for Mapped[].
-# Module-level names (datetime, uuid, decimal) must use qualified class names.
-ORM_PYTHON_TYPE_MAP = {
-    "datetime": "datetime.datetime",
-    "date": "datetime.date",
-    "time": "str",
-    "uuid": "uuid.UUID",
-    "UUID": "uuid.UUID",
-    "decimal": "decimal.Decimal",
-    "Decimal": "decimal.Decimal",
-    "EmailStr": "str",
-    "HttpUrl": "str",
-}
 
 
 def map_column_type(type_str: str, validators: list) -> str | None:
@@ -269,17 +254,10 @@ def map_column_type(type_str: str, validators: list) -> str | None:
         "float": lambda: "Float",
         "bool": lambda: "Boolean",
         "datetime": lambda: "DateTime",
-        "datetime.datetime": lambda: "DateTime",
         "datetime.date": lambda: "Date",
-        "datetime.time": lambda: "Text",
-        "date": lambda: "Date",
-        "time": lambda: "Text",
+        "datetime.time": lambda: "Time",
         "uuid": lambda: "Uuid",
-        "uuid.UUID": lambda: "Uuid",
-        "UUID": lambda: "Uuid",
         "decimal": lambda: "Numeric",
-        "decimal.Decimal": lambda: "Numeric",
-        "Decimal": lambda: "Numeric",
         "EmailStr": lambda: "String(320)",
         "HttpUrl": lambda: "Text",
     }
@@ -355,9 +333,6 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
 
     # Build field map and extract fields referenced by model validators
     field_map = {model.name: model.fields for model in template_models}
-    field_names_per_model = {
-        model.name: {f.name for f in model.fields} for model in template_models
-    }
     # For before-mode model validators (e.g. At Least One Required),
     # include the first referenced optional field so placeholders are valid.
     validator_fields: dict[str, set[str]] = {}

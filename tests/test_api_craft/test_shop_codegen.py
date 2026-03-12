@@ -131,7 +131,6 @@ class TestShopApiArtifacts:
             # Database files
             src_dir / "orm_models.py",
             src_dir / "database.py",
-            src_dir / "seed.py",
             # Project root files
             project_dir / "pyproject.toml",
             project_dir / "Makefile",

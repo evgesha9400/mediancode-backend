@@ -19,8 +19,7 @@ Phases:
 16. Verify ORM models content
 17. Verify database integration in generated code
 18. Verify generated Pydantic models retain constraints
-19. Verify no seed file
-20-26. Cleanup
+19-25. Cleanup
 """
 
 import io
@@ -1018,14 +1017,7 @@ class TestShopApiFullE2E:
         # Model validators present
         assert "model_validator" in content
 
-    # --- Phase 19: Verify no seed file ---
-
-    def test_phase_19_no_seed_file(self):
-        """Verify seed.py is NOT generated."""
-        cls = TestShopApiFullE2E
-        assert not (Path(cls.generated_dir) / "src" / "seed.py").exists()
-
-    # --- Phase 20: Verify infrastructure files ---
+    # --- Phase 19: Verify infrastructure files ---
 
     def test_phase_20_infrastructure(self):
         """Verify docker-compose, alembic, pyproject.toml have DB config."""
