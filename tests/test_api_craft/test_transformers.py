@@ -4,7 +4,7 @@
 import pytest
 from api_craft.models.input import InputField, InputModel
 from api_craft.models.template import TemplateORMModel
-from api_craft.transformers import transform_orm_models
+from api_craft.orm_builder import transform_orm_models
 
 
 def _make_model(name, fields):

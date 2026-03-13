@@ -2,7 +2,7 @@ from typing import Any, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from api.schemas.literals import (
+from api_craft.models.enums import (
     Cardinality,
     FieldAppearance,
     HttpMethod,

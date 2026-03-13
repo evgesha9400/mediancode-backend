@@ -23,7 +23,8 @@ from api_craft.models.input import (
     InputModel,
     InputRelationship,
 )
-from api_craft.transformers import split_model_schemas, transform_orm_models
+from api_craft.orm_builder import transform_orm_models
+from api_craft.schema_splitter import split_model_schemas
 
 pytestmark = pytest.mark.codegen
 

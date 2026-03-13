@@ -1,30 +1,18 @@
 # src/api/schemas/literals.py
-"""Canonical Literal types for all ENUM-like fields.
+"""Re-exports canonical Literal types from api_craft.models.enums.
 
-Single source of truth consumed by:
-- Pydantic schemas (type annotations)
-- SQLAlchemy models (column types reference these indirectly)
-- Alembic migrations (CHECK constraint SQL values must match)
-- OpenAPI spec (Pydantic auto-generates enum arrays from Literals)
+The single source of truth lives in api_craft so the generation library
+has no dependency on the api service layer.  Downstream api code can
+continue to import from here without changes.
 """
 
-from typing import Literal, get_args
-
-HttpMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
-ResponseShape = Literal["object", "list"]
-Container = Literal["List"]
-ValidatorMode = Literal["before", "after"]
-OnDeleteAction = Literal["cascade", "restrict", "set_null"]
-FieldAppearance = Literal["both", "request", "response"]
-Cardinality = Literal["has_one", "has_many", "references", "many_to_many"]
-
-
-def check_constraint_sql(column: str, literal_type: type) -> str:
-    """Generate a CHECK constraint SQL clause from a Literal type.
-
-    :param column: The database column name.
-    :param literal_type: A Literal type alias (e.g. HttpMethod).
-    :returns: SQL string like "column IN ('val1', 'val2')".
-    """
-    values = ", ".join(f"'{v}'" for v in get_args(literal_type))
-    return f"{column} IN ({values})"
+from api_craft.models.enums import (  # noqa: F401
+    Cardinality,
+    Container,
+    FieldAppearance,
+    HttpMethod,
+    OnDeleteAction,
+    ResponseShape,
+    ValidatorMode,
+    check_constraint_sql,
+)

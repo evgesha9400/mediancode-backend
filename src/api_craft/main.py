@@ -27,24 +27,6 @@ from api_craft.extractors import (
 )
 from api_craft.models.input import InputAPI
 from api_craft.models.template import TemplateAPI
-from api_craft.renderers import (
-    render_alembic_env,
-    render_alembic_ini,
-    render_database,
-    render_docker_compose,
-    render_dockerfile,
-    render_env,
-    render_initial_migration,
-    render_main,
-    render_makefile,
-    render_models,
-    render_orm_models,
-    render_path_params,
-    render_pyproject,
-    render_query_params,
-    render_readme,
-    render_views,
-)
 from api_craft.transformers import transform_api
 from api_craft.utils import camel_to_kebab, create_dir, write_file
 
@@ -203,72 +185,67 @@ class APIGenerator:
                 extra_deps = sorted(set(extra_deps + db_deps))
 
             rendered_components = {
-                "models.py": render_models(
-                    components["models"], model_imports, self.templates["models"]
+                "models.py": self.templates["models"].render(
+                    models=components["models"], imports=model_imports
                 ),
-                "views.py": render_views(
-                    components["views"],
-                    self.templates["views"],
+                "views.py": self.templates["views"].render(
+                    views=components["views"],
                     database_config=database_config,
-                    orm_model_map=orm_model_map,
-                    orm_pk_map=orm_pk_map,
+                    orm_model_map=orm_model_map or {},
+                    orm_pk_map=orm_pk_map or {},
                 ),
-                "main.py": render_main(template_api, self.templates["main"]),
-                "pyproject.toml": render_pyproject(
-                    template_api, self.templates["pyproject"], extra_deps
+                "main.py": self.templates["main"].render(api=template_api),
+                "pyproject.toml": self.templates["pyproject"].render(
+                    api=template_api, extra_dependencies=extra_deps or []
                 ),
-                "Makefile": render_makefile(template_api, self.templates["makefile"]),
-                "Dockerfile": render_dockerfile(
-                    template_api, self.templates["dockerfile"]
-                ),
-                "README.md": render_readme(template_api, self.templates["readme"]),
+                "Makefile": self.templates["makefile"].render(api=template_api),
+                "Dockerfile": self.templates["dockerfile"].render(api=template_api),
+                "README.md": self.templates["readme"].render(api=template_api),
             }
 
             if components["path_params"]:
                 path_imports = collect_path_params_imports(components["path_params"])
-                rendered_components["path.py"] = render_path_params(
-                    components["path_params"],
-                    path_imports,
-                    self.templates["path"],
+                rendered_components["path.py"] = self.templates["path"].render(
+                    params=components["path_params"], imports=path_imports
                 )
 
             if components["query_params"]:
                 query_imports = collect_query_params_imports(components["query_params"])
-                rendered_components["query.py"] = render_query_params(
-                    components["query_params"],
-                    query_imports,
-                    self.templates["query"],
+                rendered_components["query.py"] = self.templates["query"].render(
+                    params=components["query_params"], imports=query_imports
                 )
 
             # Database files (only when database is enabled)
             if database_config and orm_models:
                 orm_imports = collect_orm_imports(orm_models)
                 assoc_tables = collect_association_tables(orm_models)
-                rendered_components["orm_models.py"] = render_orm_models(
-                    orm_models,
-                    orm_imports,
-                    self.templates["orm_models"],
-                    association_tables=assoc_tables,
+                rendered_components["orm_models.py"] = self.templates[
+                    "orm_models"
+                ].render(
+                    orm_models=orm_models,
+                    imports=orm_imports,
+                    association_tables=assoc_tables or [],
                 )
-                rendered_components["database.py"] = render_database(
-                    template_api, self.templates["database"]
+                rendered_components["database.py"] = self.templates["database"].render(
+                    api=template_api
                 )
-                rendered_components["docker-compose.yml"] = render_docker_compose(
-                    template_api, self.templates["docker_compose"]
+                rendered_components["docker-compose.yml"] = self.templates[
+                    "docker_compose"
+                ].render(api=template_api)
+                rendered_components["alembic.ini"] = self.templates[
+                    "alembic_ini"
+                ].render(api=template_api)
+                rendered_components["alembic_env.py"] = self.templates[
+                    "alembic_env"
+                ].render(api=template_api)
+                rendered_components[".env"] = self.templates["env"].render(
+                    api=template_api
                 )
-                rendered_components["alembic.ini"] = render_alembic_ini(
-                    template_api, self.templates["alembic_ini"]
-                )
-                rendered_components["alembic_env.py"] = render_alembic_env(
-                    template_api, self.templates["alembic_env"]
-                )
-                rendered_components[".env"] = render_env(
-                    template_api, self.templates["env"]
-                )
-                rendered_components["initial_migration.py"] = render_initial_migration(
-                    orm_models,
-                    self.templates["initial_migration"],
-                    association_tables=assoc_tables,
+                rendered_components["initial_migration.py"] = self.templates[
+                    "initial_migration"
+                ].render(
+                    orm_models=orm_models,
+                    association_tables=assoc_tables or [],
                 )
 
             return rendered_components

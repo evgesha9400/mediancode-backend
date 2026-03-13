@@ -10,7 +10,8 @@ from api_craft.models.input import (
     InputField,
     InputModel,
 )
-from api_craft.transformers import split_model_schemas, transform_api
+from api_craft.schema_splitter import split_model_schemas
+from api_craft.transformers import transform_api
 
 
 def _make_field(name: str, type_: str = "str", **kwargs) -> InputField:

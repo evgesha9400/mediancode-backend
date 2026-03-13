@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from api.schemas.literals import ResponseShape, ValidatorMode
+from api_craft.models.enums import ResponseShape, ValidatorMode
 
 
 class TemplateValidator(BaseModel):
