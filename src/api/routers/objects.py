@@ -11,7 +11,12 @@ from api.schemas.object import (
     ObjectResponse,
     ObjectUpdate,
 )
+from api.schemas.relationship import (
+    ObjectRelationshipCreate,
+    ObjectRelationshipResponse,
+)
 from api.services.object import ObjectService, get_object_service
+from api.services.relationship import RelationshipService, get_relationship_service
 
 router = APIRouter(prefix="/objects", tags=["Objects"])
 
@@ -50,6 +55,18 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
         )
         for v in sorted(obj.validators, key=lambda x: x.position)
     ]
+    relationships = [
+        ObjectRelationshipResponse(
+            id=r.id,
+            source_object_id=r.source_object_id,
+            target_object_id=r.target_object_id,
+            name=r.name,
+            cardinality=r.cardinality,
+            is_inferred=r.is_inferred,
+            inverse_id=r.inverse_id,
+        )
+        for r in sorted(obj.relationships, key=lambda x: x.position)
+    ]
     used_in_apis = await service.get_used_in_apis(obj.id)
     return ObjectResponse(
         id=obj.id,
@@ -59,6 +76,7 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
         fields=fields,
         used_in_apis=used_in_apis,
         validators=validators,
+        relationships=relationships,
     )
 
 
@@ -216,3 +234,78 @@ async def delete_object(
         )
 
     await service.delete_object(obj)
+
+
+@router.post(
+    "/{object_id}/relationships",
+    response_model=ObjectRelationshipResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a relationship",
+    description="Create a relationship from this object to a target object. Auto-creates the inverse.",
+)
+async def create_relationship(
+    object_id: str,
+    data: ObjectRelationshipCreate,
+    user: ProvisionedUser,
+    db: DbSession,
+) -> ObjectRelationshipResponse:
+    """Create a relationship on an object.
+
+    :param object_id: Source object ID.
+    :param data: Relationship creation data.
+    :param user: Authenticated user.
+    :param db: Database session.
+    :returns: Created relationship response.
+    :raises HTTPException: If object not found.
+    """
+    obj_service = get_service(db)
+    obj = await obj_service.get_by_id_for_user(object_id, user.id)
+    if not obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Object with ID '{object_id}' not found",
+        )
+
+    rel_service = get_relationship_service(db)
+    rel = await rel_service.create_relationship(obj.id, data)
+    return ObjectRelationshipResponse(
+        id=rel.id,
+        source_object_id=rel.source_object_id,
+        target_object_id=rel.target_object_id,
+        name=rel.name,
+        cardinality=rel.cardinality,
+        is_inferred=rel.is_inferred,
+        inverse_id=rel.inverse_id,
+    )
+
+
+@router.delete(
+    "/{object_id}/relationships/{relationship_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a relationship",
+    description="Delete a relationship and its auto-created inverse.",
+)
+async def delete_relationship(
+    object_id: str,
+    relationship_id: str,
+    user: ProvisionedUser,
+    db: DbSession,
+) -> None:
+    """Delete a relationship and its inverse.
+
+    :param object_id: Object ID (for URL structure).
+    :param relationship_id: Relationship ID.
+    :param user: Authenticated user.
+    :param db: Database session.
+    :raises HTTPException: If object or relationship not found.
+    """
+    obj_service = get_service(db)
+    obj = await obj_service.get_by_id_for_user(object_id, user.id)
+    if not obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Object with ID '{object_id}' not found",
+        )
+
+    rel_service = get_relationship_service(db)
+    await rel_service.delete_relationship(relationship_id)

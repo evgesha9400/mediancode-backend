@@ -15,6 +15,7 @@ from api.models.database import (
     Namespace,
     ObjectDefinition,
     ObjectFieldAssociation,
+    ObjectRelationship,
 )
 from api.schemas.object import (
     ModelValidatorInput,
@@ -40,6 +41,7 @@ class ObjectService(BaseService[ObjectDefinition]):
             selectinload(ObjectDefinition.validators).selectinload(
                 AppliedModelValidatorModel.template
             ),
+            selectinload(ObjectDefinition.relationships),
         ]
 
     async def list_for_user(
