@@ -196,6 +196,53 @@ def collect_orm_imports(orm_models: list[TemplateORMModel]) -> list[str]:
     return sorted(imports)
 
 
+def collect_association_tables(orm_models: list[TemplateORMModel]) -> list[dict]:
+    """Collect unique many_to_many association table definitions.
+
+    :param orm_models: Collection of ORM models.
+    :returns: List of association table definition dicts (deduplicated by name).
+    """
+    seen: set[str] = set()
+    tables: list[dict] = []
+
+    # Build a quick lookup: class_name -> (table_name, pk_column_name)
+    model_lookup: dict[str, tuple[str, str]] = {}
+    for m in orm_models:
+        pk_fields = [f for f in m.fields if f.primary_key]
+        if pk_fields:
+            model_lookup[m.source_model] = (m.table_name, pk_fields[0].name)
+
+    for model in orm_models:
+        for rel in model.relationships:
+            if rel.cardinality != "many_to_many" or not rel.association_table:
+                continue
+            if rel.association_table in seen:
+                continue
+            seen.add(rel.association_table)
+
+            target_info = model_lookup.get(rel.target_model)
+            source_info = model_lookup.get(model.source_model)
+            if not target_info or not source_info:
+                continue
+
+            source_table, source_pk = source_info
+            target_table, target_pk = target_info
+
+            tables.append(
+                {
+                    "name": rel.association_table,
+                    "left_table": source_table,
+                    "left_pk": source_pk,
+                    "left_fk_col": f"{source_table.rstrip('s')}_id",
+                    "right_table": target_table,
+                    "right_pk": target_pk,
+                    "right_fk_col": f"{target_table.rstrip('s')}_id",
+                }
+            )
+
+    return tables
+
+
 def collect_database_dependencies() -> list[str]:
     """Return pip dependencies for database support.
 

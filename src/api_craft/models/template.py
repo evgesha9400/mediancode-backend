@@ -115,6 +115,19 @@ class TemplateORMField(BaseModel):
     nullable: bool = False
     autoincrement: bool = False
     uuid_default: bool = False
+    foreign_key: str | None = None
+
+
+class TemplateRelationship(BaseModel):
+    """Relationship definition for ORM template rendering."""
+
+    name: str
+    target_model: str
+    target_class_name: str
+    cardinality: str
+    is_inferred: bool = False
+    fk_column: str | None = None
+    association_table: str | None = None
 
 
 class TemplateORMModel(BaseModel):
@@ -124,6 +137,7 @@ class TemplateORMModel(BaseModel):
     table_name: str
     source_model: str
     fields: list[TemplateORMField]
+    relationships: list[TemplateRelationship] = []
 
 
 class TemplateDatabaseConfig(BaseModel):

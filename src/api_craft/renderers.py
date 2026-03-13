@@ -91,8 +91,13 @@ def render_orm_models(
     orm_models: list[TemplateORMModel],
     imports: list[str],
     template: Template,
+    association_tables: list[dict] | None = None,
 ) -> str:
-    return template.render(orm_models=orm_models, imports=imports)
+    return template.render(
+        orm_models=orm_models,
+        imports=imports,
+        association_tables=association_tables or [],
+    )
 
 
 def render_database(api: TemplateAPI, template: Template) -> str:
@@ -118,5 +123,9 @@ def render_env(api: TemplateAPI, template: Template) -> str:
 def render_initial_migration(
     orm_models: list[TemplateORMModel],
     template: Template,
+    association_tables: list[dict] | None = None,
 ) -> str:
-    return template.render(orm_models=orm_models)
+    return template.render(
+        orm_models=orm_models,
+        association_tables=association_tables or [],
+    )

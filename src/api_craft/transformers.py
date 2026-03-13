@@ -11,6 +11,7 @@ from api_craft.models.input import (
     InputModel,
     InputPathParam,
     InputQueryParam,
+    InputRelationship,
     InputResolvedFieldValidator,
     InputResolvedModelValidator,
     InputTag,
@@ -26,6 +27,7 @@ from api_craft.models.template import (
     TemplateORMModel,
     TemplatePathParam,
     TemplateQueryParam,
+    TemplateRelationship,
     TemplateResolvedFieldValidator,
     TemplateResolvedModelValidator,
     TemplateTag,
@@ -155,6 +157,22 @@ def split_model_schemas(input_model: InputModel) -> list[TemplateModel]:
         f for f in input_model.fields if f.appears in ("both", "response")
     ]
     response_fields = [transform_field(f) for f in response_input_fields]
+
+    # Add FK ID fields for `references` relationships
+    for rel in input_model.relationships:
+        if rel.cardinality == "references":
+            fk_name = f"{rel.name}_id"
+            # Avoid duplicating if the field already exists
+            existing_names = {f.name for f in response_fields}
+            if fk_name not in existing_names:
+                response_fields.append(
+                    TemplateField(
+                        type="uuid",
+                        name=fk_name,
+                        optional=False,
+                        description=f"FK reference to {rel.target_model}",
+                    )
+                )
 
     return [
         TemplateModel(
@@ -334,15 +352,33 @@ def map_column_type(type_str: str, validators: list) -> str | None:
     return factory()
 
 
+def _make_association_table_name(table_a: str, table_b: str) -> str:
+    """Build a deterministic association table name for many_to_many.
+
+    Sorts the two table names alphabetically to ensure the same name
+    regardless of which side declares the relationship.
+
+    :param table_a: First table name.
+    :param table_b: Second table name.
+    :returns: Association table name.
+    """
+    return "_".join(sorted([table_a, table_b]))
+
+
 def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMModel]:
     """Convert InputModels with pk fields into TemplateORMModels."""
-    # Build entity lookup: name -> (table_name, pk_column_name)
-    entity_lookup = {}
+    # Build entity lookup: name -> (table_name, pk_column_name, class_name)
+    entity_lookup: dict[str, tuple[str, str, str]] = {}
     for model in input_models:
         pk_fields = [f for f in model.fields if f.pk]
         if pk_fields:
             table_name = snake_to_plural(camel_to_snake(model.name))
-            entity_lookup[str(model.name)] = (table_name, str(pk_fields[0].name))
+            class_name = f"{model.name}Record"
+            entity_lookup[str(model.name)] = (
+                table_name,
+                str(pk_fields[0].name),
+                class_name,
+            )
 
     orm_models = []
     for model in input_models:
@@ -377,12 +413,76 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
                 )
             )
 
+        # Transform relationships
+        template_rels = []
+        for rel in model.relationships:
+            target_info = entity_lookup.get(rel.target_model)
+            if not target_info:
+                continue
+            target_table, target_pk, target_class = target_info
+
+            fk_column = None
+            association_table = None
+
+            if rel.cardinality == "references":
+                # Add FK column to this model's fields
+                fk_col_name = f"{rel.name}_id"
+                # Determine FK column type from target PK
+                target_model = next(
+                    (m for m in input_models if str(m.name) == rel.target_model),
+                    None,
+                )
+                if target_model:
+                    target_pk_field = next(
+                        (f for f in target_model.fields if f.pk), None
+                    )
+                    if target_pk_field:
+                        fk_col_type = map_column_type(
+                            target_pk_field.type, target_pk_field.validators
+                        )
+                        fk_base = (
+                            target_pk_field.type.split(".")[0]
+                            if "." in target_pk_field.type
+                            else target_pk_field.type
+                        )
+                        fk_orm_type = ORM_PYTHON_TYPE_MAP.get(
+                            target_pk_field.type
+                        ) or ORM_PYTHON_TYPE_MAP.get(fk_base, fk_base)
+                        if fk_col_type:
+                            orm_fields.append(
+                                TemplateORMField(
+                                    name=fk_col_name,
+                                    python_type=fk_orm_type,
+                                    column_type=fk_col_type,
+                                    foreign_key=f"{target_table}.{target_pk}",
+                                )
+                            )
+                fk_column = fk_col_name
+
+            elif rel.cardinality == "many_to_many":
+                association_table = _make_association_table_name(
+                    table_name, target_table
+                )
+
+            template_rels.append(
+                TemplateRelationship(
+                    name=rel.name,
+                    target_model=rel.target_model,
+                    target_class_name=target_class,
+                    cardinality=rel.cardinality,
+                    is_inferred=rel.is_inferred,
+                    fk_column=fk_column,
+                    association_table=association_table,
+                )
+            )
+
         orm_models.append(
             TemplateORMModel(
                 class_name=f"{model.name}Record",
                 table_name=table_name,
                 source_model=str(model.name),
                 fields=orm_fields,
+                relationships=template_rels,
             )
         )
 

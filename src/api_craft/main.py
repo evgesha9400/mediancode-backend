@@ -15,6 +15,7 @@ from mako.lookup import TemplateLookup
 from mako.template import Template
 
 from api_craft.extractors import (
+    collect_association_tables,
     collect_database_dependencies,
     collect_model_extra_dependencies,
     collect_model_imports,
@@ -242,8 +243,12 @@ class APIGenerator:
             # Database files (only when database is enabled)
             if database_config and orm_models:
                 orm_imports = collect_orm_imports(orm_models)
+                assoc_tables = collect_association_tables(orm_models)
                 rendered_components["orm_models.py"] = render_orm_models(
-                    orm_models, orm_imports, self.templates["orm_models"]
+                    orm_models,
+                    orm_imports,
+                    self.templates["orm_models"],
+                    association_tables=assoc_tables,
                 )
                 rendered_components["database.py"] = render_database(
                     template_api, self.templates["database"]
@@ -263,6 +268,7 @@ class APIGenerator:
                 rendered_components["initial_migration.py"] = render_initial_migration(
                     orm_models,
                     self.templates["initial_migration"],
+                    association_tables=assoc_tables,
                 )
 
             return rendered_components

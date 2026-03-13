@@ -3,6 +3,7 @@ from typing import Any, Self
 from pydantic import BaseModel, Field, model_validator
 
 from api.schemas.literals import (
+    Cardinality,
     FieldAppearance,
     HttpMethod,
     ResponseShape,
@@ -80,6 +81,21 @@ class InputField(BaseModel):
     appears: FieldAppearance = "both"
 
 
+class InputRelationship(BaseModel):
+    """Relationship definition between objects.
+
+    :ivar name: Relationship name (e.g. "posts", "author").
+    :ivar target_model: PascalCase name of the target object.
+    :ivar cardinality: Relationship type (has_one, has_many, references, many_to_many).
+    :ivar is_inferred: True for auto-created inverse side.
+    """
+
+    name: str
+    target_model: str
+    cardinality: Cardinality
+    is_inferred: bool = False
+
+
 class InputModel(BaseModel):
     """Shared object definition with a name and typed fields.
 
@@ -87,12 +103,14 @@ class InputModel(BaseModel):
     :ivar fields: Ordered collection of :class:`InputField` definitions.
     :ivar description: Human-readable description of the object.
     :ivar model_validators: List of resolved model validators with rendered code.
+    :ivar relationships: List of relationships to other objects.
     """
 
     name: PascalCaseName
     fields: list[InputField]
     description: str | None = None
     model_validators: list[InputResolvedModelValidator] = Field(default_factory=list)
+    relationships: list[InputRelationship] = Field(default_factory=list)
 
 
 class InputQueryParam(BaseModel):

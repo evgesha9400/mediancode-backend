@@ -18,6 +18,7 @@ from api.models.database import (
     FieldConstraintValueAssociation,
     FieldModel,
     ObjectDefinition,
+    ObjectRelationship,
 )
 from api_craft.main import APIGenerator
 from api.schemas.api import GenerateOptions
@@ -30,6 +31,7 @@ from api_craft.models.input import (
     InputModel,
     InputPathParam,
     InputQueryParam,
+    InputRelationship,
     InputResolvedFieldValidator,
     InputResolvedModelValidator,
     InputTag,
@@ -111,13 +113,16 @@ async def _fetch_objects(
     if not object_ids:
         return {}
 
-    # Fetch objects with field associations and validator templates
+    # Fetch objects with field associations, validator templates, and relationships
     query = (
         select(ObjectDefinition)
         .options(
             selectinload(ObjectDefinition.field_associations),
             selectinload(ObjectDefinition.validators).selectinload(
                 AppliedModelValidatorModel.template
+            ),
+            selectinload(ObjectDefinition.relationships).selectinload(
+                ObjectRelationship.target_object
             ),
         )
         .where(ObjectDefinition.id.in_(object_ids))
@@ -215,6 +220,15 @@ def _convert_to_input_api(
                 fields.append(input_field)
 
         obj_name = obj.name
+        input_relationships = [
+            InputRelationship(
+                name=rel.name,
+                target_model=rel.target_object.name,
+                cardinality=rel.cardinality,
+                is_inferred=rel.is_inferred,
+            )
+            for rel in (obj.relationships or [])
+        ]
         input_objects.append(
             InputModel(
                 name=obj_name,
@@ -224,6 +238,7 @@ def _convert_to_input_api(
                     InputResolvedModelValidator(**rv)
                     for rv in _build_resolved_model_validators(obj)
                 ],
+                relationships=input_relationships,
             )
         )
 
