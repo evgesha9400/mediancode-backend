@@ -1,20 +1,33 @@
--- Seed Shop API for user 9d17b505-af9d-4a19-a519-a7b89a6ed14d
--- Clerk ID: user_39LzgEEnF5YQRTke3nSdPMEvoKT
+-- Seed Shop API for the user identified by email aleshiner@mail.ru
 -- Recreates the same setup as test_e2e_shop_full.py (final state)
 -- Plain SQL — runs in any PostgreSQL client.
 
 BEGIN;
 
--- 1. Namespace
+-- Resolve the target user by email
+-- All subsequent CTEs reference this.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM users WHERE email = 'aleshiner@mail.ru') THEN
+    RAISE EXCEPTION 'User with email aleshiner@mail.ru not found. Create the user first (e.g. sign in via Clerk).';
+  END IF;
+END $$;
+
+-- 1. Namespace (clear any existing default first)
+UPDATE namespaces SET is_default = false
+WHERE user_id = (SELECT id FROM users WHERE email = 'aleshiner@mail.ru') AND is_default = true;
+
 INSERT INTO namespaces (id, user_id, name, is_default)
-VALUES (gen_random_uuid(), '9d17b505-af9d-4a19-a519-a7b89a6ed14d', 'Shop', true);
+VALUES (gen_random_uuid(), (SELECT id FROM users WHERE email = 'aleshiner@mail.ru'), 'Shop', true);
 
 -- 2. Fields (23 total)
 -- We need stable IDs to reference later, so we use WITH clauses per group.
 
-WITH ns AS (
-  SELECT id FROM namespaces
-  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
+WITH u AS (
+  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
+),
+ns AS (
+  SELECT n.id FROM namespaces n JOIN u ON n.user_id = u.id WHERE n.name = 'Shop'
 ),
 sys_ns AS (
   SELECT id FROM namespaces WHERE user_id IS NULL LIMIT 1
@@ -37,8 +50,8 @@ t AS (
     (SELECT id FROM types WHERE name = 'time')     AS time
 )
 INSERT INTO fields (id, namespace_id, user_id, name, type_id)
-SELECT gen_random_uuid(), ns.id, '9d17b505-af9d-4a19-a519-a7b89a6ed14d', v.name, v.type_id
-FROM ns, (VALUES
+SELECT gen_random_uuid(), ns.id, u.id, v.name, v.type_id
+FROM u, ns, (VALUES
   ('name',               (SELECT str      FROM t)),
   ('sku',                (SELECT str      FROM t)),
   ('price',              (SELECT decimal  FROM t)),
@@ -65,9 +78,11 @@ FROM ns, (VALUES
 ) AS v(name, type_id);
 
 -- 3. Field constraints
-WITH ns AS (
-  SELECT id FROM namespaces
-  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
+WITH u AS (
+  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
+),
+ns AS (
+  SELECT n.id FROM namespaces n JOIN u ON n.user_id = u.id WHERE n.name = 'Shop'
 ),
 f AS (
   SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
@@ -105,9 +120,11 @@ FROM (VALUES
 ) AS v(fname, cname, val);
 
 -- 4. Field validators
-WITH ns AS (
-  SELECT id FROM namespaces
-  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
+WITH u AS (
+  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
+),
+ns AS (
+  SELECT n.id FROM namespaces n JOIN u ON n.user_id = u.id WHERE n.name = 'Shop'
 ),
 f AS (
   SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
@@ -130,21 +147,25 @@ FROM (VALUES
 ) AS v(fname, tname, params, pos);
 
 -- 5. Objects
-WITH ns AS (
-  SELECT id FROM namespaces
-  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
+WITH u AS (
+  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
+),
+ns AS (
+  SELECT n.id FROM namespaces n JOIN u ON n.user_id = u.id WHERE n.name = 'Shop'
 )
 INSERT INTO objects (id, namespace_id, user_id, name, description)
-SELECT gen_random_uuid(), ns.id, '9d17b505-af9d-4a19-a519-a7b89a6ed14d', v.name, v.descr
-FROM ns, (VALUES
+SELECT gen_random_uuid(), ns.id, u.id, v.name, v.descr
+FROM u, ns, (VALUES
   ('Product',  'Shop product'),
   ('Customer', 'Shop customer')
 ) AS v(name, descr);
 
 -- 6. Fields on objects
-WITH ns AS (
-  SELECT id FROM namespaces
-  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
+WITH u AS (
+  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
+),
+ns AS (
+  SELECT n.id FROM namespaces n JOIN u ON n.user_id = u.id WHERE n.name = 'Shop'
 ),
 f AS (
   SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
@@ -152,44 +173,48 @@ f AS (
 o AS (
   SELECT o.name, o.id FROM objects o JOIN ns ON o.namespace_id = ns.id
 )
-INSERT INTO fields_on_objects (id, object_id, field_id, optional, position)
+INSERT INTO fields_on_objects (id, object_id, field_id, optional, position, is_pk, appears)
 SELECT gen_random_uuid(),
        (SELECT id FROM o WHERE o.name = v.obj),
        (SELECT id FROM f WHERE f.name = v.fname),
        v.opt,
-       v.pos
+       v.pos,
+       v.pk,
+       v.appears
 FROM (VALUES
   -- Product (16 fields)
-  ('Product', 'name',               false, 0),
-  ('Product', 'sku',                false, 1),
-  ('Product', 'price',              false, 2),
-  ('Product', 'sale_price',         true,  3),
-  ('Product', 'sale_end_date',      true,  4),
-  ('Product', 'weight',             false, 5),
-  ('Product', 'quantity',           false, 6),
-  ('Product', 'min_order_quantity', false, 7),
-  ('Product', 'max_order_quantity', true,  8),
-  ('Product', 'discount_percent',   true,  9),
-  ('Product', 'discount_amount',    true,  10),
-  ('Product', 'in_stock',           false, 11),
-  ('Product', 'product_url',        false, 12),
-  ('Product', 'release_date',       false, 13),
-  ('Product', 'created_at',         false, 14),
-  ('Product', 'tracking_id',        false, 15),
+  ('Product', 'name',               false, 0,  false, 'both'),
+  ('Product', 'sku',                false, 1,  false, 'both'),
+  ('Product', 'price',              false, 2,  false, 'both'),
+  ('Product', 'sale_price',         true,  3,  false, 'both'),
+  ('Product', 'sale_end_date',      true,  4,  false, 'both'),
+  ('Product', 'weight',             false, 5,  false, 'both'),
+  ('Product', 'quantity',           false, 6,  false, 'both'),
+  ('Product', 'min_order_quantity', false, 7,  false, 'both'),
+  ('Product', 'max_order_quantity', true,  8,  false, 'both'),
+  ('Product', 'discount_percent',   true,  9,  false, 'both'),
+  ('Product', 'discount_amount',    true,  10, false, 'both'),
+  ('Product', 'in_stock',           false, 11, false, 'both'),
+  ('Product', 'product_url',        false, 12, false, 'both'),
+  ('Product', 'release_date',       false, 13, false, 'both'),
+  ('Product', 'created_at',         false, 14, false, 'response'),
+  ('Product', 'tracking_id',        false, 15, true,  'both'),
   -- Customer (7 fields)
-  ('Customer', 'customer_name',     false, 0),
-  ('Customer', 'email',             true,  1),
-  ('Customer', 'phone',             true,  2),
-  ('Customer', 'date_of_birth',     false, 3),
-  ('Customer', 'last_login_time',   false, 4),
-  ('Customer', 'is_active',         false, 5),
-  ('Customer', 'registered_at',     false, 6)
-) AS v(obj, fname, opt, pos);
+  ('Customer', 'customer_name',     false, 0,  false, 'both'),
+  ('Customer', 'email',             false, 1,  true,  'both'),
+  ('Customer', 'phone',             true,  2,  false, 'both'),
+  ('Customer', 'date_of_birth',     false, 3,  false, 'both'),
+  ('Customer', 'last_login_time',   false, 4,  false, 'both'),
+  ('Customer', 'is_active',         false, 5,  false, 'both'),
+  ('Customer', 'registered_at',     false, 6,  false, 'response')
+) AS v(obj, fname, opt, pos, pk, appears);
 
 -- 7. Model validators
-WITH ns AS (
-  SELECT id FROM namespaces
-  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
+WITH u AS (
+  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
+),
+ns AS (
+  SELECT n.id FROM namespaces n JOIN u ON n.user_id = u.id WHERE n.name = 'Shop'
 ),
 o AS (
   SELECT o.name, o.id FROM objects o JOIN ns ON o.namespace_id = ns.id
@@ -219,24 +244,67 @@ FROM (VALUES
    '{"field_a": "email", "field_b": "phone"}', 0)
 ) AS v(obj, tname, params, mappings, pos);
 
--- 8. API
-WITH ns AS (
-  SELECT id FROM namespaces
-  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
+-- 8. Relationships (Customer has_many Products, Product references Customer)
+WITH u AS (
+  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
+),
+ns AS (
+  SELECT n.id FROM namespaces n JOIN u ON n.user_id = u.id WHERE n.name = 'Shop'
+),
+o AS (
+  SELECT o.name, o.id FROM objects o JOIN ns ON o.namespace_id = ns.id
+),
+rel_fwd AS (
+  INSERT INTO object_relationships (id, source_object_id, target_object_id, name, cardinality, is_inferred, position)
+  VALUES (
+    gen_random_uuid(),
+    (SELECT id FROM o WHERE name = 'Customer'),
+    (SELECT id FROM o WHERE name = 'Product'),
+    'products',
+    'has_many',
+    false,
+    0
+  )
+  RETURNING id
+),
+rel_inv AS (
+  INSERT INTO object_relationships (id, source_object_id, target_object_id, name, cardinality, is_inferred, inverse_id, position)
+  VALUES (
+    gen_random_uuid(),
+    (SELECT id FROM o WHERE name = 'Product'),
+    (SELECT id FROM o WHERE name = 'Customer'),
+    'customer',
+    'references',
+    true,
+    (SELECT id FROM rel_fwd),
+    0
+  )
+  RETURNING id
+)
+UPDATE object_relationships SET inverse_id = (SELECT id FROM rel_inv)
+WHERE id = (SELECT id FROM rel_fwd);
+
+-- 9. API
+WITH u AS (
+  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
+),
+ns AS (
+  SELECT n.id FROM namespaces n JOIN u ON n.user_id = u.id WHERE n.name = 'Shop'
 )
 INSERT INTO apis (id, namespace_id, user_id, title, version, description, base_url, server_url, created_at, updated_at)
-SELECT gen_random_uuid(), ns.id, '9d17b505-af9d-4a19-a519-a7b89a6ed14d',
+SELECT gen_random_uuid(), ns.id, u.id,
        'ShopApi', '1.0.0', 'Complete online shop API', '', '', now(), now()
-FROM ns;
+FROM u, ns;
 
--- 9. Endpoints (9)
-WITH ns AS (
-  SELECT id FROM namespaces
-  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND name = 'Shop'
+-- 10. Endpoints (9)
+WITH u AS (
+  SELECT id FROM users WHERE email = 'aleshiner@mail.ru'
+),
+ns AS (
+  SELECT n.id FROM namespaces n JOIN u ON n.user_id = u.id WHERE n.name = 'Shop'
 ),
 a AS (
-  SELECT id FROM apis
-  WHERE user_id = '9d17b505-af9d-4a19-a519-a7b89a6ed14d' AND title = 'ShopApi'
+  SELECT a.id FROM apis a JOIN u ON a.user_id = u.id WHERE a.title = 'ShopApi'
 ),
 f AS (
   SELECT f.name, f.id FROM fields f JOIN ns ON f.namespace_id = ns.id
