@@ -105,10 +105,8 @@ async def _fetch_objects(
     for endpoint in api.endpoints:
         if endpoint.query_params_object_id:
             object_ids.add(endpoint.query_params_object_id)
-        if endpoint.request_body_object_id:
-            object_ids.add(endpoint.request_body_object_id)
-        if endpoint.response_body_object_id:
-            object_ids.add(endpoint.response_body_object_id)
+        if endpoint.object_id:
+            object_ids.add(endpoint.object_id)
 
     if not object_ids:
         return {}
@@ -279,26 +277,20 @@ def _convert_to_input_api(
                             )
                         )
 
-        # Get request/response object names
-        request_name = None
-        if endpoint.request_body_object_id:
-            req_obj = objects_map.get(endpoint.request_body_object_id)
-            if req_obj:
-                request_name = req_obj.name
-
-        response_name = None
-        if endpoint.response_body_object_id:
-            resp_obj = objects_map.get(endpoint.response_body_object_id)
-            if resp_obj:
-                response_name = resp_obj.name
+        # Get object name (single object for both request and response)
+        object_name = None
+        if endpoint.object_id:
+            obj = objects_map.get(endpoint.object_id)
+            if obj:
+                object_name = obj.name
 
         input_endpoint = InputEndpoint(
             name=endpoint_name,
             path=endpoint.path,
             method=endpoint.method,
             tag=tag_name,
-            request=request_name,
-            response=response_name,
+            request=object_name,
+            response=object_name,
             query_params=query_params,
             path_params=path_params,
             description=endpoint.description,

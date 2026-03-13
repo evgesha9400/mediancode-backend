@@ -237,7 +237,7 @@ class TestShopApiErrors:
                 "description": "List all posts",
                 "tagName": "Posts",
                 "pathParams": [],
-                "responseBodyObjectId": cls.post_object_id,
+                "objectId": cls.post_object_id,
                 "useEnvelope": False,
                 "responseShape": "list",
             },

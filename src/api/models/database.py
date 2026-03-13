@@ -546,7 +546,9 @@ class ObjectRelationship(Base):
 
     # Relationships
     source_object: Mapped["ObjectDefinition"] = relationship(
-        "ObjectDefinition", foreign_keys=[source_object_id]
+        "ObjectDefinition",
+        foreign_keys=[source_object_id],
+        overlaps="relationships",
     )
     target_object: Mapped["ObjectDefinition"] = relationship(
         "ObjectDefinition", foreign_keys=[target_object_id]
@@ -634,8 +636,7 @@ class ApiEndpoint(Base):
     :ivar tag_name: Optional tag name for grouping endpoints in OpenAPI spec.
     :ivar path_params: Path parameters as JSONB list of {name, fieldId} dicts.
     :ivar query_params_object_id: Optional reference to Object for query parameters.
-    :ivar request_body_object_id: Optional reference to Object for request body.
-    :ivar response_body_object_id: Optional reference to Object for response body.
+    :ivar object_id: Optional reference to Object for request/response body.
     :ivar use_envelope: Whether to wrap response in standard envelope.
     :ivar response_shape: Response shape (object or list).
     """
@@ -659,11 +660,10 @@ class ApiEndpoint(Base):
     query_params_object_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("objects.id"), nullable=True
     )
-    request_body_object_id: Mapped[UUID | None] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("objects.id"), nullable=True
-    )
-    response_body_object_id: Mapped[UUID | None] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("objects.id"), nullable=True
+    object_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("objects.id", ondelete="SET NULL"),
+        nullable=True,
     )
     use_envelope: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     response_shape: Mapped[str] = mapped_column(Text, default="object", nullable=False)
@@ -673,9 +673,4 @@ class ApiEndpoint(Base):
     query_params_object: Mapped["ObjectDefinition | None"] = relationship(
         foreign_keys=[query_params_object_id]
     )
-    request_body_object: Mapped["ObjectDefinition | None"] = relationship(
-        foreign_keys=[request_body_object_id]
-    )
-    response_body_object: Mapped["ObjectDefinition | None"] = relationship(
-        foreign_keys=[response_body_object_id]
-    )
+    object: Mapped["ObjectDefinition | None"] = relationship(foreign_keys=[object_id])

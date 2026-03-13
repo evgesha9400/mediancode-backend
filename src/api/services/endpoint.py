@@ -79,8 +79,7 @@ class EndpointService(BaseService[ApiEndpoint]):
             tag_name=data.tag_name,
             path_params=[p.model_dump(by_alias=True) for p in data.path_params],
             query_params_object_id=data.query_params_object_id,
-            request_body_object_id=data.request_body_object_id,
-            response_body_object_id=data.response_body_object_id,
+            object_id=data.object_id,
             use_envelope=data.use_envelope,
             response_shape=data.response_shape,
         )
@@ -112,10 +111,8 @@ class EndpointService(BaseService[ApiEndpoint]):
             endpoint.tag_name = data.tag_name
         if data.query_params_object_id is not None:
             endpoint.query_params_object_id = data.query_params_object_id
-        if data.request_body_object_id is not None:
-            endpoint.request_body_object_id = data.request_body_object_id
-        if data.response_body_object_id is not None:
-            endpoint.response_body_object_id = data.response_body_object_id
+        if data.object_id is not None:
+            endpoint.object_id = data.object_id
         if data.use_envelope is not None:
             endpoint.use_envelope = data.use_envelope
         if data.response_shape is not None:

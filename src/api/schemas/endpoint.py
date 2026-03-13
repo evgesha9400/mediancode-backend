@@ -34,8 +34,7 @@ class ApiEndpointCreate(BaseModel):
     :ivar tag_name: Optional tag name (must exist in the parent API's tags).
     :ivar path_params: Path parameters referencing field definitions.
     :ivar query_params_object_id: Optional query params object reference.
-    :ivar request_body_object_id: Optional request body object reference.
-    :ivar response_body_object_id: Optional response body object reference.
+    :ivar object_id: Optional object reference for request/response body.
     :ivar use_envelope: Whether to wrap response in envelope.
     :ivar response_shape: Response shape (object or list).
     """
@@ -53,15 +52,10 @@ class ApiEndpointCreate(BaseModel):
         alias="queryParamsObjectId",
         examples=["00000000-0000-0000-0007-000000000001"],
     )
-    request_body_object_id: UUID | None = Field(
+    object_id: UUID | None = Field(
         default=None,
-        alias="requestBodyObjectId",
+        alias="objectId",
         examples=["00000000-0000-0000-0007-000000000002"],
-    )
-    response_body_object_id: UUID | None = Field(
-        default=None,
-        alias="responseBodyObjectId",
-        examples=["00000000-0000-0000-0007-000000000001"],
     )
     use_envelope: bool = Field(..., alias="useEnvelope", examples=[True])
     response_shape: ResponseShape = Field(
@@ -79,8 +73,7 @@ class ApiEndpointUpdate(BaseModel):
     :ivar tag_name: Updated tag name.
     :ivar path_params: Updated path parameters.
     :ivar query_params_object_id: Updated query params object reference.
-    :ivar request_body_object_id: Updated request body object reference.
-    :ivar response_body_object_id: Updated response body object reference.
+    :ivar object_id: Updated object reference for request/response body.
     :ivar use_envelope: Updated envelope setting.
     :ivar response_shape: Updated response shape.
     """
@@ -98,12 +91,7 @@ class ApiEndpointUpdate(BaseModel):
     query_params_object_id: UUID | None = Field(
         default=None, alias="queryParamsObjectId"
     )
-    request_body_object_id: UUID | None = Field(
-        default=None, alias="requestBodyObjectId"
-    )
-    response_body_object_id: UUID | None = Field(
-        default=None, alias="responseBodyObjectId"
-    )
+    object_id: UUID | None = Field(default=None, alias="objectId")
     use_envelope: bool | None = Field(default=None, alias="useEnvelope")
     response_shape: ResponseShape | None = Field(default=None, alias="responseShape")
 
@@ -119,8 +107,7 @@ class ApiEndpointResponse(BaseModel):
     :ivar tag_name: Tag name (references a tag in the parent API).
     :ivar path_params: Path parameters referencing field definitions.
     :ivar query_params_object_id: Query params object reference.
-    :ivar request_body_object_id: Request body object reference.
-    :ivar response_body_object_id: Response body object reference.
+    :ivar object_id: Object reference for request/response body.
     :ivar use_envelope: Whether response is wrapped in envelope.
     :ivar response_shape: Response shape.
     """
@@ -139,15 +126,10 @@ class ApiEndpointResponse(BaseModel):
         alias="queryParamsObjectId",
         examples=["00000000-0000-0000-0007-000000000001"],
     )
-    request_body_object_id: UUID | None = Field(
+    object_id: UUID | None = Field(
         default=None,
-        alias="requestBodyObjectId",
+        alias="objectId",
         examples=["00000000-0000-0000-0007-000000000002"],
-    )
-    response_body_object_id: UUID | None = Field(
-        default=None,
-        alias="responseBodyObjectId",
-        examples=["00000000-0000-0000-0007-000000000001"],
     )
     use_envelope: bool = Field(..., alias="useEnvelope", examples=[True])
     response_shape: ResponseShape = Field(

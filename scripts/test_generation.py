@@ -21,17 +21,62 @@ OUTPUT_DIR = "/tmp/shop-api-generated"
 # ---------------------------------------------------------------------------
 
 PRODUCT_FIELDS = [
-    {"name": "name", "type": "str", "constraints": [("min_length", "1"), ("max_length", "200")], "validators": [("Trim", None), ("Normalize Whitespace", None)]},
-    {"name": "sku", "type": "str", "constraints": [("pattern", r"^[A-Z]{2}-\d{4}$")], "validators": [("Normalize Case", {"case": "upper"})]},
-    {"name": "price", "type": "Decimal", "constraints": [("gt", "0")], "validators": [("Round Decimal", {"places": "2"})]},
-    {"name": "sale_price", "type": "Decimal", "constraints": [("ge", "0")], "validators": []},
+    {
+        "name": "name",
+        "type": "str",
+        "constraints": [("min_length", "1"), ("max_length", "200")],
+        "validators": [("Trim", None), ("Normalize Whitespace", None)],
+    },
+    {
+        "name": "sku",
+        "type": "str",
+        "constraints": [("pattern", r"^[A-Z]{2}-\d{4}$")],
+        "validators": [("Normalize Case", {"case": "upper"})],
+    },
+    {
+        "name": "price",
+        "type": "Decimal",
+        "constraints": [("gt", "0")],
+        "validators": [("Round Decimal", {"places": "2"})],
+    },
+    {
+        "name": "sale_price",
+        "type": "Decimal",
+        "constraints": [("ge", "0")],
+        "validators": [],
+    },
     {"name": "sale_end_date", "type": "date", "constraints": [], "validators": []},
-    {"name": "weight", "type": "float", "constraints": [("ge", "0"), ("lt", "1000")], "validators": [("Clamp to Range", {"min_value": "0", "max_value": "1000"})]},
+    {
+        "name": "weight",
+        "type": "float",
+        "constraints": [("ge", "0"), ("lt", "1000")],
+        "validators": [("Clamp to Range", {"min_value": "0", "max_value": "1000"})],
+    },
     {"name": "quantity", "type": "int", "constraints": [("ge", "0")], "validators": []},
-    {"name": "min_order_quantity", "type": "int", "constraints": [("ge", "1")], "validators": []},
-    {"name": "max_order_quantity", "type": "int", "constraints": [("le", "1000")], "validators": []},
-    {"name": "discount_percent", "type": "int", "constraints": [("ge", "0"), ("le", "100"), ("multiple_of", "5")], "validators": []},
-    {"name": "discount_amount", "type": "Decimal", "constraints": [("ge", "0")], "validators": []},
+    {
+        "name": "min_order_quantity",
+        "type": "int",
+        "constraints": [("ge", "1")],
+        "validators": [],
+    },
+    {
+        "name": "max_order_quantity",
+        "type": "int",
+        "constraints": [("le", "1000")],
+        "validators": [],
+    },
+    {
+        "name": "discount_percent",
+        "type": "int",
+        "constraints": [("ge", "0"), ("le", "100"), ("multiple_of", "5")],
+        "validators": [],
+    },
+    {
+        "name": "discount_amount",
+        "type": "Decimal",
+        "constraints": [("ge", "0")],
+        "validators": [],
+    },
     {"name": "in_stock", "type": "bool", "constraints": [], "validators": []},
     {"name": "product_url", "type": "HttpUrl", "constraints": [], "validators": []},
     {"name": "release_date", "type": "date", "constraints": [], "validators": []},
@@ -40,9 +85,19 @@ PRODUCT_FIELDS = [
 ]
 
 CUSTOMER_FIELDS = [
-    {"name": "customer_name", "type": "str", "constraints": [("min_length", "1"), ("max_length", "100")], "validators": [("Trim", None), ("Normalize Case", {"case": "title"})]},
+    {
+        "name": "customer_name",
+        "type": "str",
+        "constraints": [("min_length", "1"), ("max_length", "100")],
+        "validators": [("Trim", None), ("Normalize Case", {"case": "title"})],
+    },
     {"name": "email", "type": "EmailStr", "constraints": [], "validators": []},
-    {"name": "phone", "type": "str", "constraints": [("min_length", "7"), ("max_length", "15")], "validators": []},
+    {
+        "name": "phone",
+        "type": "str",
+        "constraints": [("min_length", "7"), ("max_length", "15")],
+        "validators": [],
+    },
     {"name": "date_of_birth", "type": "date", "constraints": [], "validators": []},
     {"name": "last_login_time", "type": "time", "constraints": [], "validators": []},
     {"name": "is_active", "type": "bool", "constraints": [], "validators": []},
@@ -51,7 +106,14 @@ CUSTOMER_FIELDS = [
 
 ALL_FIELDS = PRODUCT_FIELDS + CUSTOMER_FIELDS
 
-PRODUCT_OPTIONAL = {"sale_price", "sale_end_date", "min_order_quantity", "max_order_quantity", "discount_percent", "discount_amount"}
+PRODUCT_OPTIONAL = {
+    "sale_price",
+    "sale_end_date",
+    "min_order_quantity",
+    "max_order_quantity",
+    "discount_percent",
+    "discount_amount",
+}
 CUSTOMER_OPTIONAL = {"email", "phone"}
 
 
@@ -79,7 +141,9 @@ async def main():
         resp = await client.get("/model-validator-templates")
         assert resp.status_code == 200
         mv_template_ids = {t["name"]: t["id"] for t in resp.json()}
-        print(f"  Types: {len(type_ids)}, Constraints: {len(constraint_ids)}, FV templates: {len(fv_template_ids)}, MV templates: {len(mv_template_ids)}")
+        print(
+            f"  Types: {len(type_ids)}, Constraints: {len(constraint_ids)}, FV templates: {len(fv_template_ids)}, MV templates: {len(mv_template_ids)}"
+        )
 
         # --- Phase 1.5: Cleanup any leftover data ---
         print("Phase 1.5: Cleaning up leftover data...")
@@ -137,7 +201,9 @@ async def main():
                 ],
             }
             resp = await client.post("/fields", json=payload)
-            assert resp.status_code == 201, f"Create field '{field_def['name']}' failed: {resp.text}"
+            assert (
+                resp.status_code == 201
+            ), f"Create field '{field_def['name']}' failed: {resp.text}"
             field_ids[field_def["name"]] = resp.json()["id"]
         print(f"  Created {len(field_ids)} fields")
 
@@ -153,11 +219,17 @@ async def main():
             {
                 "templateId": mv_template_ids["Field Comparison"],
                 "parameters": {"operator": "<"},
-                "fieldMappings": {"field_a": "min_order_quantity", "field_b": "max_order_quantity"},
+                "fieldMappings": {
+                    "field_a": "min_order_quantity",
+                    "field_b": "max_order_quantity",
+                },
             },
             {
                 "templateId": mv_template_ids["Mutual Exclusivity"],
-                "fieldMappings": {"field_a": "discount_percent", "field_b": "discount_amount"},
+                "fieldMappings": {
+                    "field_a": "discount_percent",
+                    "field_b": "discount_amount",
+                },
             },
             {
                 "templateId": mv_template_ids["All Or None"],
@@ -165,24 +237,35 @@ async def main():
             },
             {
                 "templateId": mv_template_ids["Conditional Required"],
-                "fieldMappings": {"trigger_field": "discount_percent", "dependent_field": "sale_price"},
+                "fieldMappings": {
+                    "trigger_field": "discount_percent",
+                    "dependent_field": "sale_price",
+                },
             },
         ]
 
-        resp = await client.post("/objects", json={
-            "namespaceId": namespace_id,
-            "name": "Product",
-            "description": "Shop product",
-            "fields": product_fields,
-            "validators": product_validators,
-        })
+        resp = await client.post(
+            "/objects",
+            json={
+                "namespaceId": namespace_id,
+                "name": "Product",
+                "description": "Shop product",
+                "fields": product_fields,
+                "validators": product_validators,
+            },
+        )
         assert resp.status_code == 201, f"Create Product failed: {resp.text}"
         product_id = resp.json()["id"]
-        print(f"  Product: {len(resp.json()['fields'])} fields, {len(resp.json()['validators'])} validators")
+        print(
+            f"  Product: {len(resp.json()['fields'])} fields, {len(resp.json()['validators'])} validators"
+        )
 
         # Customer
         customer_fields = [
-            {"fieldId": field_ids[f["name"]], "optional": f["name"] in CUSTOMER_OPTIONAL}
+            {
+                "fieldId": field_ids[f["name"]],
+                "optional": f["name"] in CUSTOMER_OPTIONAL,
+            }
             for f in CUSTOMER_FIELDS
         ]
         customer_validators = [
@@ -192,48 +275,135 @@ async def main():
             },
         ]
 
-        resp = await client.post("/objects", json={
-            "namespaceId": namespace_id,
-            "name": "Customer",
-            "description": "Shop customer",
-            "fields": customer_fields,
-            "validators": customer_validators,
-        })
+        resp = await client.post(
+            "/objects",
+            json={
+                "namespaceId": namespace_id,
+                "name": "Customer",
+                "description": "Shop customer",
+                "fields": customer_fields,
+                "validators": customer_validators,
+            },
+        )
         assert resp.status_code == 201, f"Create Customer failed: {resp.text}"
         customer_id = resp.json()["id"]
-        print(f"  Customer: {len(resp.json()['fields'])} fields, {len(resp.json()['validators'])} validators")
+        print(
+            f"  Customer: {len(resp.json()['fields'])} fields, {len(resp.json()['validators'])} validators"
+        )
 
         # --- Phase 5: Create API ---
         print("Phase 5: Creating API...")
-        resp = await client.post("/apis", json={
-            "namespaceId": namespace_id,
-            "title": "ShopApi",
-            "version": "1.0.0",
-            "description": "Online shop with products and customers",
-        })
+        resp = await client.post(
+            "/apis",
+            json={
+                "namespaceId": namespace_id,
+                "title": "ShopApi",
+                "version": "1.0.0",
+                "description": "Online shop with products and customers",
+            },
+        )
         assert resp.status_code == 201, f"Create API failed: {resp.text}"
         api_id = resp.json()["id"]
 
         # --- Phase 6: Create endpoints ---
         print("Phase 6: Creating 7 endpoints...")
         endpoints = [
-            {"apiId": api_id, "method": "GET", "path": "/products", "description": "List all products", "tagName": "Products", "pathParams": [], "responseBodyObjectId": product_id, "useEnvelope": False, "responseShape": "list"},
-            {"apiId": api_id, "method": "GET", "path": "/products/{tracking_id}", "description": "Get product by tracking ID", "tagName": "Products", "pathParams": [{"name": "tracking_id", "fieldId": field_ids["tracking_id"]}], "responseBodyObjectId": product_id, "useEnvelope": False, "responseShape": "object"},
-            {"apiId": api_id, "method": "POST", "path": "/products", "description": "Create a product", "tagName": "Products", "pathParams": [], "requestBodyObjectId": product_id, "responseBodyObjectId": product_id, "useEnvelope": False, "responseShape": "object"},
-            {"apiId": api_id, "method": "PUT", "path": "/products/{tracking_id}", "description": "Update a product", "tagName": "Products", "pathParams": [{"name": "tracking_id", "fieldId": field_ids["tracking_id"]}], "requestBodyObjectId": product_id, "responseBodyObjectId": product_id, "useEnvelope": False, "responseShape": "object"},
-            {"apiId": api_id, "method": "DELETE", "path": "/products/{tracking_id}", "description": "Delete a product", "tagName": "Products", "pathParams": [{"name": "tracking_id", "fieldId": field_ids["tracking_id"]}], "responseBodyObjectId": product_id, "useEnvelope": False, "responseShape": "object"},
-            {"apiId": api_id, "method": "GET", "path": "/customers", "description": "List all customers", "tagName": "Customers", "pathParams": [], "responseBodyObjectId": customer_id, "useEnvelope": False, "responseShape": "list"},
-            {"apiId": api_id, "method": "PATCH", "path": "/customers/{email}", "description": "Update a customer by email", "tagName": "Customers", "pathParams": [{"name": "email", "fieldId": field_ids["email"]}], "requestBodyObjectId": customer_id, "responseBodyObjectId": customer_id, "useEnvelope": False, "responseShape": "object"},
+            {
+                "apiId": api_id,
+                "method": "GET",
+                "path": "/products",
+                "description": "List all products",
+                "tagName": "Products",
+                "pathParams": [],
+                "objectId": product_id,
+                "useEnvelope": False,
+                "responseShape": "list",
+            },
+            {
+                "apiId": api_id,
+                "method": "GET",
+                "path": "/products/{tracking_id}",
+                "description": "Get product by tracking ID",
+                "tagName": "Products",
+                "pathParams": [
+                    {"name": "tracking_id", "fieldId": field_ids["tracking_id"]}
+                ],
+                "objectId": product_id,
+                "useEnvelope": False,
+                "responseShape": "object",
+            },
+            {
+                "apiId": api_id,
+                "method": "POST",
+                "path": "/products",
+                "description": "Create a product",
+                "tagName": "Products",
+                "pathParams": [],
+                "objectId": product_id,
+                "useEnvelope": False,
+                "responseShape": "object",
+            },
+            {
+                "apiId": api_id,
+                "method": "PUT",
+                "path": "/products/{tracking_id}",
+                "description": "Update a product",
+                "tagName": "Products",
+                "pathParams": [
+                    {"name": "tracking_id", "fieldId": field_ids["tracking_id"]}
+                ],
+                "objectId": product_id,
+                "useEnvelope": False,
+                "responseShape": "object",
+            },
+            {
+                "apiId": api_id,
+                "method": "DELETE",
+                "path": "/products/{tracking_id}",
+                "description": "Delete a product",
+                "tagName": "Products",
+                "pathParams": [
+                    {"name": "tracking_id", "fieldId": field_ids["tracking_id"]}
+                ],
+                "useEnvelope": False,
+                "responseShape": "object",
+            },
+            {
+                "apiId": api_id,
+                "method": "GET",
+                "path": "/customers",
+                "description": "List all customers",
+                "tagName": "Customers",
+                "pathParams": [],
+                "objectId": customer_id,
+                "useEnvelope": False,
+                "responseShape": "list",
+            },
+            {
+                "apiId": api_id,
+                "method": "PATCH",
+                "path": "/customers/{email}",
+                "description": "Update a customer by email",
+                "tagName": "Customers",
+                "pathParams": [{"name": "email", "fieldId": field_ids["email"]}],
+                "objectId": customer_id,
+                "useEnvelope": False,
+                "responseShape": "object",
+            },
         ]
         for ep in endpoints:
             resp = await client.post("/endpoints", json=ep)
-            assert resp.status_code == 201, f"Create {ep['method']} {ep['path']} failed: {resp.text}"
+            assert (
+                resp.status_code == 201
+            ), f"Create {ep['method']} {ep['path']} failed: {resp.text}"
         print(f"  Created {len(endpoints)} endpoints")
 
         # --- Phase 7: Generate code ---
         print("\nPhase 7: Generating code...")
         resp = await client.post(f"/apis/{api_id}/generate")
-        assert resp.status_code == 200, f"Generate failed ({resp.status_code}): {resp.text}"
+        assert (
+            resp.status_code == 200
+        ), f"Generate failed ({resp.status_code}): {resp.text}"
 
         # Extract ZIP
         zip_data = io.BytesIO(resp.content)
@@ -253,7 +423,7 @@ async def main():
         print("=" * 80)
         for f in sorted(file_list):
             filepath = os.path.join(OUTPUT_DIR, f)
-            if os.path.isfile(filepath) and not f.endswith(('.pyc', '.pyo')):
+            if os.path.isfile(filepath) and not f.endswith((".pyc", ".pyo")):
                 print(f"\n{'─' * 80}")
                 print(f"FILE: {f}")
                 print(f"{'─' * 80}")

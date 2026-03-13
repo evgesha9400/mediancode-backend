@@ -483,18 +483,12 @@ def upgrade() -> None:
         sa.Column(
             "query_params_object_id", postgresql.UUID(as_uuid=True), nullable=True
         ),
-        sa.Column(
-            "request_body_object_id", postgresql.UUID(as_uuid=True), nullable=True
-        ),
-        sa.Column(
-            "response_body_object_id", postgresql.UUID(as_uuid=True), nullable=True
-        ),
+        sa.Column("object_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("use_envelope", sa.Boolean(), nullable=False),
         sa.Column("response_shape", sa.Text(), nullable=False),
         sa.ForeignKeyConstraint(["api_id"], ["apis.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["query_params_object_id"], ["objects.id"]),
-        sa.ForeignKeyConstraint(["request_body_object_id"], ["objects.id"]),
-        sa.ForeignKeyConstraint(["response_body_object_id"], ["objects.id"]),
+        sa.ForeignKeyConstraint(["object_id"], ["objects.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
             "method IN ('GET', 'POST', 'PUT', 'PATCH', 'DELETE')",

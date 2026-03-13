@@ -234,8 +234,7 @@ class FieldService(BaseService[FieldModel]):
             .where(
                 or_(
                     ApiEndpoint.query_params_object_id.in_(select(objects_subquery)),
-                    ApiEndpoint.request_body_object_id.in_(select(objects_subquery)),
-                    ApiEndpoint.response_body_object_id.in_(select(objects_subquery)),
+                    ApiEndpoint.object_id.in_(select(objects_subquery)),
                 )
             )
             .distinct()

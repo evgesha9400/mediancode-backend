@@ -40,8 +40,7 @@ def _to_response(endpoint) -> ApiEndpointResponse:
         tag_name=endpoint.tag_name,
         path_params=[PathParamSchema(**p) for p in (endpoint.path_params or [])],
         query_params_object_id=endpoint.query_params_object_id,
-        request_body_object_id=endpoint.request_body_object_id,
-        response_body_object_id=endpoint.response_body_object_id,
+        object_id=endpoint.object_id,
         use_envelope=endpoint.use_envelope,
         response_shape=endpoint.response_shape,
     )

@@ -249,56 +249,56 @@ customer_id AS (SELECT id FROM o WHERE name = 'Customer'),
 tracking_id AS (SELECT id FROM f WHERE name = 'tracking_id'),
 email_id    AS (SELECT id FROM f WHERE name = 'email')
 INSERT INTO api_endpoints (id, api_id, method, path, description, tag_name, path_params,
-                           request_body_object_id, response_body_object_id, use_envelope, response_shape)
+                           object_id, use_envelope, response_shape)
 VALUES
   -- GET /products (list)
   (gen_random_uuid(), (SELECT id FROM a), 'GET', '/products',
    'List all products', 'Products', '[]',
-   NULL, (SELECT id FROM product_id), false, 'list'),
+   (SELECT id FROM product_id), false, 'list'),
 
   -- GET /products/{tracking_id}
   (gen_random_uuid(), (SELECT id FROM a), 'GET', '/products/{tracking_id}',
    'Get product by tracking ID', 'Products',
    (SELECT json_build_array(json_build_object('name', 'tracking_id', 'fieldId', id::text))::jsonb FROM tracking_id),
-   NULL, (SELECT id FROM product_id), false, 'object'),
+   (SELECT id FROM product_id), false, 'object'),
 
   -- POST /products
   (gen_random_uuid(), (SELECT id FROM a), 'POST', '/products',
    'Create a product', 'Products', '[]',
-   (SELECT id FROM product_id), (SELECT id FROM product_id), false, 'object'),
+   (SELECT id FROM product_id), false, 'object'),
 
   -- PUT /items/{tracking_id}
   (gen_random_uuid(), (SELECT id FROM a), 'PUT', '/items/{tracking_id}',
    'Update a product', 'Products',
    (SELECT json_build_array(json_build_object('name', 'tracking_id', 'fieldId', id::text))::jsonb FROM tracking_id),
-   (SELECT id FROM product_id), (SELECT id FROM product_id), false, 'object'),
+   (SELECT id FROM product_id), false, 'object'),
 
   -- DELETE /products/{tracking_id}
   (gen_random_uuid(), (SELECT id FROM a), 'DELETE', '/products/{tracking_id}',
    'Delete a product', 'Products',
    (SELECT json_build_array(json_build_object('name', 'tracking_id', 'fieldId', id::text))::jsonb FROM tracking_id),
-   NULL, NULL, false, 'object'),
+   NULL, false, 'object'),
 
   -- GET /customers (list)
   (gen_random_uuid(), (SELECT id FROM a), 'GET', '/customers',
    'List all customers', 'Customers', '[]',
-   NULL, (SELECT id FROM customer_id), false, 'list'),
+   (SELECT id FROM customer_id), false, 'list'),
 
   -- POST /customers
   (gen_random_uuid(), (SELECT id FROM a), 'POST', '/customers',
    'Create a customer', 'Customers', '[]',
-   (SELECT id FROM customer_id), (SELECT id FROM customer_id), false, 'object'),
+   (SELECT id FROM customer_id), false, 'object'),
 
   -- GET /customers/{email}
   (gen_random_uuid(), (SELECT id FROM a), 'GET', '/customers/{email}',
    'Get customer by email', 'Customers',
    (SELECT json_build_array(json_build_object('name', 'email', 'fieldId', id::text))::jsonb FROM email_id),
-   NULL, (SELECT id FROM customer_id), false, 'object'),
+   (SELECT id FROM customer_id), false, 'object'),
 
   -- PATCH /customers/{email}
   (gen_random_uuid(), (SELECT id FROM a), 'PATCH', '/customers/{email}',
    'Update a customer by email', 'Customers',
    (SELECT json_build_array(json_build_object('name', 'email', 'fieldId', id::text))::jsonb FROM email_id),
-   (SELECT id FROM customer_id), (SELECT id FROM customer_id), false, 'object');
+   (SELECT id FROM customer_id), false, 'object');
 
 COMMIT;

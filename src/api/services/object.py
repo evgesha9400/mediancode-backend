@@ -151,8 +151,7 @@ class ObjectService(BaseService[ObjectDefinition]):
             .where(
                 or_(
                     ApiEndpoint.query_params_object_id == obj.id,
-                    ApiEndpoint.request_body_object_id == obj.id,
-                    ApiEndpoint.response_body_object_id == obj.id,
+                    ApiEndpoint.object_id == obj.id,
                 )
             )
         )
@@ -234,8 +233,7 @@ class ObjectService(BaseService[ObjectDefinition]):
         query = select(ApiEndpoint.id).where(
             or_(
                 ApiEndpoint.query_params_object_id == object_id,
-                ApiEndpoint.request_body_object_id == object_id,
-                ApiEndpoint.response_body_object_id == object_id,
+                ApiEndpoint.object_id == object_id,
             )
         )
         result = await self.db.execute(query)
