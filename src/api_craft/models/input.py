@@ -3,6 +3,7 @@ from typing import Any, Self
 from pydantic import BaseModel, Field, model_validator
 
 from api.schemas.literals import (
+    FieldAppearance,
     HttpMethod,
     ResponseShape,
     ValidatorMode,
@@ -76,6 +77,7 @@ class InputField(BaseModel):
     validators: list[InputValidator] = Field(default_factory=list)
     field_validators: list[InputResolvedFieldValidator] = Field(default_factory=list)
     pk: bool = False
+    appears: FieldAppearance = "both"
 
 
 class InputModel(BaseModel):

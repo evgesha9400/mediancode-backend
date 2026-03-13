@@ -187,6 +187,10 @@ class APIGenerator:
             orm_pk_map = None
             if database_config and orm_models:
                 orm_model_map = {m.source_model: m.class_name for m in orm_models}
+                # Also map {Name}Response → ORM class for split schema mode
+                orm_model_map.update(
+                    {f"{m.source_model}Response": m.class_name for m in orm_models}
+                )
                 orm_pk_map = {
                     f.name: m.class_name
                     for m in orm_models

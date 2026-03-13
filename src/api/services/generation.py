@@ -210,6 +210,7 @@ def _convert_to_input_api(
                         for rv in _build_resolved_field_validators(field)
                     ],
                     pk=assoc.is_pk,
+                    appears=assoc.appears,
                 )
                 fields.append(input_field)
 

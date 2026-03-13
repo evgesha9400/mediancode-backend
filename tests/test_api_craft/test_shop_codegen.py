@@ -109,7 +109,8 @@ class TestShopApiArtifacts:
         assert data["kebab_name"] == "shop-api"
         assert data["camel_name"] == "ShopApi"
 
-        assert len(data["models"]) == 2
+        # 2 objects × 3 schemas (Create, Update, Response) = 6
+        assert len(data["models"]) == 6
         assert len(data["views"]) == 9
 
         logger.info("TemplateAPI dump verified: naming and counts correct")

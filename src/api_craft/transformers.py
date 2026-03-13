@@ -3,6 +3,7 @@
 
 import re
 
+from api.schemas.literals import FieldAppearance
 from api_craft.models.input import (
     InputAPI,
     InputEndpoint,
@@ -81,10 +82,13 @@ def transform_resolved_model_validator(
     )
 
 
-def transform_field(input_field: InputField) -> TemplateField:
+def transform_field(
+    input_field: InputField, *, force_optional: bool = False
+) -> TemplateField:
     """Transform an :class:`InputField` into a :class:`TemplateField`.
 
     :param input_field: Source field definition.
+    :param force_optional: If True, mark the field as optional (for Update schemas).
     :returns: Template-ready field definition with resolved types.
     """
     validators = [transform_validator(v) for v in input_field.validators]
@@ -94,16 +98,24 @@ def transform_field(input_field: InputField) -> TemplateField:
     return TemplateField(
         type=input_field.type,
         name=input_field.name,
-        optional=input_field.optional,
+        optional=force_optional or input_field.optional,
         description=input_field.description,
         default_value=input_field.default_value,
         validators=validators,
         field_validators=field_validators,
+        pk=input_field.pk,
     )
 
 
+def _filter_fields_by_appears(
+    fields: list[InputField], allowed: set[FieldAppearance]
+) -> list[InputField]:
+    """Filter fields by their `appears` value."""
+    return [f for f in fields if f.appears in allowed]
+
+
 def transform_model(input_model: InputModel) -> TemplateModel:
-    """Convert an :class:`InputModel` to a :class:`TemplateModel`."""
+    """Convert an :class:`InputModel` to a single :class:`TemplateModel` (legacy, all fields)."""
     transformed_fields = [transform_field(field) for field in input_model.fields]
     model_validators = [
         transform_resolved_model_validator(v) for v in input_model.model_validators
@@ -114,6 +126,56 @@ def transform_model(input_model: InputModel) -> TemplateModel:
         description=input_model.description,
         model_validators=model_validators,
     )
+
+
+def split_model_schemas(input_model: InputModel) -> list[TemplateModel]:
+    """Split an InputModel into Create, Update, and Response TemplateModels.
+
+    - Create: fields with appears in (both, request), PK excluded
+    - Update: same as Create but all fields optional
+    - Response: fields with appears in (both, response), PK included
+    """
+    model_validators = [
+        transform_resolved_model_validator(v) for v in input_model.model_validators
+    ]
+
+    # Create fields: non-PK, appears in request
+    create_input_fields = [
+        f for f in input_model.fields if f.appears in ("both", "request") and not f.pk
+    ]
+    create_fields = [transform_field(f) for f in create_input_fields]
+
+    # Update fields: same selection as Create but all optional
+    update_fields = [
+        transform_field(f, force_optional=True) for f in create_input_fields
+    ]
+
+    # Response fields: appears in response (PK included)
+    response_input_fields = [
+        f for f in input_model.fields if f.appears in ("both", "response")
+    ]
+    response_fields = [transform_field(f) for f in response_input_fields]
+
+    return [
+        TemplateModel(
+            name=f"{input_model.name}Create",
+            fields=create_fields,
+            description=input_model.description,
+            model_validators=model_validators,
+        ),
+        TemplateModel(
+            name=f"{input_model.name}Update",
+            fields=update_fields,
+            description=input_model.description,
+            model_validators=[],
+        ),
+        TemplateModel(
+            name=f"{input_model.name}Response",
+            fields=response_fields,
+            description=input_model.description,
+            model_validators=[],
+        ),
+    ]
 
 
 def transform_tag(input_tag: InputTag) -> TemplateTag:
@@ -327,12 +389,39 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
     return orm_models
 
 
+def _has_appears_flags(input_api: InputAPI) -> bool:
+    """Check if any field in the API uses non-default appears flags or has pk=True."""
+    for model in input_api.objects:
+        for field in model.fields:
+            if field.appears != "both" or field.pk:
+                return True
+    return False
+
+
 def transform_api(input_api: InputAPI) -> TemplateAPI:
     """Transform an :class:`InputAPI` instance to a :class:`TemplateAPI` instance."""
-    template_models = [transform_model(model) for model in input_api.objects]
+    use_split = _has_appears_flags(input_api)
 
-    # Build field map and extract fields referenced by model validators
-    field_map = {model.name: model.fields for model in template_models}
+    if use_split:
+        # Derive Create/Update/Response schemas per object
+        template_models = []
+        for model in input_api.objects:
+            template_models.extend(split_model_schemas(model))
+    else:
+        template_models = [transform_model(model) for model in input_api.objects]
+
+    # Build field map for placeholder generation.
+    # Placeholders are keyed by the base object name (used in InputEndpoint.response).
+    if use_split:
+        field_map = {}
+        for model in template_models:
+            # Use Response schema fields for placeholder generation, keyed by base name
+            if model.name.endswith("Response"):
+                base_name = model.name.removesuffix("Response")
+                field_map[base_name] = model.fields
+    else:
+        field_map = {model.name: model.fields for model in template_models}
+
     # For before-mode model validators (e.g. At Least One Required),
     # include the first referenced optional field so placeholders are valid.
     validator_fields: dict[str, set[str]] = {}
@@ -348,17 +437,39 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
                     referenced.add(name)
                     break  # one field per validator suffices
         if referenced:
-            validator_fields[model.name] = referenced
+            # Use base name for split mode so it matches field_map keys
+            key = model.name
+            if use_split and key.endswith("Create"):
+                key = key.removesuffix("Create")
+            validator_fields[key] = referenced
     placeholder_generator = PlaceholderGenerator(field_map, validator_fields)
 
-    transformed_views = [
-        transform_endpoint(
+    # Transform endpoints, remapping model names to derived schemas
+    transformed_views = []
+    for endpoint in input_api.endpoints:
+        view = transform_endpoint(
             endpoint,
             placeholder_generator,
             generate_placeholders=input_api.config.response_placeholders,
         )
-        for endpoint in input_api.endpoints
-    ]
+        if use_split:
+            # Remap request_model → Create/Update, response_model → Response
+            if view.request_model:
+                base_name = view.request_model
+                if endpoint.method in ("PUT", "PATCH"):
+                    view = view.model_copy(
+                        update={"request_model": f"{base_name}Update"}
+                    )
+                else:
+                    view = view.model_copy(
+                        update={"request_model": f"{base_name}Create"}
+                    )
+            if view.response_model:
+                base_name = view.response_model
+                view = view.model_copy(
+                    update={"response_model": f"{base_name}Response"}
+                )
+        transformed_views.append(view)
 
     template_tags = [transform_tag(tag) for tag in input_api.tags]
 

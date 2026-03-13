@@ -473,8 +473,8 @@ class TestMixedMode:
 
     def test_non_pk_endpoint_uses_placeholders(self, mixed_project: Path):
         content = (mixed_project / "src" / "views.py").read_text()
-        # StatusResponse endpoint should have placeholder values
-        assert "StatusResponse(" in content
+        # StatusResponse endpoint should have placeholder values (split to StatusResponseResponse)
+        assert "StatusResponseResponse(" in content
 
     def test_database_files_exist(self, mixed_project: Path):
         assert (mixed_project / "src" / "orm_models.py").exists()

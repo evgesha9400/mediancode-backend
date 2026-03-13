@@ -177,11 +177,12 @@ class TestCrudRoundTrip:
 
     def test_phase_01_create_product(self, generated_shop_api):
         payload = valid_product()
-        TestCrudRoundTrip.product_tracking_id = payload["tracking_id"]
         r = httpx.post(f"{generated_shop_api}/products", json=payload)
         assert r.status_code == 200, f"Create product failed: {r.status_code} {r.text}"
         data = r.json()
-        assert data["tracking_id"] == TestCrudRoundTrip.product_tracking_id
+        # PK is auto-generated; use the response tracking_id for subsequent lookups
+        TestCrudRoundTrip.product_tracking_id = data["tracking_id"]
+        assert data["name"] == payload["name"]
 
     def test_phase_02_list_products(self, generated_shop_api):
         r = httpx.get(f"{generated_shop_api}/products")

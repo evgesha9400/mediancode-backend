@@ -997,11 +997,14 @@ class TestShopApiFullE2E:
         cls = TestShopApiFullE2E
         content = (Path(cls.generated_dir) / "src" / "models.py").read_text()
 
-        # Product model exists
-        assert "class Product(" in content
+        # Product schemas exist (split into Create/Update/Response)
+        assert "class ProductCreate(" in content
+        assert "class ProductUpdate(" in content
+        assert "class ProductResponse(" in content
 
-        # Customer model exists
-        assert "class Customer(" in content
+        # Customer schemas exist
+        assert "class CustomerCreate(" in content
+        assert "class CustomerResponse(" in content
 
         # Field constraints survived generation
         assert "min_length=" in content  # name, customer_name, phone
@@ -1011,7 +1014,7 @@ class TestShopApiFullE2E:
         assert "pattern=" in content  # sku
         assert "multiple_of=" in content  # discount_percent
 
-        # Model validators present
+        # Model validators present on Create schemas
         assert "model_validator" in content
 
     # --- Phase 19: Verify infrastructure files ---
