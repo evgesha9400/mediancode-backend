@@ -323,9 +323,14 @@ def upgrade() -> None:
         sa.Column(
             "is_pk", sa.Boolean(), nullable=False, server_default=sa.text("false")
         ),
+        sa.Column("appears", sa.Text(), nullable=False, server_default="both"),
         sa.ForeignKeyConstraint(["field_id"], ["fields.id"]),
         sa.ForeignKeyConstraint(["object_id"], ["objects.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
+        sa.CheckConstraint(
+            "appears IN ('both', 'request', 'response')",
+            name="ck_fields_on_objects_appears",
+        ),
     )
     op.create_index(
         op.f("ix_fields_on_objects_field_id"),

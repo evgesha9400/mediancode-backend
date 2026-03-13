@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from api.schemas.literals import FieldAppearance
 from api_craft.models.types import PascalCaseName
 
 
@@ -13,6 +14,8 @@ class ObjectFieldReferenceSchema(BaseModel):
 
     :ivar field_id: Reference to Field.id.
     :ivar optional: Whether this field is optional in the object.
+    :ivar is_pk: Whether this field is the primary key.
+    :ivar appears: Where this field appears: both, request, or response.
     """
 
     field_id: UUID = Field(
@@ -20,8 +23,9 @@ class ObjectFieldReferenceSchema(BaseModel):
     )
     optional: bool = Field(default=False, examples=[False])
     is_pk: bool = Field(default=False, alias="isPk", examples=[False])
+    appears: FieldAppearance = Field(default="both")
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class ModelValidatorInput(BaseModel):

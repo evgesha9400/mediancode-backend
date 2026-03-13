@@ -457,9 +457,16 @@ class ObjectFieldAssociation(Base):
     :ivar field_id: Reference to the field.
     :ivar optional: Whether this field is optional in the object (default False = required).
     :ivar position: Order position for field display.
+    :ivar appears: Where this field appears: both, request, or response.
     """
 
     __tablename__ = "fields_on_objects"
+    __table_args__ = (
+        CheckConstraint(
+            "appears IN ('both', 'request', 'response')",
+            name="ck_fields_on_objects_appears",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
@@ -476,6 +483,7 @@ class ObjectFieldAssociation(Base):
     optional: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     position: Mapped[int] = mapped_column(default=0, nullable=False)
     is_pk: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    appears: Mapped[str] = mapped_column(Text, default="both", server_default="both")
 
     # Relationships
     object: Mapped["ObjectDefinition"] = relationship(

@@ -15,6 +15,8 @@ ResponseShape = Literal["object", "list"]
 Container = Literal["List"]
 ValidatorMode = Literal["before", "after"]
 OnDeleteAction = Literal["cascade", "restrict", "set_null"]
+FieldAppearance = Literal["both", "request", "response"]
+Cardinality = Literal["has_one", "has_many", "references", "many_to_many"]
 
 
 def check_constraint_sql(column: str, literal_type: type) -> str:
