@@ -1729,7 +1729,7 @@ components:
 
         :ivar default_value: Default value expression.
 
-        :ivar used_in_apis: Array of endpoint IDs where this field is used.
+        :ivar used_in_apis: Array of API IDs where this field is used.
 
         :ivar constraints: Constraints attached to this field.
 
@@ -2372,7 +2372,7 @@ components:
 
         :ivar fields: List of field references.
 
-        :ivar used_in_apis: Array of endpoint IDs that use this object.
+        :ivar used_in_apis: Array of API IDs that use this object.
 
         :ivar validators: Model validators attached to this object.
 

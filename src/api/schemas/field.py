@@ -120,7 +120,7 @@ class FieldResponse(BaseModel):
     :ivar type_id: Reference to the type definition UUID.
     :ivar description: Field description.
     :ivar default_value: Default value expression.
-    :ivar used_in_apis: Array of endpoint IDs where this field is used.
+    :ivar used_in_apis: Array of API IDs where this field is used.
     :ivar constraints: Constraints attached to this field.
     :ivar validators: Validators attached to this field.
     """

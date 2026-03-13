@@ -103,7 +103,7 @@ class ObjectResponse(BaseModel):
     :ivar name: Object name.
     :ivar description: Object description.
     :ivar fields: List of field references.
-    :ivar used_in_apis: Array of endpoint IDs that use this object.
+    :ivar used_in_apis: Array of API IDs that use this object.
     :ivar validators: Model validators attached to this object.
     :ivar relationships: Object relationships.
     """

@@ -225,16 +225,20 @@ class ObjectService(BaseService[ObjectDefinition]):
         await self.db.flush()
 
     async def get_used_in_apis(self, object_id: UUID) -> list[UUID]:
-        """Get endpoint IDs where this object is used.
+        """Get API IDs where this object is used.
 
         :param object_id: The object's ID.
-        :returns: List of endpoint IDs.
+        :returns: List of API IDs.
         """
-        query = select(ApiEndpoint.id).where(
-            or_(
-                ApiEndpoint.query_params_object_id == object_id,
-                ApiEndpoint.object_id == object_id,
+        query = (
+            select(ApiEndpoint.api_id)
+            .where(
+                or_(
+                    ApiEndpoint.query_params_object_id == object_id,
+                    ApiEndpoint.object_id == object_id,
+                )
             )
+            .distinct()
         )
         result = await self.db.execute(query)
         return list(result.scalars().all())

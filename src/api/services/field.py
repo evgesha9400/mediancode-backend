@@ -219,10 +219,10 @@ class FieldService(BaseService[FieldModel]):
         await self.db.flush()
 
     async def get_used_in_apis(self, field_id: UUID) -> list[UUID]:
-        """Get endpoint IDs where this field is used.
+        """Get API IDs where this field is used.
 
         :param field_id: The field's ID.
-        :returns: List of endpoint IDs.
+        :returns: List of API IDs.
         """
         objects_subquery = (
             select(ObjectFieldAssociation.object_id)
@@ -230,7 +230,7 @@ class FieldService(BaseService[FieldModel]):
             .subquery()
         )
         query = (
-            select(ApiEndpoint.id)
+            select(ApiEndpoint.api_id)
             .where(
                 or_(
                     ApiEndpoint.query_params_object_id.in_(select(objects_subquery)),
