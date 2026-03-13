@@ -725,6 +725,73 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /v1/objects/{object_id}/relationships:
+    post:
+      tags:
+      - Objects
+      summary: Create a relationship
+      description: Create a relationship from this object to a target object. Auto-creates
+        the inverse.
+      operationId: create_relationship_v1_objects__object_id__relationships_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: object_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Object Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObjectRelationshipCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectRelationshipResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/objects/{object_id}/relationships/{relationship_id}:
+    delete:
+      tags:
+      - Objects
+      summary: Delete a relationship
+      description: Delete a relationship and its auto-created inverse.
+      operationId: delete_relationship_v1_objects__object_id__relationships__relationship_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: object_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Object Id
+      - name: relationship_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Relationship Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /v1/endpoints:
     get:
       tags:
@@ -1009,22 +1076,14 @@ components:
           title: Queryparamsobjectid
           examples:
           - 00000000-0000-0000-0007-000000000001
-        requestBodyObjectId:
+        objectId:
           anyOf:
           - type: string
             format: uuid
           - type: 'null'
-          title: Requestbodyobjectid
+          title: Objectid
           examples:
           - 00000000-0000-0000-0007-000000000002
-        responseBodyObjectId:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Responsebodyobjectid
-          examples:
-          - 00000000-0000-0000-0007-000000000001
         useEnvelope:
           type: boolean
           title: Useenvelope
@@ -1065,9 +1124,7 @@ components:
 
         :ivar query_params_object_id: Optional query params object reference.
 
-        :ivar request_body_object_id: Optional request body object reference.
-
-        :ivar response_body_object_id: Optional response body object reference.
+        :ivar object_id: Optional object reference for request/response body.
 
         :ivar use_envelope: Whether to wrap response in envelope.
 
@@ -1121,22 +1178,14 @@ components:
           title: Queryparamsobjectid
           examples:
           - 00000000-0000-0000-0007-000000000001
-        requestBodyObjectId:
+        objectId:
           anyOf:
           - type: string
             format: uuid
           - type: 'null'
-          title: Requestbodyobjectid
+          title: Objectid
           examples:
           - 00000000-0000-0000-0007-000000000002
-        responseBodyObjectId:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Responsebodyobjectid
-          examples:
-          - 00000000-0000-0000-0007-000000000001
         useEnvelope:
           type: boolean
           title: Useenvelope
@@ -1176,9 +1225,7 @@ components:
 
         :ivar query_params_object_id: Query params object reference.
 
-        :ivar request_body_object_id: Request body object reference.
-
-        :ivar response_body_object_id: Response body object reference.
+        :ivar object_id: Object reference for request/response body.
 
         :ivar use_envelope: Whether response is wrapped in envelope.
 
@@ -1238,18 +1285,12 @@ components:
             format: uuid
           - type: 'null'
           title: Queryparamsobjectid
-        requestBodyObjectId:
+        objectId:
           anyOf:
           - type: string
             format: uuid
           - type: 'null'
-          title: Requestbodyobjectid
-        responseBodyObjectId:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Responsebodyobjectid
+          title: Objectid
         useEnvelope:
           anyOf:
           - type: boolean
@@ -1282,9 +1323,7 @@ components:
 
         :ivar query_params_object_id: Updated query params object reference.
 
-        :ivar request_body_object_id: Updated request body object reference.
-
-        :ivar response_body_object_id: Updated response body object reference.
+        :ivar object_id: Updated object reference for request/response body.
 
         :ivar use_envelope: Updated envelope setting.
 
@@ -2141,22 +2180,130 @@ components:
           title: Fieldid
           examples:
           - 00000000-0000-0000-0003-000000000001
-        required:
+        optional:
           type: boolean
-          title: Required
+          title: Optional
+          default: false
           examples:
-          - true
+          - false
+        isPk:
+          type: boolean
+          title: Ispk
+          default: false
+          examples:
+          - false
+        appears:
+          type: string
+          enum:
+          - both
+          - request
+          - response
+          title: Appears
+          default: both
       type: object
       required:
       - fieldId
-      - required
       title: ObjectFieldReferenceSchema
       description: 'Schema for a field reference in an object.
 
 
         :ivar field_id: Reference to Field.id.
 
-        :ivar required: Whether this field is required in the object.'
+        :ivar optional: Whether this field is optional in the object.
+
+        :ivar is_pk: Whether this field is the primary key.
+
+        :ivar appears: Where this field appears: both, request, or response.'
+    ObjectRelationshipCreate:
+      properties:
+        targetObjectId:
+          type: string
+          format: uuid
+          title: Targetobjectid
+        name:
+          type: string
+          title: Name
+        cardinality:
+          type: string
+          enum:
+          - has_one
+          - has_many
+          - references
+          - many_to_many
+          title: Cardinality
+      type: object
+      required:
+      - targetObjectId
+      - name
+      - cardinality
+      title: ObjectRelationshipCreate
+      description: 'Request schema for creating a relationship.
+
+
+        :ivar target_object_id: Reference to the target object.
+
+        :ivar name: Relationship name.
+
+        :ivar cardinality: Relationship type.'
+    ObjectRelationshipResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        sourceObjectId:
+          type: string
+          format: uuid
+          title: Sourceobjectid
+        targetObjectId:
+          type: string
+          format: uuid
+          title: Targetobjectid
+        name:
+          type: string
+          title: Name
+        cardinality:
+          type: string
+          enum:
+          - has_one
+          - has_many
+          - references
+          - many_to_many
+          title: Cardinality
+        isInferred:
+          type: boolean
+          title: Isinferred
+          default: false
+        inverseId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Inverseid
+      type: object
+      required:
+      - id
+      - sourceObjectId
+      - targetObjectId
+      - name
+      - cardinality
+      title: ObjectRelationshipResponse
+      description: 'Response schema for a relationship.
+
+
+        :ivar id: Unique identifier.
+
+        :ivar source_object_id: Source object reference.
+
+        :ivar target_object_id: Target object reference.
+
+        :ivar name: Relationship name.
+
+        :ivar cardinality: Relationship type.
+
+        :ivar is_inferred: Whether this is an auto-created inverse.
+
+        :ivar inverse_id: Reference to the inverse relationship.'
     ObjectResponse:
       properties:
         id:
@@ -2201,6 +2348,11 @@ components:
             $ref: '#/components/schemas/ModelValidatorResponse'
           type: array
           title: Validators
+        relationships:
+          items:
+            $ref: '#/components/schemas/ObjectRelationshipResponse'
+          type: array
+          title: Relationships
       type: object
       required:
       - id
@@ -2222,7 +2374,9 @@ components:
 
         :ivar used_in_apis: Array of endpoint IDs that use this object.
 
-        :ivar validators: Model validators attached to this object.'
+        :ivar validators: Model validators attached to this object.
+
+        :ivar relationships: Object relationships.'
     ObjectUpdate:
       properties:
         name:
