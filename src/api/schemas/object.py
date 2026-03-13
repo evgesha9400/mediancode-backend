@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from api.schemas.literals import FieldAppearance
+from api.schemas.relationship import ObjectRelationshipResponse
 from api_craft.models.types import PascalCaseName
 
 
@@ -104,6 +105,7 @@ class ObjectResponse(BaseModel):
     :ivar fields: List of field references.
     :ivar used_in_apis: Array of endpoint IDs that use this object.
     :ivar validators: Model validators attached to this object.
+    :ivar relationships: Object relationships.
     """
 
     id: UUID = Field(..., examples=["00000000-0000-0000-0007-000000000001"])
@@ -119,5 +121,6 @@ class ObjectResponse(BaseModel):
         examples=[["00000000-0000-0000-0004-000000000001"]],
     )
     validators: list[ModelValidatorResponse] = Field(default_factory=list)
+    relationships: list[ObjectRelationshipResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

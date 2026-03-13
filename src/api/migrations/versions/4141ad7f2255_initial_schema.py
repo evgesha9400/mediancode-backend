@@ -345,6 +345,55 @@ def upgrade() -> None:
         unique=False,
     )
 
+    # Create object_relationships table
+    op.create_table(
+        "object_relationships",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
+        sa.Column("source_object_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("target_object_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("name", sa.Text(), nullable=False),
+        sa.Column("cardinality", sa.Text(), nullable=False),
+        sa.Column(
+            "is_inferred",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.text("false"),
+        ),
+        sa.Column("inverse_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("position", sa.Integer(), nullable=False, server_default="0"),
+        sa.ForeignKeyConstraint(
+            ["source_object_id"], ["objects.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["target_object_id"], ["objects.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["inverse_id"], ["object_relationships.id"], ondelete="SET NULL"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.CheckConstraint(
+            "cardinality IN ('has_one', 'has_many', 'references', 'many_to_many')",
+            name="ck_object_relationships_cardinality",
+        ),
+    )
+    op.create_index(
+        op.f("ix_object_relationships_source_object_id"),
+        "object_relationships",
+        ["source_object_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_object_relationships_target_object_id"),
+        "object_relationships",
+        ["target_object_id"],
+        unique=False,
+    )
+
     # Create applied_model_validators table (links objects to model_validator_templates)
     op.create_table(
         "applied_model_validators",
@@ -482,6 +531,15 @@ def downgrade() -> None:
         table_name="applied_model_validators",
     )
     op.drop_table("applied_model_validators")
+    op.drop_index(
+        op.f("ix_object_relationships_target_object_id"),
+        table_name="object_relationships",
+    )
+    op.drop_index(
+        op.f("ix_object_relationships_source_object_id"),
+        table_name="object_relationships",
+    )
+    op.drop_table("object_relationships")
     op.drop_index(
         op.f("ix_fields_on_objects_object_id"),
         table_name="fields_on_objects",

@@ -447,6 +447,11 @@ class ObjectDefinition(Base):
         cascade="all, delete-orphan",
         order_by="AppliedModelValidatorModel.position",
     )
+    relationships: Mapped[list["ObjectRelationship"]] = relationship(
+        "ObjectRelationship",
+        foreign_keys="ObjectRelationship.source_object_id",
+        cascade="all, delete-orphan",
+    )
 
 
 class ObjectFieldAssociation(Base):
@@ -490,6 +495,62 @@ class ObjectFieldAssociation(Base):
         back_populates="field_associations"
     )
     field: Mapped["FieldModel"] = relationship(back_populates="object_associations")
+
+
+class ObjectRelationship(Base):
+    """Relationship between two object definitions.
+
+    :ivar id: Unique identifier for the relationship.
+    :ivar source_object_id: Reference to the source object.
+    :ivar target_object_id: Reference to the target object.
+    :ivar name: Relationship name (e.g. "posts", "author").
+    :ivar cardinality: Relationship type (has_one, has_many, references, many_to_many).
+    :ivar is_inferred: True for auto-created inverse side.
+    :ivar inverse_id: Reference to the inverse relationship.
+    :ivar position: Display order position.
+    """
+
+    __tablename__ = "object_relationships"
+
+    id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
+    )
+    source_object_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("objects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_object_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("objects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    cardinality: Mapped[str] = mapped_column(Text, nullable=False)
+    is_inferred: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    inverse_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("object_relationships.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    position: Mapped[int] = mapped_column(default=0, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "cardinality IN ('has_one', 'has_many', 'references', 'many_to_many')",
+            name="ck_object_relationships_cardinality",
+        ),
+    )
+
+    # Relationships
+    source_object: Mapped["ObjectDefinition"] = relationship(
+        "ObjectDefinition", foreign_keys=[source_object_id]
+    )
+    target_object: Mapped["ObjectDefinition"] = relationship(
+        "ObjectDefinition", foreign_keys=[target_object_id]
+    )
 
 
 class AppliedModelValidatorModel(Base):
