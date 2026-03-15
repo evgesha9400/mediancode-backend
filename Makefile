@@ -99,12 +99,12 @@ clean: ## Remove Python caches and test output
 
 .PHONY: docker-build
 docker-build: ## Build Docker image locally (prunes old layers)
-	@docker build -t median-code-backend .
+	@docker build -t mediancode-backend .
 	@docker image prune -f
 
 .PHONY: docker-run
 docker-run: ## Run Docker image locally (port $(PORT))
-	@docker run -p $(PORT):80 median-code-backend
+	@docker run -p $(PORT):80 mediancode-backend
 
 # =============================================================================
 #  HELP

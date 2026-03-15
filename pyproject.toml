@@ -1,5 +1,5 @@
 [project]
-name = "median-code-backend"
+name = "mediancode-backend"
 version = "0.1.0"
 description = "Median Code Backend - FastAPI Code Generation API"
 authors = [

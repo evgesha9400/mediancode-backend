@@ -30,7 +30,7 @@ class BackendStack(Stack):
             self,
             "BackendCluster",
             vpc=vpc,
-            cluster_name="median-code-backend",
+            cluster_name="mediancode-backend",
             container_insights_v2=ecs.ContainerInsights.DISABLED,
         )
 
@@ -38,7 +38,7 @@ class BackendStack(Stack):
         log_group = logs.LogGroup(
             self,
             "BackendLogGroup",
-            log_group_name="/ecs/median-code-backend",
+            log_group_name="/ecs/mediancode-backend",
             retention=logs.RetentionDays.ONE_WEEK,
             removal_policy=RemovalPolicy.DESTROY,
         )
