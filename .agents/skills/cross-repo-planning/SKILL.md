@@ -26,8 +26,8 @@ When an implementation spans both backend and frontend repos, **always split int
 
 | Repo | Path | Plans directory |
 |------|------|-----------------|
-| Backend | `/Users/evgesha/Documents/Projects/median-code-backend` | `docs/plans/` |
-| Frontend | `/Users/evgesha/Documents/Projects/median-code-frontend` | `docs/plans/` |
+| Backend | `/Users/evgesha/Documents/Projects/mediancode/repos/median-code-backend` | `docs/plans/` |
+| Frontend | `/Users/evgesha/Documents/Projects/mediancode/repos/median-code-frontend` | `docs/plans/` |
 
 ## Process
 
