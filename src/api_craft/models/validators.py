@@ -231,6 +231,221 @@ def validate_database_config(
         )
 
 
+# Type sets for operator compatibility (Rule 6)
+NUMERIC_TYPES = {"int", "float", "Decimal", "decimal", "decimal.Decimal"}
+DATE_TIME_TYPES = {
+    "date",
+    "datetime",
+    "datetime.date",
+    "datetime.datetime",
+    "time",
+    "datetime.time",
+}
+ORDERED_TYPES = NUMERIC_TYPES | DATE_TIME_TYPES
+STRING_TYPES = {"str"}
+
+OPERATOR_VALID_TYPES: dict[str, set[str]] = {
+    "eq": set(),  # empty = all types valid
+    "in": set(),  # empty = all types valid
+    "gte": ORDERED_TYPES,
+    "lte": ORDERED_TYPES,
+    "gt": ORDERED_TYPES,
+    "lt": ORDERED_TYPES,
+    "like": STRING_TYPES,
+    "ilike": STRING_TYPES,
+}
+
+
+def _resolve_target(
+    endpoint: "InputEndpoint",
+    objects_by_name: dict[str, "InputModel"],
+) -> "InputModel | None":
+    """Resolve the target object for an endpoint.
+
+    Returns None if the endpoint has no field-based params (legacy mode).
+
+    :param endpoint: The endpoint to resolve target for.
+    :param objects_by_name: Map of object names to InputModel.
+    :returns: The resolved target InputModel, or None for legacy endpoints.
+    :raises ValueError: If target cannot be determined or is invalid.
+    """
+    has_field_params = _has_field_params(endpoint)
+
+    if endpoint.response_shape == "object":
+        # Detail endpoint: target is the response model
+        if endpoint.target and endpoint.target != endpoint.response:
+            raise ValueError(
+                f"Endpoint '{endpoint.name}': detail endpoint target '{endpoint.target}' "
+                f"must match response '{endpoint.response}'"
+            )
+        target_name = endpoint.target or endpoint.response
+    else:
+        # List endpoint: target must be explicit when field params are used
+        if has_field_params and not endpoint.target:
+            raise ValueError(
+                f"Endpoint '{endpoint.name}': list endpoint with field-based params "
+                f"requires an explicit 'target' object"
+            )
+        target_name = endpoint.target
+
+    if not target_name:
+        return None
+
+    target = objects_by_name.get(target_name)
+    if not target:
+        raise ValueError(
+            f"Endpoint '{endpoint.name}': target '{target_name}' does not exist in objects"
+        )
+    return target
+
+
+def _has_field_params(endpoint: "InputEndpoint") -> bool:
+    """Check if an endpoint has any field-based (non-legacy) params."""
+    if endpoint.path_params:
+        for p in endpoint.path_params:
+            if p.field is not None:
+                return True
+    if endpoint.query_params:
+        for q in endpoint.query_params:
+            if q.field is not None:
+                return True
+    return False
+
+
+def validate_param_inference(
+    endpoints: Iterable["InputEndpoint"],
+    objects: Iterable["InputModel"],
+) -> None:
+    """Validate all seven param inference rules across endpoints.
+
+    :param endpoints: Collection of endpoint definitions.
+    :param objects: Collection of object definitions.
+    :raises ValueError: If any rule is violated.
+    """
+    objects_by_name: dict[str, "InputModel"] = {str(obj.name): obj for obj in objects}
+
+    for endpoint in endpoints:
+        # Skip endpoints with no field-based params (legacy mode)
+        if not _has_field_params(endpoint) and not endpoint.target:
+            continue
+
+        # Rule 1: Target is known
+        target = _resolve_target(endpoint, objects_by_name)
+        if target is None:
+            continue
+
+        target_fields = {str(f.name): f for f in target.fields}
+        pk_field_names = {str(f.name) for f in target.fields if f.pk}
+
+        # Validate pagination params (must not have field/operator)
+        if endpoint.query_params:
+            for qp in endpoint.query_params:
+                if qp.pagination:
+                    if qp.field is not None:
+                        raise ValueError(
+                            f"Endpoint '{endpoint.name}': pagination param '{qp.name}' "
+                            f"must not have 'field' set"
+                        )
+                    if qp.operator is not None:
+                        raise ValueError(
+                            f"Endpoint '{endpoint.name}': pagination param '{qp.name}' "
+                            f"must not have 'operator' set"
+                        )
+
+        # Rule 2: Every param field exists on target
+        if endpoint.path_params:
+            for pp in endpoint.path_params:
+                if pp.field and pp.field not in target_fields:
+                    raise ValueError(
+                        f"Endpoint '{endpoint.name}': field '{pp.field}' "
+                        f"does not exist on '{target.name}'"
+                    )
+
+        if endpoint.query_params:
+            for qp in endpoint.query_params:
+                if qp.field and not qp.pagination and qp.field not in target_fields:
+                    raise ValueError(
+                        f"Endpoint '{endpoint.name}': field '{qp.field}' "
+                        f"does not exist on '{target.name}'"
+                    )
+
+        # Rule 3 & 5 depend on response_shape
+        if endpoint.response_shape == "object":
+            # Rule 3: Detail -- last path param maps to PK
+            if endpoint.path_params:
+                last_param = endpoint.path_params[-1]
+                if last_param.field and last_param.field not in pk_field_names:
+                    raise ValueError(
+                        f"Endpoint '{endpoint.name}': detail endpoint's last path "
+                        f"param '{last_param.name}' must map to a primary key field, "
+                        f"but '{last_param.field}' is not a PK on '{target.name}'"
+                    )
+
+            # Rule 4: Detail -- no query params
+            if endpoint.query_params:
+                has_field_query = any(
+                    qp.field is not None for qp in endpoint.query_params
+                )
+                if has_field_query:
+                    raise ValueError(
+                        f"Endpoint '{endpoint.name}': query params with field "
+                        f"references are not allowed on detail (object) endpoints"
+                    )
+
+        elif endpoint.response_shape == "list":
+            # Rule 5: List -- no path param maps to PK
+            if endpoint.path_params:
+                for pp in endpoint.path_params:
+                    if pp.field and pp.field in pk_field_names:
+                        raise ValueError(
+                            f"Endpoint '{endpoint.name}': path param '{pp.name}' "
+                            f"maps to primary key field '{pp.field}' on a list endpoint. "
+                            f"Use a detail endpoint for PK lookups"
+                        )
+
+        # Rule 6: Operator is compatible with field type
+        if endpoint.query_params:
+            for qp in endpoint.query_params:
+                if qp.operator and qp.field and not qp.pagination:
+                    target_field = target_fields[qp.field]
+                    _validate_operator_type_compat(
+                        endpoint_name=str(endpoint.name),
+                        param_name=str(qp.name),
+                        operator=qp.operator,
+                        field_type=str(target_field.type),
+                    )
+
+
+def _validate_operator_type_compat(
+    endpoint_name: str,
+    param_name: str,
+    operator: str,
+    field_type: str,
+) -> None:
+    """Validate that an operator is compatible with the field's type.
+
+    :param endpoint_name: Endpoint name for error messages.
+    :param param_name: Param name for error messages.
+    :param operator: The filter operator.
+    :param field_type: The field's type string.
+    :raises ValueError: If operator is incompatible with field type.
+    """
+    valid_types = OPERATOR_VALID_TYPES.get(operator)
+    if valid_types is None:
+        return  # Unknown operator -- handled by Pydantic Literal validation
+
+    if not valid_types:
+        return  # Empty set = all types valid (eq, in)
+
+    # Normalize the field type for lookup
+    base_type = field_type.split(".")[0] if "." in field_type else field_type
+    if field_type not in valid_types and base_type not in valid_types:
+        raise ValueError(
+            f"Endpoint '{endpoint_name}': operator '{operator}' is not valid "
+            f"for field type '{field_type}' on param '{param_name}'"
+        )
+
+
 SNAKE_CASE_PATTERN = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
 
 
