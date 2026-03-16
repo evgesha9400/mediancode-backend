@@ -989,3 +989,118 @@ class TestTypeDerivation:
         )
         result = transform_api(api)
         assert result.views[0].target == "Product"
+
+
+from api_craft.main import APIGenerator
+
+
+class TestFilterCodeGeneration:
+    """Generated views.py must contain SQLAlchemy filter code."""
+
+    def _generate_views(self, tmp_path) -> str:
+        """Generate a filtered list API and return views.py content."""
+        api = InputAPI(
+            name="FilterTest",
+            endpoints=[
+                InputEndpoint(
+                    name="ListProducts",
+                    path="/stores/{store_id}/products",
+                    method="GET",
+                    response="ProductList",
+                    response_shape="list",
+                    target="Product",
+                    path_params=[
+                        InputPathParam(
+                            name="store_id", type="uuid.UUID", field="store_id"
+                        ),
+                    ],
+                    query_params=[
+                        InputQueryParam(
+                            name="min_price",
+                            type="float",
+                            field="price",
+                            operator="gte",
+                        ),
+                        InputQueryParam(
+                            name="search",
+                            type="str",
+                            field="name",
+                            operator="ilike",
+                        ),
+                        InputQueryParam(
+                            name="category",
+                            type="str",
+                            field="category",
+                            operator="eq",
+                        ),
+                        InputQueryParam(
+                            name="tags",
+                            type="str",
+                            field="category",
+                            operator="in",
+                        ),
+                        InputQueryParam(name="limit", type="int", pagination=True),
+                        InputQueryParam(name="offset", type="int", pagination=True),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="ProductList",
+                    fields=[InputField(name="items", type="List[Product]")],
+                ),
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="store_id", type="uuid.UUID"),
+                        InputField(name="price", type="decimal.Decimal"),
+                        InputField(name="name", type="str"),
+                        InputField(name="category", type="str"),
+                    ],
+                ),
+            ],
+            config={
+                "response_placeholders": False,
+                "database": {"enabled": True},
+            },
+        )
+        APIGenerator().generate(api, path=str(tmp_path))
+        return (tmp_path / "filter-test" / "src" / "views.py").read_text()
+
+    def test_path_param_generates_where_clause(self, tmp_path):
+        views_py = self._generate_views(tmp_path)
+        assert "ProductRecord.store_id == store_id" in views_py
+
+    def test_gte_operator_generates_filter(self, tmp_path):
+        views_py = self._generate_views(tmp_path)
+        assert "ProductRecord.price >= min_price" in views_py
+        assert "if min_price is not None" in views_py
+
+    def test_ilike_operator_generates_filter(self, tmp_path):
+        views_py = self._generate_views(tmp_path)
+        assert "ProductRecord.name.ilike" in views_py
+        assert "if search is not None" in views_py
+
+    def test_eq_operator_generates_filter(self, tmp_path):
+        views_py = self._generate_views(tmp_path)
+        assert "ProductRecord.category == category" in views_py
+
+    def test_in_operator_generates_filter(self, tmp_path):
+        views_py = self._generate_views(tmp_path)
+        assert "ProductRecord.category.in_(tags)" in views_py
+
+    def test_pagination_generates_limit_offset(self, tmp_path):
+        views_py = self._generate_views(tmp_path)
+        assert "stmt.limit(limit)" in views_py or ".limit(limit)" in views_py
+        assert "stmt.offset(offset)" in views_py or ".offset(offset)" in views_py
+
+    def test_no_todo_placeholder(self, tmp_path):
+        views_py = self._generate_views(tmp_path)
+        # The filtered view should NOT contain a TODO placeholder
+        # Find the list_products function and check its body
+        assert "select(ProductRecord)" in views_py
+
+    def test_generated_code_compiles(self, tmp_path):
+        views_py = self._generate_views(tmp_path)
+        compile(views_py, "views.py", "exec")

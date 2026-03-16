@@ -36,7 +36,12 @@ if orm_pk_map:
             for p in view.path_params:
                 if p.snake_name in orm_pk_map:
                     orm_model_names_from_pk.add(orm_pk_map[p.snake_name])
-orm_model_names = sorted(orm_model_names_from_response | orm_model_names_from_pk)
+orm_model_names_from_target = set()
+if orm_model_map:
+    for view in views:
+        if view.target and view.target in orm_model_map:
+            orm_model_names_from_target.add(orm_model_map[view.target])
+orm_model_names = sorted(orm_model_names_from_response | orm_model_names_from_pk | orm_model_names_from_target)
 %>
 % if has_no_response:
 from starlette.responses import Response
@@ -83,6 +88,10 @@ api_router = APIRouter()
     # Determine if this view's response model has an ORM model
     has_orm = orm_model_map and view.response_model and view.response_model in orm_model_map
     orm_class = orm_model_map.get(view.response_model, "") if orm_model_map and view.response_model else ""
+    # For list endpoints with target, resolve ORM class from target instead
+    if not has_orm and view.target and orm_model_map and view.target in orm_model_map:
+        orm_class = orm_model_map[view.target]
+        has_orm = True
     # For delete without response model, resolve ORM class from path param PK
     if not has_orm and view.method == "delete" and orm_pk_map and view.path_params:
         for p in view.path_params:
@@ -117,7 +126,72 @@ async def ${view.snake_name}():
 % endif
 % if database_config and has_orm:
 ## Database-backed view body
-% if view.method == "get" and view.response_shape == "list":
+% if view.method == "get" and view.response_shape == "list" and view.target:
+## Filtered list with param inference
+<%
+    # Collect path param where clauses (always applied)
+    path_where_clauses = []
+    for pp in (view.path_params or []):
+        if pp.field:
+            path_where_clauses.append(f"{orm_class}.{pp.field} == {pp.snake_name}")
+
+    # Collect query param filters (applied conditionally)
+    query_filters = []
+    pagination_params = []
+    for qp in (view.query_params or []):
+        if qp.pagination:
+            pagination_params.append(qp)
+        elif qp.field and qp.operator:
+            query_filters.append(qp)
+
+    # Build initial select with path param wheres
+    if path_where_clauses:
+        where_str = ", ".join(path_where_clauses)
+    else:
+        where_str = None
+%>\
+% if where_str:
+    stmt = select(${orm_class}).where(${where_str})
+% else:
+    stmt = select(${orm_class})
+% endif
+% for qp in query_filters:
+    if ${qp.snake_name} is not None:
+<%
+    op = qp.operator
+    if op == "eq":
+        filter_expr = f"{orm_class}.{qp.field} == {qp.snake_name}"
+    elif op == "gte":
+        filter_expr = f"{orm_class}.{qp.field} >= {qp.snake_name}"
+    elif op == "lte":
+        filter_expr = f"{orm_class}.{qp.field} <= {qp.snake_name}"
+    elif op == "gt":
+        filter_expr = f"{orm_class}.{qp.field} > {qp.snake_name}"
+    elif op == "lt":
+        filter_expr = f"{orm_class}.{qp.field} < {qp.snake_name}"
+    elif op == "like":
+        filter_expr = f'{orm_class}.{qp.field}.like(f"%{{{qp.snake_name}}}%")'
+    elif op == "ilike":
+        filter_expr = f'{orm_class}.{qp.field}.ilike(f"%{{{qp.snake_name}}}%")'
+    elif op == "in":
+        filter_expr = f"{orm_class}.{qp.field}.in_({qp.snake_name})"
+    else:
+        filter_expr = f"{orm_class}.{qp.field} == {qp.snake_name}"
+%>\
+        stmt = stmt.where(${filter_expr})
+% endfor
+% for pp in pagination_params:
+% if "limit" in pp.snake_name:
+    if ${pp.snake_name} is not None:
+        stmt = stmt.limit(${pp.snake_name})
+% elif "offset" in pp.snake_name or "skip" in pp.snake_name:
+    if ${pp.snake_name} is not None:
+        stmt = stmt.offset(${pp.snake_name})
+% endif
+% endfor
+    result = await session.execute(stmt)
+    return result.scalars().all()
+% elif view.method == "get" and view.response_shape == "list":
     result = await session.execute(select(${orm_class}))
     return result.scalars().all()
 % elif view.method == "get":
