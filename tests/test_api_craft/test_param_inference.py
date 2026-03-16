@@ -769,3 +769,86 @@ class TestBackwardCompatibility:
             ],
         )
         assert api is not None
+
+
+from api_craft.models.template import (
+    TemplatePathParam,
+    TemplateQueryParam,
+    TemplateView,
+)
+
+
+class TestTemplateModelExtensions:
+    def test_template_path_param_has_field(self):
+        param = TemplatePathParam(
+            snake_name="store_id",
+            camel_name="StoreId",
+            type="uuid.UUID",
+            title="Store Id",
+            field="store_id",
+        )
+        assert param.field == "store_id"
+
+    def test_template_path_param_field_defaults_none(self):
+        param = TemplatePathParam(
+            snake_name="item_id",
+            camel_name="ItemId",
+            type="int",
+            title="Item Id",
+        )
+        assert param.field is None
+
+    def test_template_query_param_has_field_operator_pagination(self):
+        param = TemplateQueryParam(
+            snake_name="min_price",
+            camel_name="MinPrice",
+            type="float",
+            title="Min Price",
+            optional=True,
+            field="price",
+            operator="gte",
+        )
+        assert param.field == "price"
+        assert param.operator == "gte"
+        assert param.pagination is False
+
+    def test_template_query_param_pagination(self):
+        param = TemplateQueryParam(
+            snake_name="limit",
+            camel_name="Limit",
+            type="int",
+            title="Limit",
+            optional=True,
+            pagination=True,
+        )
+        assert param.pagination is True
+
+    def test_template_view_has_target(self):
+        view = TemplateView(
+            snake_name="list_products",
+            camel_name="ListProducts",
+            path="/products",
+            method="get",
+            response_model="ProductList",
+            request_model=None,
+            response_placeholders=None,
+            query_params=[],
+            path_params=[],
+            response_shape="list",
+            target="Product",
+        )
+        assert view.target == "Product"
+
+    def test_template_view_target_defaults_none(self):
+        view = TemplateView(
+            snake_name="get_items",
+            camel_name="GetItems",
+            path="/items",
+            method="get",
+            response_model="Item",
+            request_model=None,
+            response_placeholders=None,
+            query_params=[],
+            path_params=[],
+        )
+        assert view.target is None
