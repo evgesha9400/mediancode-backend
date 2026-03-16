@@ -164,6 +164,7 @@ class InputEndpoint(BaseModel):
     :ivar description: Human-readable description for OpenAPI documentation.
     :ivar use_envelope: Whether to wrap response in a standard envelope.
     :ivar response_shape: Response shape - 'object' for single item, 'list' for array.
+    :ivar target: The object being queried/filtered by this endpoint.
     """
 
     name: PascalCaseName
@@ -177,6 +178,7 @@ class InputEndpoint(BaseModel):
     description: str | None = None
     use_envelope: bool = True
     response_shape: ResponseShape = "object"
+    target: str | None = None
 
     @model_validator(mode="after")
     def _validate_path_parameters(self) -> Self:

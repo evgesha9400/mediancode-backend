@@ -3,7 +3,7 @@
 
 import pytest
 from api_craft.models.enums import FilterOperator
-from api_craft.models.input import InputPathParam, InputQueryParam
+from api_craft.models.input import InputEndpoint, InputPathParam, InputQueryParam
 
 
 class TestFilterOperatorEnum:
@@ -53,3 +53,23 @@ class TestInputQueryParamFields:
         assert param.pagination is True
         assert param.field is None
         assert param.operator is None
+
+
+class TestInputEndpointTarget:
+    def test_target_defaults_none(self):
+        """target is optional for backward compatibility."""
+        endpoint = InputEndpoint(
+            name="GetItems", path="/items", method="GET", response="Item"
+        )
+        assert endpoint.target is None
+
+    def test_target_accepts_value(self):
+        endpoint = InputEndpoint(
+            name="GetItems",
+            path="/items",
+            method="GET",
+            response="ItemList",
+            response_shape="list",
+            target="Item",
+        )
+        assert endpoint.target == "Item"
