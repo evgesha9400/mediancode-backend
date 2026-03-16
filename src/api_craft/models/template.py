@@ -64,6 +64,7 @@ class TemplateQueryParam(BaseModel):
     field: str | None = None
     operator: str | None = None
     pagination: bool = False
+    pagination_role: str | None = None
 
 
 class TemplatePathParam(BaseModel):

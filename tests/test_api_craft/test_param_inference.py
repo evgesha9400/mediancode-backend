@@ -823,6 +823,30 @@ class TestTemplateModelExtensions:
         )
         assert param.pagination is True
 
+    def test_template_query_param_pagination_role_defaults_none(self):
+        param = TemplateQueryParam(
+            snake_name="min_price",
+            camel_name="MinPrice",
+            type="float",
+            title="Min Price",
+            optional=True,
+            field="price",
+            operator="gte",
+        )
+        assert param.pagination_role is None
+
+    def test_template_query_param_pagination_role(self):
+        param = TemplateQueryParam(
+            snake_name="page_size",
+            camel_name="PageSize",
+            type="int",
+            title="Page Size",
+            optional=True,
+            pagination=True,
+            pagination_role="limit",
+        )
+        assert param.pagination_role == "limit"
+
     def test_template_view_has_target(self):
         view = TemplateView(
             snake_name="list_products",
@@ -966,6 +990,32 @@ class TestTypeDerivation:
         assert qp.type == "int"
         assert qp.pagination is True
 
+    def test_pagination_role_assigned_by_position(self):
+        """First pagination param gets 'limit' role, second gets 'offset'."""
+        api = self._build_api(
+            query_params=[
+                InputQueryParam(name="page_size", type="int", pagination=True),
+                InputQueryParam(name="page_number", type="int", pagination=True),
+            ],
+        )
+        result = transform_api(api)
+        qps = result.views[0].query_params
+        assert qps[0].pagination_role == "limit"
+        assert qps[1].pagination_role == "offset"
+
+    def test_pagination_role_none_for_non_pagination(self):
+        """Non-pagination params have no pagination_role."""
+        api = self._build_api(
+            query_params=[
+                InputQueryParam(
+                    name="min_price", type="float", field="price", operator="gte"
+                ),
+            ],
+        )
+        result = transform_api(api)
+        qp = result.views[0].query_params[0]
+        assert qp.pagination_role is None
+
     def test_legacy_params_without_field_unchanged(self):
         """Params without field keep their declared type (backward compat)."""
         api = self._build_api(
@@ -1103,6 +1153,53 @@ class TestFilterCodeGeneration:
 
     def test_generated_code_compiles(self, tmp_path):
         views_py = self._generate_views(tmp_path)
+        compile(views_py, "views.py", "exec")
+
+    def test_nonstandard_pagination_names(self, tmp_path):
+        """Pagination with names like page_size/page_number generates limit/offset."""
+        api = InputAPI(
+            name="PaginationNamesTest",
+            endpoints=[
+                InputEndpoint(
+                    name="ListProducts",
+                    path="/products",
+                    method="GET",
+                    response="ProductList",
+                    response_shape="list",
+                    target="Product",
+                    query_params=[
+                        InputQueryParam(name="page_size", type="int", pagination=True),
+                        InputQueryParam(
+                            name="page_number", type="int", pagination=True
+                        ),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="ProductList",
+                    fields=[InputField(name="items", type="List[Product]")],
+                ),
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+            config={
+                "response_placeholders": False,
+                "database": {"enabled": True},
+            },
+        )
+        APIGenerator().generate(api, path=str(tmp_path))
+        views_py = (tmp_path / "pagination-names-test" / "src" / "views.py").read_text()
+
+        assert ".limit(page_size)" in views_py
+        assert ".offset(page_number)" in views_py
+        assert "if page_size is not None" in views_py
+        assert "if page_number is not None" in views_py
         compile(views_py, "views.py", "exec")
 
 
