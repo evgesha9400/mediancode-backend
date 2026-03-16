@@ -194,6 +194,22 @@ async def ${view.snake_name}():
 % elif view.method == "get" and view.response_shape == "list":
     result = await session.execute(select(${orm_class}))
     return result.scalars().all()
+% elif view.method == "get" and view.response_shape != "list" and view.target:
+## Detail endpoint with field-based path params
+<%
+    where_clauses = []
+    for pp in (view.path_params or []):
+        if pp.field:
+            where_clauses.append(f"{orm_class}.{pp.field} == {pp.snake_name}")
+        else:
+            where_clauses.append(f"{orm_class}.{pp.snake_name} == {pp.snake_name}")
+    where_str = ", ".join(where_clauses)
+%>\
+    result = await session.execute(select(${orm_class}).where(${where_str}))
+    record = result.scalars().first()
+    if not record:
+        raise HTTPException(status_code=404, detail="${view.response_model} not found")
+    return record
 % elif view.method == "get":
 <%
     pk_param = view.path_params[0].snake_name if view.path_params else "id"

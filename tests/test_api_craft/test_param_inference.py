@@ -1133,3 +1133,85 @@ class TestProductsFilterApiIntegration:
         """GET /products/1 returns 404 (no data seeded, but proves query works)."""
         response = products_filter_api_client.get("/products/1")
         assert response.status_code == 404
+
+
+class TestDetailEndpointFilterCodeGen:
+    """Detail endpoints should use field-based where clauses."""
+
+    def test_detail_with_field_uses_field_in_where(self, tmp_path):
+        api = InputAPI(
+            name="DetailFieldTest",
+            endpoints=[
+                InputEndpoint(
+                    name="GetProduct",
+                    path="/products/{tracking_id}",
+                    method="GET",
+                    response="Product",
+                    response_shape="object",
+                    path_params=[
+                        InputPathParam(
+                            name="tracking_id", type="uuid", field="tracking_id"
+                        ),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(name="tracking_id", type="uuid", pk=True),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+            config={
+                "response_placeholders": False,
+                "database": {"enabled": True},
+            },
+        )
+        APIGenerator().generate(api, path=str(tmp_path))
+        views_py = (tmp_path / "detail-field-test" / "src" / "views.py").read_text()
+
+        # Should use field name in where clause
+        assert "ProductRecord.tracking_id == tracking_id" in views_py
+        compile(views_py, "views.py", "exec")
+
+    def test_nested_detail_with_scoping_param(self, tmp_path):
+        """Nested detail: /stores/{store_id}/products/{product_id}"""
+        api = InputAPI(
+            name="NestedDetailTest",
+            endpoints=[
+                InputEndpoint(
+                    name="GetStoreProduct",
+                    path="/stores/{store_id}/products/{product_id}",
+                    method="GET",
+                    response="Product",
+                    response_shape="object",
+                    path_params=[
+                        InputPathParam(name="store_id", type="int", field="store_id"),
+                        InputPathParam(name="product_id", type="int", field="id"),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="store_id", type="int"),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+            config={
+                "response_placeholders": False,
+                "database": {"enabled": True},
+            },
+        )
+        APIGenerator().generate(api, path=str(tmp_path))
+        views_py = (tmp_path / "nested-detail-test" / "src" / "views.py").read_text()
+
+        # Both path params should appear as where clauses
+        assert "ProductRecord.store_id == store_id" in views_py
+        assert "ProductRecord.id == product_id" in views_py
+        compile(views_py, "views.py", "exec")
