@@ -3,7 +3,7 @@
 
 import pytest
 from api_craft.models.enums import FilterOperator
-from api_craft.models.input import InputPathParam
+from api_craft.models.input import InputPathParam, InputQueryParam
 
 
 class TestFilterOperatorEnum:
@@ -30,3 +30,26 @@ class TestInputPathParamField:
     def test_field_accepts_value(self):
         param = InputPathParam(name="store_id", type="uuid", field="store_id")
         assert param.field == "store_id"
+
+
+class TestInputQueryParamFields:
+    def test_defaults_none(self):
+        """New fields default to None/False for backward compatibility."""
+        param = InputQueryParam(name="limit", type="int")
+        assert param.field is None
+        assert param.operator is None
+        assert param.pagination is False
+
+    def test_filter_param(self):
+        param = InputQueryParam(
+            name="min_price", type="float", field="price", operator="gte"
+        )
+        assert param.field == "price"
+        assert param.operator == "gte"
+        assert param.pagination is False
+
+    def test_pagination_param(self):
+        param = InputQueryParam(name="limit", type="int", pagination=True)
+        assert param.pagination is True
+        assert param.field is None
+        assert param.operator is None

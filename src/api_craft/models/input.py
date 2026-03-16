@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, model_validator
 from api_craft.models.enums import (
     Cardinality,
     FieldAppearance,
+    FilterOperator,
     HttpMethod,
     ResponseShape,
     ValidatorMode,
@@ -120,12 +121,18 @@ class InputQueryParam(BaseModel):
     :ivar type: Declared type string compatible with FastAPI annotations.
     :ivar optional: Whether this parameter is optional (default False = required).
     :ivar description: Human-readable description of the parameter.
+    :ivar field: Field name on the target object this param filters by.
+    :ivar operator: Filter operation to apply (eq, gte, lte, etc.).
+    :ivar pagination: Whether this is a pagination param (limit/offset).
     """
 
     name: SnakeCaseName
     type: str
     optional: bool = False
     description: str | None = None
+    field: str | None = None
+    operator: FilterOperator | None = None
+    pagination: bool = False
 
 
 class InputPathParam(BaseModel):
