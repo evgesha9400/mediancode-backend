@@ -192,3 +192,17 @@ def shop_api_client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
     app = load_app(src_path)
 
     return TestClient(app)
+
+
+@pytest.fixture(scope="session")
+def products_filter_api_client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
+    """Generate Products Filter API once per session and return TestClient."""
+    tmp_path = tmp_path_factory.mktemp("products_filter_api")
+
+    api_input = load_input("products_api_filters.yaml")
+    APIGenerator().generate(api_input, path=str(tmp_path))
+
+    src_path = tmp_path / "products-filter-api" / "src"
+    app = load_app(src_path)
+
+    return TestClient(app)

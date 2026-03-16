@@ -1104,3 +1104,32 @@ class TestFilterCodeGeneration:
     def test_generated_code_compiles(self, tmp_path):
         views_py = self._generate_views(tmp_path)
         compile(views_py, "views.py", "exec")
+
+
+from fastapi.testclient import TestClient
+
+
+@pytest.mark.codegen
+class TestProductsFilterApiIntegration:
+    """Integration tests: generate, boot, and request the filtered API."""
+
+    def test_healthcheck(self, products_filter_api_client: TestClient):
+        response = products_filter_api_client.get("/healthcheck")
+        assert response.status_code == 200
+
+    def test_list_products_no_filters(self, products_filter_api_client: TestClient):
+        """GET /stores/1/products returns 200 with no filters."""
+        response = products_filter_api_client.get("/stores/1/products")
+        assert response.status_code == 200
+
+    def test_list_products_with_filters(self, products_filter_api_client: TestClient):
+        """GET /stores/1/products with query params returns 200."""
+        response = products_filter_api_client.get(
+            "/stores/1/products?min_price=10.0&max_price=100.0&search=test&category=electronics&limit=10&offset=0"
+        )
+        assert response.status_code == 200
+
+    def test_get_product_by_id(self, products_filter_api_client: TestClient):
+        """GET /products/1 returns 404 (no data seeded, but proves query works)."""
+        response = products_filter_api_client.get("/products/1")
+        assert response.status_code == 404

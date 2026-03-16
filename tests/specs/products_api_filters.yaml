@@ -1,0 +1,100 @@
+name: ProductsFilterApi
+version: "0.1.0"
+author: Median Code
+description: Products API with filtered list endpoints
+
+tags:
+  - name: Products
+    description: Product operations
+
+objects:
+  - name: Product
+    description: A product with filterable fields
+    fields:
+      - name: id
+        type: int
+        pk: true
+        description: Product ID
+
+      - name: store_id
+        type: int
+        description: Store this product belongs to
+
+      - name: name
+        type: str
+        description: Product name
+
+      - name: price
+        type: float
+        description: Product price
+
+      - name: category
+        type: str
+        description: Product category
+
+      - name: in_stock
+        type: bool
+        description: Whether product is in stock
+
+  - name: ProductList
+    description: List response wrapper
+    fields:
+      - name: items
+        type: List[Product]
+        description: List of products
+      - name: total
+        type: int
+        description: Total count
+
+endpoints:
+  - name: GetProduct
+    path: /products/{product_id}
+    method: GET
+    tag: Products
+    response: Product
+    response_shape: object
+    path_params:
+      - name: product_id
+        type: int
+        field: id
+
+  - name: ListProducts
+    path: /stores/{store_id}/products
+    method: GET
+    tag: Products
+    response: ProductList
+    response_shape: list
+    target: Product
+    path_params:
+      - name: store_id
+        type: int
+        field: store_id
+    query_params:
+      - name: min_price
+        type: float
+        field: price
+        operator: gte
+      - name: max_price
+        type: float
+        field: price
+        operator: lte
+      - name: search
+        type: str
+        field: name
+        operator: ilike
+      - name: category
+        type: str
+        field: category
+        operator: eq
+      - name: limit
+        type: int
+        pagination: true
+      - name: offset
+        type: int
+        pagination: true
+
+config:
+  healthcheck: /healthcheck
+  response_placeholders: false
+  database:
+    enabled: true
