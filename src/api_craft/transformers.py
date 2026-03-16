@@ -126,53 +126,82 @@ def transform_tag(input_tag: InputTag) -> TemplateTag:
 
 def transform_query_params(
     input_query_params: list[InputQueryParam],
+    target_fields: dict[str, InputField] | None = None,
 ) -> list[TemplateQueryParam]:
-    return (
-        [
+    if not input_query_params:
+        return []
+    result = []
+    for param in input_query_params:
+        param_type = param.type
+        optional = param.optional
+
+        # Derive type from target field when field is set
+        if param.field and target_fields and param.field in target_fields:
+            field_type = target_fields[param.field].type
+            if param.operator == "in":
+                param_type = f"List[{field_type}]"
+            else:
+                param_type = field_type
+            # All field-based query params are optional
+            optional = True
+        elif param.pagination:
+            # Pagination params keep declared type, forced optional
+            optional = True
+
+        result.append(
             TemplateQueryParam(
-                type=param.type,
+                type=param_type,
                 snake_name=param.name,
                 camel_name=snake_to_camel(param.name),
                 title=snake_to_camel(param.name),
-                optional=param.optional,
+                optional=optional,
                 description=param.description,
+                field=param.field,
+                operator=param.operator,
+                pagination=param.pagination,
             )
-            for param in input_query_params
-        ]
-        if input_query_params
-        else []
-    )
+        )
+    return result
 
 
 def transform_path_params(
     input_path_params: list[InputPathParam],
+    target_fields: dict[str, InputField] | None = None,
 ) -> list[TemplatePathParam]:
-    return (
-        [
+    if not input_path_params:
+        return []
+    result = []
+    for param in input_path_params:
+        param_type = param.type
+        # Derive type from target field when field is set
+        if param.field and target_fields and param.field in target_fields:
+            param_type = target_fields[param.field].type
+
+        result.append(
             TemplatePathParam(
-                type=param.type,
+                type=param_type,
                 snake_name=param.name,
                 camel_name=snake_to_camel(param.name),
                 title=add_spaces_to_camel_case(snake_to_camel(param.name)),
                 description=param.description,
+                field=param.field,
             )
-            for param in input_path_params
-        ]
-        if input_path_params
-        else []
-    )
+        )
+    return result
 
 
 def transform_endpoint(
     input_endpoint: InputEndpoint,
     placeholder_generator: PlaceholderGenerator,
     generate_placeholders: bool = False,
+    objects_by_name: dict[str, InputModel] | None = None,
 ) -> TemplateView:
     """Transform an :class:`InputEndpoint` into a :class:`TemplateView`.
 
     :param input_endpoint: Source endpoint definition.
     :param placeholder_generator: Generator for creating placeholder response data.
     :param generate_placeholders: Whether to generate placeholder response values.
+    :param objects_by_name: Map of object names to InputModel for type derivation.
     :returns: Template-ready view definition.
     """
     response_name = input_endpoint.response
@@ -194,6 +223,16 @@ def transform_endpoint(
     if generate_placeholders and response_name:
         response_placeholders = placeholder_generator.generate_for_model(response_name)
 
+    # Resolve target object fields for type derivation
+    target_fields: dict[str, InputField] | None = None
+    target_name: str | None = input_endpoint.target
+    if objects_by_name:
+        if input_endpoint.response_shape == "object" and not target_name:
+            target_name = input_endpoint.response
+        if target_name and target_name in objects_by_name:
+            target_obj = objects_by_name[target_name]
+            target_fields = {str(f.name): f for f in target_obj.fields}
+
     return TemplateView(
         snake_name=snake_name,
         camel_name=camel_name,
@@ -202,12 +241,13 @@ def transform_endpoint(
         response_model=response_name,
         request_model=request_name,
         response_placeholders=response_placeholders,
-        query_params=transform_query_params(input_endpoint.query_params),
-        path_params=transform_path_params(input_endpoint.path_params),
+        query_params=transform_query_params(input_endpoint.query_params, target_fields),
+        path_params=transform_path_params(input_endpoint.path_params, target_fields),
         tag=input_endpoint.tag,
         description=input_endpoint.description,
         use_envelope=input_endpoint.use_envelope,
         response_shape=input_endpoint.response_shape,
+        target=target_name,
     )
 
 
@@ -257,6 +297,9 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
             validator_fields[key] = referenced
     placeholder_generator = PlaceholderGenerator(field_map, validator_fields)
 
+    # Build objects lookup for type derivation
+    objects_by_name = {str(obj.name): obj for obj in input_api.objects}
+
     # Transform endpoints, remapping model names to derived schemas
     transformed_views = []
     for endpoint in input_api.endpoints:
@@ -264,6 +307,7 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
             endpoint,
             placeholder_generator,
             generate_placeholders=input_api.config.response_placeholders,
+            objects_by_name=objects_by_name,
         )
         if use_split:
             # Remap request_model → Create/Update, response_model → Response

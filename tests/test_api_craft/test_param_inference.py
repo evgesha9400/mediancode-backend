@@ -852,3 +852,140 @@ class TestTemplateModelExtensions:
             path_params=[],
         )
         assert view.target is None
+
+
+from api_craft.transformers import transform_api
+
+
+class TestTypeDerivation:
+    """Param types are derived from target object fields during transform."""
+
+    def _build_api(self, path_params=None, query_params=None, response_shape="list"):
+        """Helper to build a minimal API for testing transforms."""
+        objects = [
+            InputModel(
+                name="Product",
+                fields=[
+                    InputField(name="id", type="uuid.UUID", pk=True),
+                    InputField(name="store_id", type="uuid.UUID"),
+                    InputField(name="price", type="decimal.Decimal"),
+                    InputField(name="name", type="str"),
+                    InputField(name="in_stock", type="bool"),
+                    InputField(name="created_at", type="datetime.date"),
+                ],
+            ),
+        ]
+        if response_shape == "list":
+            objects.append(
+                InputModel(
+                    name="ProductList",
+                    fields=[InputField(name="items", type="List[Product]")],
+                )
+            )
+        endpoint = InputEndpoint(
+            name="GetProducts",
+            path="/products" if not path_params else "/stores/{store_id}/products",
+            method="GET",
+            response="ProductList" if response_shape == "list" else "Product",
+            response_shape=response_shape,
+            target="Product" if response_shape == "list" else None,
+            path_params=path_params,
+            query_params=query_params,
+        )
+        return InputAPI(
+            name="TestApi",
+            endpoints=[endpoint],
+            objects=objects,
+            config={"response_placeholders": False},
+        )
+
+    def test_path_param_type_derived_from_field(self):
+        """Path param type should be derived from the target field's type."""
+        api = self._build_api(
+            path_params=[
+                InputPathParam(name="store_id", type="uuid.UUID", field="store_id"),
+            ],
+        )
+        result = transform_api(api)
+        pp = result.views[0].path_params[0]
+        assert pp.type == "uuid.UUID"
+        assert pp.field == "store_id"
+
+    def test_query_param_type_derived_from_field(self):
+        """Query param type should be derived from the target field's type."""
+        api = self._build_api(
+            query_params=[
+                InputQueryParam(
+                    name="min_price", type="float", field="price", operator="gte"
+                ),
+            ],
+        )
+        result = transform_api(api)
+        qp = result.views[0].query_params[0]
+        assert qp.type == "decimal.Decimal"
+        assert qp.field == "price"
+        assert qp.operator == "gte"
+
+    def test_in_operator_wraps_type_in_list(self):
+        """The 'in' operator should produce List[field_type] param type."""
+        api = self._build_api(
+            query_params=[
+                InputQueryParam(name="names", type="str", field="name", operator="in"),
+            ],
+        )
+        result = transform_api(api)
+        qp = result.views[0].query_params[0]
+        assert qp.type == "List[str]"
+
+    def test_field_query_params_forced_optional(self):
+        """Query params with field/operator are forced optional."""
+        api = self._build_api(
+            query_params=[
+                InputQueryParam(
+                    name="min_price",
+                    type="float",
+                    field="price",
+                    operator="gte",
+                    optional=False,
+                ),
+            ],
+        )
+        result = transform_api(api)
+        qp = result.views[0].query_params[0]
+        assert qp.optional is True
+
+    def test_pagination_params_pass_through(self):
+        """Pagination params keep their declared type."""
+        api = self._build_api(
+            query_params=[
+                InputQueryParam(name="limit", type="int", pagination=True),
+            ],
+        )
+        result = transform_api(api)
+        qp = result.views[0].query_params[0]
+        assert qp.type == "int"
+        assert qp.pagination is True
+
+    def test_legacy_params_without_field_unchanged(self):
+        """Params without field keep their declared type (backward compat)."""
+        api = self._build_api(
+            query_params=[
+                InputQueryParam(name="limit", type="int", optional=True),
+            ],
+        )
+        result = transform_api(api)
+        qp = result.views[0].query_params[0]
+        assert qp.type == "int"
+        assert qp.field is None
+
+    def test_target_passed_to_template_view(self):
+        """The target name is passed through to TemplateView."""
+        api = self._build_api(
+            query_params=[
+                InputQueryParam(
+                    name="min_price", type="float", field="price", operator="gte"
+                ),
+            ],
+        )
+        result = transform_api(api)
+        assert result.views[0].target == "Product"
