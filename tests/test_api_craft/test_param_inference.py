@@ -3,6 +3,7 @@
 
 import pytest
 from api_craft.models.enums import FilterOperator
+from api_craft.models.input import InputPathParam
 
 
 class TestFilterOperatorEnum:
@@ -18,3 +19,14 @@ class TestFilterOperatorEnum:
 
         operators = get_args(FilterOperator)
         assert set(operators) == {"eq", "gte", "lte", "gt", "lt", "like", "ilike", "in"}
+
+
+class TestInputPathParamField:
+    def test_field_defaults_none(self):
+        """field is optional for backward compatibility."""
+        param = InputPathParam(name="item_id", type="int")
+        assert param.field is None
+
+    def test_field_accepts_value(self):
+        param = InputPathParam(name="store_id", type="uuid", field="store_id")
+        assert param.field == "store_id"

@@ -134,11 +134,13 @@ class InputPathParam(BaseModel):
     :ivar name: Snake_case identifier extracted from the route.
     :ivar type: Declared type string for the parameter value.
     :ivar description: Human-readable description of the parameter.
+    :ivar field: Field name on the target object this param filters by.
     """
 
     name: SnakeCaseName
     type: str
     description: str | None = None
+    field: str | None = None
 
 
 class InputEndpoint(BaseModel):
