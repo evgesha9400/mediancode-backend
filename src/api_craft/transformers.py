@@ -256,6 +256,26 @@ def transform_endpoint(
             target_obj = objects_by_name[target_name]
             target_fields = {str(f.name): f for f in target_obj.fields}
 
+    # Auto-infer PK field for the last path param on detail endpoints
+    path_params_input = input_endpoint.path_params
+    if (
+        input_endpoint.response_shape == "object"
+        and path_params_input
+        and not path_params_input[-1].field
+        and objects_by_name
+        and target_name
+        and target_name in objects_by_name
+    ):
+        target_obj_for_pk = objects_by_name[target_name]
+        pk_fields = [f for f in target_obj_for_pk.fields if f.pk]
+        if pk_fields:
+            last_param = path_params_input[-1]
+            inferred = last_param.model_copy(update={"field": str(pk_fields[0].name)})
+            path_params_input = list(path_params_input[:-1]) + [inferred]
+            # Rebuild target_fields if not already set
+            if target_fields is None:
+                target_fields = {str(f.name): f for f in target_obj_for_pk.fields}
+
     query_params = transform_query_params(input_endpoint.query_params, target_fields)
     if input_endpoint.pagination:
         query_params.extend(_inject_pagination_params())
@@ -269,7 +289,7 @@ def transform_endpoint(
         request_model=request_name,
         response_placeholders=response_placeholders,
         query_params=query_params,
-        path_params=transform_path_params(input_endpoint.path_params, target_fields),
+        path_params=transform_path_params(path_params_input, target_fields),
         tag=input_endpoint.tag,
         description=input_endpoint.description,
         use_envelope=input_endpoint.use_envelope,

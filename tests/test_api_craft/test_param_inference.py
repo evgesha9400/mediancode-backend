@@ -1085,6 +1085,239 @@ class TestTypeDerivation:
         assert result.views[0].target == "Product"
 
 
+class TestPkAutoInference:
+    """Auto-infer PK field for the last path param on detail endpoints."""
+
+    def test_detail_last_param_no_field_inferred_to_pk(self):
+        """Detail endpoint with last path param having no field -> auto-inferred to PK."""
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[
+                InputEndpoint(
+                    name="GetProduct",
+                    path="/products/{product_id}",
+                    method="GET",
+                    response="Product",
+                    response_shape="object",
+                    path_params=[
+                        InputPathParam(name="product_id", type="int"),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+            config={"response_placeholders": False},
+        )
+        result = transform_api(api)
+        pp = result.views[0].path_params[0]
+        assert pp.field == "id"
+
+    def test_detail_last_param_already_set_to_pk_unchanged(self):
+        """Detail endpoint with last path param already set to PK -> unchanged."""
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[
+                InputEndpoint(
+                    name="GetProduct",
+                    path="/products/{product_id}",
+                    method="GET",
+                    response="Product",
+                    response_shape="object",
+                    path_params=[
+                        InputPathParam(name="product_id", type="int", field="id"),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+            config={"response_placeholders": False},
+        )
+        result = transform_api(api)
+        pp = result.views[0].path_params[0]
+        assert pp.field == "id"
+
+    def test_detail_last_param_set_to_non_pk_rejected(self):
+        """Detail endpoint with last path param set to non-PK -> Rule 3 still rejects."""
+        with pytest.raises(ValueError, match="primary key"):
+            InputAPI(
+                name="TestApi",
+                endpoints=[
+                    InputEndpoint(
+                        name="GetProduct",
+                        path="/products/{product_name}",
+                        method="GET",
+                        response="Product",
+                        response_shape="object",
+                        path_params=[
+                            InputPathParam(
+                                name="product_name", type="str", field="name"
+                            ),
+                        ],
+                    ),
+                ],
+                objects=[
+                    InputModel(
+                        name="Product",
+                        fields=[
+                            InputField(name="id", type="int", pk=True),
+                            InputField(name="name", type="str"),
+                        ],
+                    ),
+                ],
+            )
+
+    def test_list_endpoint_no_auto_inference(self):
+        """List endpoint path params -> no auto-inference."""
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[
+                InputEndpoint(
+                    name="GetProducts",
+                    path="/stores/{store_id}/products",
+                    method="GET",
+                    response="ProductList",
+                    response_shape="list",
+                    target="Product",
+                    path_params=[
+                        InputPathParam(name="store_id", type="int", field="store_id"),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="store_id", type="int"),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+                InputModel(
+                    name="ProductList",
+                    fields=[InputField(name="items", type="List[Product]")],
+                ),
+            ],
+            config={"response_placeholders": False},
+        )
+        result = transform_api(api)
+        pp = result.views[0].path_params[0]
+        assert pp.field == "store_id"
+
+    def test_detail_no_pk_on_target_no_inference(self):
+        """Detail endpoint with no PK on target -> no auto-inference."""
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[
+                InputEndpoint(
+                    name="GetProduct",
+                    path="/products/{product_id}",
+                    method="GET",
+                    response="Product",
+                    response_shape="object",
+                    path_params=[
+                        InputPathParam(name="product_id", type="int"),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(name="name", type="str"),
+                        InputField(name="price", type="float"),
+                    ],
+                ),
+            ],
+            config={"response_placeholders": False},
+        )
+        result = transform_api(api)
+        pp = result.views[0].path_params[0]
+        assert pp.field is None
+
+    def test_detail_inferred_pk_derives_type(self):
+        """Auto-inferred PK field also derives the type from the target field."""
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[
+                InputEndpoint(
+                    name="GetProduct",
+                    path="/products/{product_id}",
+                    method="GET",
+                    response="Product",
+                    response_shape="object",
+                    path_params=[
+                        InputPathParam(name="product_id", type="int"),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(name="id", type="uuid.UUID", pk=True),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+            config={"response_placeholders": False},
+        )
+        result = transform_api(api)
+        pp = result.views[0].path_params[0]
+        assert pp.field == "id"
+        assert pp.type == "uuid.UUID"
+
+    def test_nested_detail_only_last_param_inferred(self):
+        """Nested detail: only the last path param gets auto-inferred."""
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[
+                InputEndpoint(
+                    name="GetStoreProduct",
+                    path="/stores/{store_id}/products/{product_id}",
+                    method="GET",
+                    response="Product",
+                    response_shape="object",
+                    path_params=[
+                        InputPathParam(name="store_id", type="int"),
+                        InputPathParam(name="product_id", type="int"),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="store_id", type="int"),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+            config={"response_placeholders": False},
+        )
+        result = transform_api(api)
+        pp0 = result.views[0].path_params[0]
+        pp1 = result.views[0].path_params[1]
+        # First param: no auto-inference (not the last)
+        assert pp0.field is None
+        # Last param: auto-inferred to PK
+        assert pp1.field == "id"
+
+
 from api_craft.main import APIGenerator
 
 
