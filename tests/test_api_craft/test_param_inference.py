@@ -411,7 +411,7 @@ class TestRule5ListNoPathParamPk:
     """Rule 5: List endpoint -- no path param maps to PK."""
 
     def test_list_with_pk_path_param_raises(self):
-        with pytest.raises(ValueError, match="primary key.*list endpoint"):
+        with pytest.raises(ValueError, match="response_shape 'object'"):
             InputAPI(
                 name="TestApi",
                 endpoints=[

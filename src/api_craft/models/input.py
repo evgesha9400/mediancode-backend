@@ -19,6 +19,7 @@ from api_craft.models.validators import (
     validate_path_parameters,
     validate_pk_field_types,
     validate_primary_keys,
+    validate_response_shape_for_path,
     validate_unique_object_names,
 )
 
@@ -183,12 +184,17 @@ class InputEndpoint(BaseModel):
 
     @model_validator(mode="after")
     def _validate_path_parameters(self) -> Self:
-        """Validate that path parameters match declared path_params bidirectionally.
+        """Validate path structure and declared path_params.
+
+        Runs two checks:
+        1. Path parameters match declared path_params bidirectionally.
+        2. Paths ending with a path parameter use response_shape 'object'.
 
         :returns: The validated endpoint instance.
-        :raises ValueError: If path parameters don't match bidirectionally.
+        :raises ValueError: If validation fails.
         """
         validate_path_parameters(self)
+        validate_response_shape_for_path(self)
         return self
 
 

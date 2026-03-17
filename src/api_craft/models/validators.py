@@ -147,6 +147,28 @@ def validate_path_parameters(endpoint: "InputEndpoint") -> None:
         )
 
 
+PATH_ENDS_WITH_PARAM_PATTERN = re.compile(r"/\{[^}]+\}$")
+
+
+def validate_response_shape_for_path(endpoint: "InputEndpoint") -> None:
+    """Validate that endpoints ending with a path parameter use response_shape 'object'.
+
+    REST convention: a URI ending with ``/{param}`` identifies a single resource,
+    so returning a list is semantically invalid.  List endpoints always end with
+    the collection name (e.g., ``/products``, ``/stores/{store_id}/products``).
+
+    :param endpoint: The input endpoint to validate.
+    :raises ValueError: If the path ends with a path parameter and response_shape is 'list'.
+    """
+    if PATH_ENDS_WITH_PARAM_PATTERN.search(endpoint.path):
+        if endpoint.response_shape == "list":
+            raise ValueError(
+                f"Endpoint '{endpoint.name}': endpoints ending with a path parameter "
+                f"must have response_shape 'object' — list endpoints end with "
+                f"the collection name (path: '{endpoint.path}')"
+            )
+
+
 def validate_unique_object_names(objects: Iterable["InputModel"]) -> None:
     """Validate that all object names are unique within the API specification.
 

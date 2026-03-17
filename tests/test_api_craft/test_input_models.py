@@ -346,3 +346,80 @@ class TestDatabaseConfigValidation:
             ),
         )
         assert api.config.database.enabled is True
+
+
+class TestResponseShapeForPath:
+    """Endpoints ending with a path parameter must use response_shape 'object'."""
+
+    def test_path_ending_with_param_and_object_passes(self):
+        """Path ending with {param} + response_shape 'object' is valid."""
+        endpoint = InputEndpoint(
+            name="GetProduct",
+            path="/products/{product_id}",
+            method="GET",
+            response="Product",
+            response_shape="object",
+            path_params=[{"name": "product_id", "type": "int"}],
+        )
+        assert endpoint.response_shape == "object"
+
+    def test_path_ending_with_param_and_list_raises(self):
+        """Path ending with {param} + response_shape 'list' is invalid."""
+        with pytest.raises(ValueError, match="response_shape 'object'"):
+            InputEndpoint(
+                name="GetProduct",
+                path="/products/{product_id}",
+                method="GET",
+                response="Product",
+                response_shape="list",
+                path_params=[{"name": "product_id", "type": "int"}],
+            )
+
+    def test_path_ending_with_collection_and_list_passes(self):
+        """Path ending with collection name + response_shape 'list' is valid."""
+        endpoint = InputEndpoint(
+            name="GetProducts",
+            path="/products",
+            method="GET",
+            response="ProductList",
+            response_shape="list",
+        )
+        assert endpoint.response_shape == "list"
+
+    def test_path_ending_with_collection_and_object_passes(self):
+        """Path ending with collection name + response_shape 'object' is valid."""
+        endpoint = InputEndpoint(
+            name="GetProduct",
+            path="/products",
+            method="GET",
+            response="Product",
+            response_shape="object",
+        )
+        assert endpoint.response_shape == "object"
+
+    def test_nested_path_ending_with_param_and_object_passes(self):
+        """Nested path like /stores/{store_id}/products/{product_id} + 'object' is valid."""
+        endpoint = InputEndpoint(
+            name="GetStoreProduct",
+            path="/stores/{store_id}/products/{product_id}",
+            method="GET",
+            response="Product",
+            response_shape="object",
+            path_params=[
+                {"name": "store_id", "type": "int"},
+                {"name": "product_id", "type": "int"},
+            ],
+        )
+        assert endpoint.response_shape == "object"
+
+    def test_nested_path_ending_with_collection_and_list_passes(self):
+        """Nested path like /stores/{store_id}/products + 'list' is valid."""
+        endpoint = InputEndpoint(
+            name="GetStoreProducts",
+            path="/stores/{store_id}/products",
+            method="GET",
+            response="ProductList",
+            response_shape="list",
+            path_params=[{"name": "store_id", "type": "int"}],
+        )
+        assert endpoint.response_shape == "list"
