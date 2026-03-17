@@ -181,10 +181,10 @@ async def ${view.snake_name}():
         stmt = stmt.where(${filter_expr})
 % endfor
 % for pp in pagination_params:
-% if pp.pagination_role == "limit":
+% if "limit" in pp.snake_name:
     if ${pp.snake_name} is not None:
         stmt = stmt.limit(${pp.snake_name})
-% elif pp.pagination_role == "offset":
+% elif "offset" in pp.snake_name or "skip" in pp.snake_name:
     if ${pp.snake_name} is not None:
         stmt = stmt.offset(${pp.snake_name})
 % endif

@@ -131,12 +131,9 @@ def transform_query_params(
     if not input_query_params:
         return []
     result = []
-    pagination_index = 0
-    pagination_roles = ["limit", "offset"]
     for param in input_query_params:
         param_type = param.type
         optional = param.optional
-        pagination_role = None
 
         # Derive type from target field when field is set
         if param.field and target_fields and param.field in target_fields:
@@ -150,10 +147,6 @@ def transform_query_params(
         elif param.pagination:
             # Pagination params keep declared type, forced optional
             optional = True
-            # Assign role by position: first pagination param = limit, second = offset
-            if pagination_index < len(pagination_roles):
-                pagination_role = pagination_roles[pagination_index]
-            pagination_index += 1
 
         result.append(
             TemplateQueryParam(
@@ -166,7 +159,6 @@ def transform_query_params(
                 field=param.field,
                 operator=param.operator,
                 pagination=param.pagination,
-                pagination_role=pagination_role,
             )
         )
     return result
