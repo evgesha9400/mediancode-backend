@@ -144,9 +144,6 @@ def transform_query_params(
                 param_type = field_type
             # All field-based query params are optional
             optional = True
-        elif param.pagination:
-            # Pagination params keep declared type, forced optional
-            optional = True
 
         result.append(
             TemplateQueryParam(
@@ -158,10 +155,34 @@ def transform_query_params(
                 description=param.description,
                 field=param.field,
                 operator=param.operator,
-                pagination=param.pagination,
             )
         )
     return result
+
+
+def _inject_pagination_params() -> list[TemplateQueryParam]:
+    """Create limit and offset template query params for pagination.
+
+    :returns: List containing limit and offset TemplateQueryParam entries.
+    """
+    return [
+        TemplateQueryParam(
+            type="int",
+            snake_name="limit",
+            camel_name="Limit",
+            title="Limit",
+            optional=True,
+            description="Maximum number of results to return (1-100).",
+        ),
+        TemplateQueryParam(
+            type="int",
+            snake_name="offset",
+            camel_name="Offset",
+            title="Offset",
+            optional=True,
+            description="Number of results to skip.",
+        ),
+    ]
 
 
 def transform_path_params(
@@ -233,6 +254,10 @@ def transform_endpoint(
             target_obj = objects_by_name[target_name]
             target_fields = {str(f.name): f for f in target_obj.fields}
 
+    query_params = transform_query_params(input_endpoint.query_params, target_fields)
+    if input_endpoint.pagination:
+        query_params.extend(_inject_pagination_params())
+
     return TemplateView(
         snake_name=snake_name,
         camel_name=camel_name,
@@ -241,13 +266,14 @@ def transform_endpoint(
         response_model=response_name,
         request_model=request_name,
         response_placeholders=response_placeholders,
-        query_params=transform_query_params(input_endpoint.query_params, target_fields),
+        query_params=query_params,
         path_params=transform_path_params(input_endpoint.path_params, target_fields),
         tag=input_endpoint.tag,
         description=input_endpoint.description,
         use_envelope=input_endpoint.use_envelope,
         response_shape=input_endpoint.response_shape,
         target=target_name,
+        pagination=input_endpoint.pagination,
     )
 
 

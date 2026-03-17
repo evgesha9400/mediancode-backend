@@ -63,7 +63,6 @@ class TemplateQueryParam(BaseModel):
     description: str | None = None
     field: str | None = None
     operator: str | None = None
-    pagination: bool = False
 
 
 class TemplatePathParam(BaseModel):
@@ -101,6 +100,7 @@ class TemplateView(BaseModel):
     use_envelope: bool = True
     response_shape: ResponseShape = "object"
     target: str | None = None
+    pagination: bool = False
 
 
 class TemplateAPIConfig(BaseModel):

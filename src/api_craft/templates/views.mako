@@ -139,7 +139,7 @@ async def ${view.snake_name}():
     query_filters = []
     pagination_params = []
     for qp in (view.query_params or []):
-        if qp.pagination:
+        if qp.snake_name in ("limit", "offset") and view.pagination:
             pagination_params.append(qp)
         elif qp.field and qp.operator:
             query_filters.append(qp)

@@ -41,11 +41,10 @@ class TestInputPathParamField:
 
 class TestInputQueryParamFields:
     def test_defaults_none(self):
-        """New fields default to None/False for backward compatibility."""
+        """New fields default to None for backward compatibility."""
         param = InputQueryParam(name="limit", type="int")
         assert param.field is None
         assert param.operator is None
-        assert param.pagination is False
 
     def test_filter_param(self):
         param = InputQueryParam(
@@ -53,13 +52,6 @@ class TestInputQueryParamFields:
         )
         assert param.field == "price"
         assert param.operator == "gte"
-        assert param.pagination is False
-
-    def test_pagination_param(self):
-        param = InputQueryParam(name="limit", type="int", pagination=True)
-        assert param.pagination is True
-        assert param.field is None
-        assert param.operator is None
 
 
 class TestInputEndpointTarget:
@@ -80,6 +72,25 @@ class TestInputEndpointTarget:
             target="Item",
         )
         assert endpoint.target == "Item"
+
+    def test_pagination_defaults_false(self):
+        """pagination defaults to False for backward compatibility."""
+        endpoint = InputEndpoint(
+            name="GetItems", path="/items", method="GET", response="Item"
+        )
+        assert endpoint.pagination is False
+
+    def test_pagination_accepts_true(self):
+        endpoint = InputEndpoint(
+            name="GetItems",
+            path="/items",
+            method="GET",
+            response="ItemList",
+            response_shape="list",
+            target="Item",
+            pagination=True,
+        )
+        assert endpoint.pagination is True
 
 
 class TestRule1TargetIsKnown:
@@ -604,36 +615,28 @@ class TestRule6OperatorFieldTypeCompat:
 
 
 class TestPaginationValidation:
-    """Pagination params must not have field/operator; must be int."""
+    """Endpoint-level pagination validation."""
 
-    def test_pagination_with_field_raises(self):
-        """pagination=True with field set is invalid."""
-        with pytest.raises(ValueError, match="pagination.*field"):
+    def test_pagination_on_detail_endpoint_raises(self):
+        """pagination=True on a detail (object) endpoint is invalid."""
+        with pytest.raises(ValueError, match="pagination.*only valid.*list"):
             InputAPI(
                 name="TestApi",
                 endpoints=[
                     InputEndpoint(
-                        name="GetProducts",
-                        path="/products",
+                        name="GetProduct",
+                        path="/products/{product_id}",
                         method="GET",
-                        response="ProductList",
-                        response_shape="list",
+                        response="Product",
+                        response_shape="object",
                         target="Product",
-                        query_params=[
-                            InputQueryParam(
-                                name="limit",
-                                type="int",
-                                pagination=True,
-                                field="id",
-                            ),
+                        pagination=True,
+                        path_params=[
+                            InputPathParam(name="product_id", type="int", field="id"),
                         ],
                     ),
                 ],
                 objects=[
-                    InputModel(
-                        name="ProductList",
-                        fields=[InputField(name="items", type="List[Product]")],
-                    ),
                     InputModel(
                         name="Product",
                         fields=[
@@ -643,45 +646,8 @@ class TestPaginationValidation:
                 ],
             )
 
-    def test_pagination_with_operator_raises(self):
-        """pagination=True with operator set is invalid."""
-        with pytest.raises(ValueError, match="pagination.*operator"):
-            InputAPI(
-                name="TestApi",
-                endpoints=[
-                    InputEndpoint(
-                        name="GetProducts",
-                        path="/products",
-                        method="GET",
-                        response="ProductList",
-                        response_shape="list",
-                        target="Product",
-                        query_params=[
-                            InputQueryParam(
-                                name="limit",
-                                type="int",
-                                pagination=True,
-                                operator="eq",
-                            ),
-                        ],
-                    ),
-                ],
-                objects=[
-                    InputModel(
-                        name="ProductList",
-                        fields=[InputField(name="items", type="List[Product]")],
-                    ),
-                    InputModel(
-                        name="Product",
-                        fields=[
-                            InputField(name="id", type="int", pk=True),
-                        ],
-                    ),
-                ],
-            )
-
-    def test_pagination_valid(self):
-        """pagination=True with type=int and no field/operator passes."""
+    def test_pagination_on_list_endpoint_passes(self):
+        """pagination=True on a list endpoint passes validation."""
         api = InputAPI(
             name="TestApi",
             endpoints=[
@@ -692,10 +658,36 @@ class TestPaginationValidation:
                     response="ProductList",
                     response_shape="list",
                     target="Product",
-                    query_params=[
-                        InputQueryParam(name="limit", type="int", pagination=True),
-                        InputQueryParam(name="offset", type="int", pagination=True),
+                    pagination=True,
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="ProductList",
+                    fields=[InputField(name="items", type="List[Product]")],
+                ),
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
                     ],
+                ),
+            ],
+        )
+        assert api is not None
+
+    def test_endpoint_without_pagination_works(self):
+        """Endpoints without pagination field work as before (defaults False)."""
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[
+                InputEndpoint(
+                    name="GetProducts",
+                    path="/products",
+                    method="GET",
+                    response="ProductList",
+                    response_shape="list",
+                    target="Product",
                 ),
             ],
             objects=[
@@ -798,7 +790,7 @@ class TestTemplateModelExtensions:
         )
         assert param.field is None
 
-    def test_template_query_param_has_field_operator_pagination(self):
+    def test_template_query_param_has_field_and_operator(self):
         param = TemplateQueryParam(
             snake_name="min_price",
             camel_name="MinPrice",
@@ -810,18 +802,6 @@ class TestTemplateModelExtensions:
         )
         assert param.field == "price"
         assert param.operator == "gte"
-        assert param.pagination is False
-
-    def test_template_query_param_pagination(self):
-        param = TemplateQueryParam(
-            snake_name="limit",
-            camel_name="Limit",
-            type="int",
-            title="Limit",
-            optional=True,
-            pagination=True,
-        )
-        assert param.pagination is True
 
     def test_template_view_has_target(self):
         view = TemplateView(
@@ -852,6 +832,37 @@ class TestTemplateModelExtensions:
             path_params=[],
         )
         assert view.target is None
+
+    def test_template_view_has_pagination(self):
+        view = TemplateView(
+            snake_name="list_products",
+            camel_name="ListProducts",
+            path="/products",
+            method="get",
+            response_model="ProductList",
+            request_model=None,
+            response_placeholders=None,
+            query_params=[],
+            path_params=[],
+            response_shape="list",
+            target="Product",
+            pagination=True,
+        )
+        assert view.pagination is True
+
+    def test_template_view_pagination_defaults_false(self):
+        view = TemplateView(
+            snake_name="get_items",
+            camel_name="GetItems",
+            path="/items",
+            method="get",
+            response_model="Item",
+            request_model=None,
+            response_placeholders=None,
+            query_params=[],
+            path_params=[],
+        )
+        assert view.pagination is False
 
 
 from api_craft.transformers import transform_api
@@ -954,17 +965,98 @@ class TestTypeDerivation:
         qp = result.views[0].query_params[0]
         assert qp.optional is True
 
-    def test_pagination_params_pass_through(self):
-        """Pagination params keep their declared type."""
+    def test_pagination_injects_limit_and_offset(self):
+        """Endpoint-level pagination auto-injects limit and offset params."""
+        objects = [
+            InputModel(
+                name="Product",
+                fields=[
+                    InputField(name="id", type="uuid.UUID", pk=True),
+                    InputField(name="store_id", type="uuid.UUID"),
+                    InputField(name="price", type="decimal.Decimal"),
+                    InputField(name="name", type="str"),
+                    InputField(name="in_stock", type="bool"),
+                    InputField(name="created_at", type="datetime.date"),
+                ],
+            ),
+            InputModel(
+                name="ProductList",
+                fields=[InputField(name="items", type="List[Product]")],
+            ),
+        ]
+        endpoint = InputEndpoint(
+            name="GetProducts",
+            path="/products",
+            method="GET",
+            response="ProductList",
+            response_shape="list",
+            target="Product",
+            pagination=True,
+        )
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[endpoint],
+            objects=objects,
+            config={"response_placeholders": False},
+        )
+        result = transform_api(api)
+        qps = result.views[0].query_params
+        assert len(qps) == 2
+        limit_param = qps[0]
+        offset_param = qps[1]
+        assert limit_param.snake_name == "limit"
+        assert limit_param.type == "int"
+        assert limit_param.optional is True
+        assert offset_param.snake_name == "offset"
+        assert offset_param.type == "int"
+        assert offset_param.optional is True
+
+    def test_pagination_false_does_not_inject(self):
+        """Endpoint without pagination does not inject limit/offset."""
         api = self._build_api(
             query_params=[
-                InputQueryParam(name="limit", type="int", pagination=True),
+                InputQueryParam(
+                    name="min_price", type="float", field="price", operator="gte"
+                ),
             ],
         )
         result = transform_api(api)
-        qp = result.views[0].query_params[0]
-        assert qp.type == "int"
-        assert qp.pagination is True
+        qps = result.views[0].query_params
+        assert len(qps) == 1
+        assert qps[0].snake_name == "min_price"
+
+    def test_pagination_passed_to_template_view(self):
+        """The pagination flag is passed through to TemplateView."""
+        objects = [
+            InputModel(
+                name="Product",
+                fields=[
+                    InputField(name="id", type="uuid.UUID", pk=True),
+                    InputField(name="name", type="str"),
+                ],
+            ),
+            InputModel(
+                name="ProductList",
+                fields=[InputField(name="items", type="List[Product]")],
+            ),
+        ]
+        endpoint = InputEndpoint(
+            name="GetProducts",
+            path="/products",
+            method="GET",
+            response="ProductList",
+            response_shape="list",
+            target="Product",
+            pagination=True,
+        )
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[endpoint],
+            objects=objects,
+            config={"response_placeholders": False},
+        )
+        result = transform_api(api)
+        assert result.views[0].pagination is True
 
     def test_legacy_params_without_field_unchanged(self):
         """Params without field keep their declared type (backward compat)."""
@@ -1009,6 +1101,7 @@ class TestFilterCodeGeneration:
                     response="ProductList",
                     response_shape="list",
                     target="Product",
+                    pagination=True,
                     path_params=[
                         InputPathParam(
                             name="store_id", type="uuid.UUID", field="store_id"
@@ -1022,10 +1115,34 @@ class TestFilterCodeGeneration:
                             operator="gte",
                         ),
                         InputQueryParam(
+                            name="max_price",
+                            type="float",
+                            field="price",
+                            operator="lte",
+                        ),
+                        InputQueryParam(
+                            name="price_above",
+                            type="float",
+                            field="price",
+                            operator="gt",
+                        ),
+                        InputQueryParam(
+                            name="price_below",
+                            type="float",
+                            field="price",
+                            operator="lt",
+                        ),
+                        InputQueryParam(
                             name="search",
                             type="str",
                             field="name",
                             operator="ilike",
+                        ),
+                        InputQueryParam(
+                            name="name_like",
+                            type="str",
+                            field="name",
+                            operator="like",
                         ),
                         InputQueryParam(
                             name="category",
@@ -1039,8 +1156,6 @@ class TestFilterCodeGeneration:
                             field="category",
                             operator="in",
                         ),
-                        InputQueryParam(name="limit", type="int", pagination=True),
-                        InputQueryParam(name="offset", type="int", pagination=True),
                     ],
                 ),
             ],
@@ -1089,6 +1204,26 @@ class TestFilterCodeGeneration:
     def test_in_operator_generates_filter(self, tmp_path):
         views_py = self._generate_views(tmp_path)
         assert "ProductRecord.category.in_(tags)" in views_py
+
+    def test_gt_operator_generates_filter(self, tmp_path):
+        views_py = self._generate_views(tmp_path)
+        assert "ProductRecord.price > price_above" in views_py
+        assert "if price_above is not None" in views_py
+
+    def test_lt_operator_generates_filter(self, tmp_path):
+        views_py = self._generate_views(tmp_path)
+        assert "ProductRecord.price < price_below" in views_py
+        assert "if price_below is not None" in views_py
+
+    def test_lte_operator_generates_filter(self, tmp_path):
+        views_py = self._generate_views(tmp_path)
+        assert "ProductRecord.price <= max_price" in views_py
+        assert "if max_price is not None" in views_py
+
+    def test_like_operator_generates_filter(self, tmp_path):
+        views_py = self._generate_views(tmp_path)
+        assert "ProductRecord.name.like" in views_py
+        assert "if name_like is not None" in views_py
 
     def test_pagination_generates_limit_offset(self, tmp_path):
         views_py = self._generate_views(tmp_path)

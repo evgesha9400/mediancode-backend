@@ -124,7 +124,6 @@ class InputQueryParam(BaseModel):
     :ivar description: Human-readable description of the parameter.
     :ivar field: Field name on the target object this param filters by.
     :ivar operator: Filter operation to apply (eq, gte, lte, etc.).
-    :ivar pagination: Whether this is a pagination param (limit/offset).
     """
 
     name: SnakeCaseName
@@ -133,7 +132,6 @@ class InputQueryParam(BaseModel):
     description: str | None = None
     field: str | None = None
     operator: FilterOperator | None = None
-    pagination: bool = False
 
 
 class InputPathParam(BaseModel):
@@ -166,6 +164,7 @@ class InputEndpoint(BaseModel):
     :ivar use_envelope: Whether to wrap response in a standard envelope.
     :ivar response_shape: Response shape - 'object' for single item, 'list' for array.
     :ivar target: The object being queried/filtered by this endpoint.
+    :ivar pagination: Whether to auto-inject limit/offset pagination params.
     """
 
     name: PascalCaseName
@@ -180,6 +179,7 @@ class InputEndpoint(BaseModel):
     use_envelope: bool = True
     response_shape: ResponseShape = "object"
     target: str | None = None
+    pagination: bool = False
 
     @model_validator(mode="after")
     def _validate_path_parameters(self) -> Self:

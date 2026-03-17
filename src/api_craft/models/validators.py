@@ -337,20 +337,12 @@ def validate_param_inference(
         target_fields = {str(f.name): f for f in target.fields}
         pk_field_names = {str(f.name) for f in target.fields if f.pk}
 
-        # Validate pagination params (must not have field/operator)
-        if endpoint.query_params:
-            for qp in endpoint.query_params:
-                if qp.pagination:
-                    if qp.field is not None:
-                        raise ValueError(
-                            f"Endpoint '{endpoint.name}': pagination param '{qp.name}' "
-                            f"must not have 'field' set"
-                        )
-                    if qp.operator is not None:
-                        raise ValueError(
-                            f"Endpoint '{endpoint.name}': pagination param '{qp.name}' "
-                            f"must not have 'operator' set"
-                        )
+        # Validate endpoint-level pagination (only valid on list endpoints)
+        if endpoint.pagination and endpoint.response_shape != "list":
+            raise ValueError(
+                f"Endpoint '{endpoint.name}': pagination is only valid on "
+                f"list endpoints (response_shape='list')"
+            )
 
         # Rule 2: Every param field exists on target
         if endpoint.path_params:
@@ -363,7 +355,7 @@ def validate_param_inference(
 
         if endpoint.query_params:
             for qp in endpoint.query_params:
-                if qp.field and not qp.pagination and qp.field not in target_fields:
+                if qp.field and qp.field not in target_fields:
                     raise ValueError(
                         f"Endpoint '{endpoint.name}': field '{qp.field}' "
                         f"does not exist on '{target.name}'"
@@ -406,7 +398,7 @@ def validate_param_inference(
         # Rule 6: Operator is compatible with field type
         if endpoint.query_params:
             for qp in endpoint.query_params:
-                if qp.operator and qp.field and not qp.pagination:
+                if qp.operator and qp.field:
                     target_field = target_fields[qp.field]
                     _validate_operator_type_compat(
                         endpoint_name=str(endpoint.name),

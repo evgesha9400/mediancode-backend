@@ -65,6 +65,7 @@ endpoints:
     response: ProductList
     response_shape: list
     target: Product
+    pagination: true
     path_params:
       - name: store_id
         type: int
@@ -86,12 +87,6 @@ endpoints:
         type: str
         field: category
         operator: eq
-      - name: limit
-        type: int
-        pagination: true
-      - name: offset
-        type: int
-        pagination: true
 
 config:
   healthcheck: /healthcheck
