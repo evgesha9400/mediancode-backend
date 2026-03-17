@@ -169,6 +169,22 @@ def validate_response_shape_for_path(endpoint: "InputEndpoint") -> None:
             )
 
 
+def validate_response_shape_for_method(endpoint: "InputEndpoint") -> None:
+    """Validate that only GET endpoints may use response_shape 'list'.
+
+    POST, PUT, PATCH, and DELETE operate on a single resource and always return
+    a single object.  Only GET endpoints can return a collection.
+
+    :param endpoint: The input endpoint to validate.
+    :raises ValueError: If a non-GET endpoint uses response_shape 'list'.
+    """
+    if endpoint.method != "GET" and endpoint.response_shape == "list":
+        raise ValueError(
+            f"Endpoint '{endpoint.name}': list response shape is only valid "
+            f"for GET endpoints (method: '{endpoint.method}')"
+        )
+
+
 def validate_unique_object_names(objects: Iterable["InputModel"]) -> None:
     """Validate that all object names are unique within the API specification.
 

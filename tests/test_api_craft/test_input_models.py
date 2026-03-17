@@ -423,3 +423,68 @@ class TestResponseShapeForPath:
             path_params=[{"name": "store_id", "type": "int"}],
         )
         assert endpoint.response_shape == "list"
+
+
+class TestResponseShapeForMethod:
+    """Only GET endpoints may use response_shape 'list'."""
+
+    def test_get_with_list_passes(self):
+        """GET + response_shape 'list' is valid."""
+        endpoint = InputEndpoint(
+            name="GetProducts",
+            path="/products",
+            method="GET",
+            response="Product",
+            response_shape="list",
+        )
+        assert endpoint.response_shape == "list"
+
+    def test_get_with_object_passes(self):
+        """GET + response_shape 'object' is valid."""
+        endpoint = InputEndpoint(
+            name="GetProduct",
+            path="/products/{product_id}",
+            method="GET",
+            response="Product",
+            response_shape="object",
+            path_params=[{"name": "product_id", "type": "int"}],
+        )
+        assert endpoint.response_shape == "object"
+
+    def test_post_with_object_passes(self):
+        """POST + response_shape 'object' is valid."""
+        endpoint = InputEndpoint(
+            name="CreateProduct",
+            path="/products",
+            method="POST",
+            response="Product",
+            response_shape="object",
+        )
+        assert endpoint.response_shape == "object"
+
+    @pytest.mark.parametrize(
+        "method",
+        ["POST", "PUT", "PATCH", "DELETE"],
+    )
+    def test_non_get_with_list_raises(self, method):
+        """Non-GET methods with response_shape 'list' are invalid."""
+        with pytest.raises(
+            ValueError, match="list response shape is only valid for GET"
+        ):
+            InputEndpoint(
+                name="MutateProducts",
+                path="/products",
+                method=method,
+                response="Product",
+                response_shape="list",
+            )
+
+    def test_post_default_response_shape_passes(self):
+        """POST with default response_shape ('object') is valid."""
+        endpoint = InputEndpoint(
+            name="CreateProduct",
+            path="/products",
+            method="POST",
+            response="Product",
+        )
+        assert endpoint.response_shape == "object"
