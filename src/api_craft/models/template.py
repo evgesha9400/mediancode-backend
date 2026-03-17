@@ -63,6 +63,7 @@ class TemplateQueryParam(BaseModel):
     description: str | None = None
     field: str | None = None
     operator: str | None = None
+    constraints: dict[str, int | float] | None = None
 
 
 class TemplatePathParam(BaseModel):

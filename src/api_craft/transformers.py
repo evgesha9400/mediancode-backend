@@ -173,6 +173,7 @@ def _inject_pagination_params() -> list[TemplateQueryParam]:
             title="Limit",
             optional=True,
             description="Maximum number of results to return (1-100).",
+            constraints={"ge": 1, "le": 100},
         ),
         TemplateQueryParam(
             type="int",
@@ -181,6 +182,7 @@ def _inject_pagination_params() -> list[TemplateQueryParam]:
             title="Offset",
             optional=True,
             description="Number of results to skip.",
+            constraints={"ge": 0},
         ),
     ]
 

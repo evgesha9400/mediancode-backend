@@ -1007,9 +1007,11 @@ class TestTypeDerivation:
         assert limit_param.snake_name == "limit"
         assert limit_param.type == "int"
         assert limit_param.optional is True
+        assert limit_param.constraints == {"ge": 1, "le": 100}
         assert offset_param.snake_name == "offset"
         assert offset_param.type == "int"
         assert offset_param.optional is True
+        assert offset_param.constraints == {"ge": 0}
 
     def test_pagination_false_does_not_inject(self):
         """Endpoint without pagination does not inject limit/offset."""
@@ -1239,6 +1241,73 @@ class TestFilterCodeGeneration:
     def test_generated_code_compiles(self, tmp_path):
         views_py = self._generate_views(tmp_path)
         compile(views_py, "views.py", "exec")
+
+    def _generate_query(self, tmp_path) -> str:
+        """Generate a filtered list API and return query.py content."""
+        api = InputAPI(
+            name="FilterTest",
+            endpoints=[
+                InputEndpoint(
+                    name="ListProducts",
+                    path="/stores/{store_id}/products",
+                    method="GET",
+                    response="ProductList",
+                    response_shape="list",
+                    target="Product",
+                    pagination=True,
+                    path_params=[
+                        InputPathParam(
+                            name="store_id", type="uuid.UUID", field="store_id"
+                        ),
+                    ],
+                    query_params=[
+                        InputQueryParam(
+                            name="min_price",
+                            type="float",
+                            field="price",
+                            operator="gte",
+                        ),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="ProductList",
+                    fields=[InputField(name="items", type="List[Product]")],
+                ),
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(name="store_id", type="uuid.UUID"),
+                        InputField(name="price", type="decimal.Decimal"),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+            config={
+                "response_placeholders": False,
+                "database": {"enabled": True},
+            },
+        )
+        APIGenerator().generate(api, path=str(tmp_path))
+        return (tmp_path / "filter-test" / "src" / "query.py").read_text()
+
+    def test_pagination_limit_has_constraints(self, tmp_path):
+        """Generated query.py must include ge=1, le=100 for limit."""
+        query_py = self._generate_query(tmp_path)
+        assert "ge=1" in query_py
+        assert "le=100" in query_py
+
+    def test_pagination_offset_has_constraints(self, tmp_path):
+        """Generated query.py must include ge=0 for offset."""
+        query_py = self._generate_query(tmp_path)
+        assert "ge=0" in query_py
+
+    def test_query_generated_code_compiles(self, tmp_path):
+        """Generated query.py must be valid Python."""
+        query_py = self._generate_query(tmp_path)
+        compile(query_py, "query.py", "exec")
 
 
 from fastapi.testclient import TestClient

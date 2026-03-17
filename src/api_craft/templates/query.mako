@@ -10,11 +10,17 @@ ${import_stmt}
 from typing import Annotated
 from fastapi import Query
 % for param in params:
+<%
+    query_args = [f'title="{param.title}"']
+    if param.constraints:
+        for key in sorted(param.constraints):
+            query_args.append(f"{key}={param.constraints[key]}")
+%>\
 
 ${param.camel_name} = Annotated[
     ${param.type},
     Query(
-        title="${param.title}",
+        ${", ".join(query_args)},
     ),
 ]
 % endfor
