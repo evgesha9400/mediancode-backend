@@ -1317,6 +1317,41 @@ class TestPkAutoInference:
         # Last param: auto-inferred to PK
         assert pp1.field == "id"
 
+    def test_detail_param_named_as_non_pk_field_skips_inference(self):
+        """Path param named after a non-PK field should not be inferred to PK."""
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[
+                InputEndpoint(
+                    name="GetCustomer",
+                    path="/customers/{email}",
+                    method="GET",
+                    response="Customer",
+                    response_shape="object",
+                    path_params=[
+                        InputPathParam(name="email", type="EmailStr"),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="Customer",
+                    fields=[
+                        InputField(name="customer_id", type="int", pk=True),
+                        InputField(name="email", type="EmailStr"),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+            config={"response_placeholders": False},
+        )
+        result = transform_api(api)
+        pp = result.views[0].path_params[0]
+        # email is a non-PK field on Customer, so no auto-inference
+        assert pp.field is None
+        # Type should remain EmailStr (not overridden to int)
+        assert pp.type == "EmailStr"
+
 
 from api_craft.main import APIGenerator
 

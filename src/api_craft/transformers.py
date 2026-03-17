@@ -31,7 +31,11 @@ from api_craft.models.template import (
 )
 from api_craft.orm_builder import transform_orm_models
 from api_craft.placeholders import PlaceholderGenerator
-from api_craft.schema_splitter import _has_appears_flags, split_model_schemas
+from api_craft.schema_splitter import (
+    _has_appears_flags,
+    _model_needs_split,
+    split_model_schemas,
+)
 from api_craft.utils import (
     add_spaces_to_camel_case,
     camel_to_kebab,
@@ -256,7 +260,9 @@ def transform_endpoint(
             target_obj = objects_by_name[target_name]
             target_fields = {str(f.name): f for f in target_obj.fields}
 
-    # Auto-infer PK field for the last path param on detail endpoints
+    # Auto-infer PK field for the last path param on detail endpoints.
+    # Skip when the param name matches a non-PK field on the target
+    # (e.g. {email} on Customer should not be overridden to customer_id).
     path_params_input = input_endpoint.path_params
     if (
         input_endpoint.response_shape == "object"
@@ -268,8 +274,9 @@ def transform_endpoint(
     ):
         target_obj_for_pk = objects_by_name[target_name]
         pk_fields = [f for f in target_obj_for_pk.fields if f.pk]
-        if pk_fields:
-            last_param = path_params_input[-1]
+        last_param = path_params_input[-1]
+        non_pk_field_names = {str(f.name) for f in target_obj_for_pk.fields if not f.pk}
+        if pk_fields and str(last_param.name) not in non_pk_field_names:
             inferred = last_param.model_copy(update={"field": str(pk_fields[0].name)})
             path_params_input = list(path_params_input[:-1]) + [inferred]
             # Rebuild target_fields if not already set
@@ -304,12 +311,46 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
     use_split = _has_appears_flags(input_api)
 
     if use_split:
-        # Derive Create/Update/Response schemas per object
+        # Derive Create/Update/Response schemas per object.
+        # Only split models that actually have PK or non-default appears flags;
+        # wrapper/envelope models (e.g. ProductList) stay unsplit.
         template_models = []
+        split_model_names: set[str] = set()
         for model in input_api.objects:
-            template_models.extend(split_model_schemas(model))
+            if _model_needs_split(model):
+                template_models.extend(split_model_schemas(model))
+                split_model_names.add(str(model.name))
+            else:
+                template_models.append(transform_model(model))
+
+        # Rewrite field types in unsplit models that reference split model names.
+        # e.g. List[Product] -> List[ProductResponse]
+        if split_model_names:
+            for model in template_models:
+                if model.name in split_model_names or any(
+                    model.name.endswith(s) for s in ("Create", "Update", "Response")
+                ):
+                    continue
+                updated_fields = []
+                for field in model.fields:
+                    new_type = str(field.type)
+                    for name in split_model_names:
+                        new_type = re.sub(
+                            rf"\b{re.escape(name)}\b",
+                            f"{name}Response",
+                            new_type,
+                        )
+                    if new_type != str(field.type):
+                        field = field.model_copy(update={"type": new_type})
+                    updated_fields.append(field)
+                if updated_fields != model.fields:
+                    idx = template_models.index(model)
+                    template_models[idx] = model.model_copy(
+                        update={"fields": updated_fields}
+                    )
     else:
         template_models = [transform_model(model) for model in input_api.objects]
+        split_model_names = set()
 
     # Build field map for placeholder generation.
     # Placeholders are keyed by the base object name (used in InputEndpoint.response).
@@ -320,6 +361,11 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
             if model.name.endswith("Response"):
                 base_name = model.name.removesuffix("Response")
                 field_map[base_name] = model.fields
+            elif model.name not in split_model_names and not any(
+                model.name.endswith(suffix) for suffix in ("Create", "Update")
+            ):
+                # Unsplit model: use its own name
+                field_map[model.name] = model.fields
     else:
         field_map = {model.name: model.fields for model in template_models}
 
@@ -359,7 +405,8 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
         )
         if use_split:
             # Remap request_model → Create/Update, response_model → Response
-            if view.request_model:
+            # (only for models that were actually split)
+            if view.request_model and view.request_model in split_model_names:
                 base_name = view.request_model
                 if endpoint.method in ("PUT", "PATCH"):
                     view = view.model_copy(
@@ -369,7 +416,7 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
                     view = view.model_copy(
                         update={"request_model": f"{base_name}Create"}
                     )
-            if view.response_model:
+            if view.response_model and view.response_model in split_model_names:
                 base_name = view.response_model
                 view = view.model_copy(
                     update={"response_model": f"{base_name}Response"}

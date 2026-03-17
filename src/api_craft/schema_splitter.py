@@ -76,10 +76,14 @@ def split_model_schemas(input_model: InputModel) -> list[TemplateModel]:
     ]
 
 
+def _model_needs_split(model: InputModel) -> bool:
+    """Check if a single model uses non-default appears flags or has pk=True."""
+    for field in model.fields:
+        if field.appears != "both" or field.pk:
+            return True
+    return False
+
+
 def _has_appears_flags(input_api: InputAPI) -> bool:
     """Check if any field in the API uses non-default appears flags or has pk=True."""
-    for model in input_api.objects:
-        for field in model.fields:
-            if field.appears != "both" or field.pk:
-                return True
-    return False
+    return any(_model_needs_split(model) for model in input_api.objects)
