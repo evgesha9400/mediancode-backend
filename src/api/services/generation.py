@@ -293,25 +293,31 @@ def _convert_to_input_api(
                             )
                         )
 
-        # Get object name (single object for both request and response)
+        # Get object name for the endpoint's associated object
         object_name = None
         if endpoint.object_id:
             obj = objects_map.get(endpoint.object_id)
             if obj:
                 object_name = obj.name
 
+        # Method-aware request/response mapping
+        method = endpoint.method.upper()
+        request_name = object_name if method in ("POST", "PUT", "PATCH") else None
+        response_name = None if method == "DELETE" else object_name
+
         input_endpoint = InputEndpoint(
             name=endpoint_name,
             path=endpoint.path,
             method=endpoint.method,
             tag=tag_name,
-            request=object_name,
-            response=object_name,
+            request=request_name,
+            response=response_name,
             query_params=query_params,
             path_params=path_params,
             description=endpoint.description,
             use_envelope=endpoint.use_envelope,
             response_shape=endpoint.response_shape,
+            target=object_name,
         )
         input_endpoints.append(input_endpoint)
 
