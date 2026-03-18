@@ -357,7 +357,11 @@ def transform_api(input_api: InputAPI) -> TemplateAPI:
         field_map = {}
         for model in template_models:
             # Use Response schema fields for placeholder generation, keyed by base name
-            if model.name.endswith("Response"):
+            # Only strip "Response" suffix for models that were actually split
+            if (
+                model.name.endswith("Response")
+                and model.name.removesuffix("Response") in split_model_names
+            ):
                 base_name = model.name.removesuffix("Response")
                 field_map[base_name] = model.fields
             elif model.name not in split_model_names and not any(
