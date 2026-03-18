@@ -33,7 +33,7 @@ class TestTransformOrmModels:
         assert result[0].table_name == "items"
         assert result[0].source_model == "Item"
 
-    def test_int_pk_has_autoincrement(self):
+    def test_int_pk_has_auto_increment(self):
         models = [
             _make_model(
                 "Item",
@@ -45,9 +45,9 @@ class TestTransformOrmModels:
         result = transform_orm_models(models)
         pk_field = result[0].fields[0]
         assert pk_field.primary_key is True
-        assert pk_field.autoincrement is True
+        assert pk_field.server_default == "auto_increment"
 
-    def test_uuid_pk_has_uuid_default(self):
+    def test_uuid_pk_has_uuid4_server_default(self):
         models = [
             _make_model(
                 "Item",
@@ -59,11 +59,10 @@ class TestTransformOrmModels:
         result = transform_orm_models(models)
         pk_field = result[0].fields[0]
         assert pk_field.primary_key is True
-        assert pk_field.autoincrement is False
-        assert pk_field.uuid_default is True
+        assert pk_field.server_default == "uuid4"
         assert pk_field.column_type == "Uuid"
 
-    def test_int_pk_no_uuid_default(self):
+    def test_int_pk_no_uuid4_server_default(self):
         models = [
             _make_model(
                 "Item",
@@ -74,9 +73,9 @@ class TestTransformOrmModels:
         ]
         result = transform_orm_models(models)
         pk_field = result[0].fields[0]
-        assert pk_field.uuid_default is False
+        assert pk_field.server_default == "auto_increment"
 
-    def test_non_pk_uuid_no_uuid_default(self):
+    def test_non_pk_uuid_no_server_default(self):
         models = [
             _make_model(
                 "Item",
@@ -88,7 +87,7 @@ class TestTransformOrmModels:
         ]
         result = transform_orm_models(models)
         uuid_field = result[0].fields[1]
-        assert uuid_field.uuid_default is False
+        assert uuid_field.server_default is None
 
 
 class TestTypeMapping:
@@ -302,6 +301,116 @@ class TestCollectDatabaseDependencies:
         assert "sqlalchemy[asyncio]" in dep_names
         assert "asyncpg" in dep_names
         assert "alembic" in dep_names
+
+
+class TestOrmBuilderServerDefaults:
+    """Tests for server_default propagation through transform_orm_models."""
+
+    def test_uuid_pk_sets_uuid4_server_default(self):
+        model = InputModel(
+            name="Thing",
+            fields=[InputField(name="id", type="uuid", pk=True)],
+        )
+        orm_models = transform_orm_models([model])
+        id_field = orm_models[0].fields[0]
+        assert id_field.server_default == "uuid4"
+        assert id_field.on_update is None
+
+    def test_int_pk_sets_auto_increment_server_default(self):
+        model = InputModel(
+            name="Thing",
+            fields=[InputField(name="id", type="int", pk=True)],
+        )
+        orm_models = transform_orm_models([model])
+        id_field = orm_models[0].fields[0]
+        assert id_field.server_default == "auto_increment"
+        assert id_field.on_update is None
+
+    def test_now_server_default(self):
+        model = InputModel(
+            name="Thing",
+            fields=[
+                InputField(name="id", type="int", pk=True),
+                InputField(
+                    name="created_at",
+                    type="datetime",
+                    appears="response",
+                    server_default="now",
+                ),
+            ],
+        )
+        orm_models = transform_orm_models([model])
+        created_field = orm_models[0].fields[1]
+        assert created_field.server_default == "now"
+        assert created_field.on_update is None
+
+    def test_now_on_update_splits_into_server_default_and_on_update(self):
+        model = InputModel(
+            name="Thing",
+            fields=[
+                InputField(name="id", type="int", pk=True),
+                InputField(
+                    name="updated_at",
+                    type="datetime",
+                    appears="response",
+                    server_default="now_on_update",
+                ),
+            ],
+        )
+        orm_models = transform_orm_models([model])
+        updated_field = orm_models[0].fields[1]
+        assert updated_field.server_default == "now"
+        assert updated_field.on_update == "now"
+
+    def test_literal_server_default(self):
+        model = InputModel(
+            name="Thing",
+            fields=[
+                InputField(name="id", type="int", pk=True),
+                InputField(
+                    name="status",
+                    type="str",
+                    appears="response",
+                    server_default="literal",
+                    default_literal="active",
+                ),
+            ],
+        )
+        orm_models = transform_orm_models([model])
+        status_field = orm_models[0].fields[1]
+        assert status_field.server_default == "literal"
+        assert status_field.default_literal == "'active'"
+
+    def test_auto_increment_non_pk(self):
+        model = InputModel(
+            name="Thing",
+            fields=[
+                InputField(name="id", type="uuid", pk=True),
+                InputField(
+                    name="seq",
+                    type="int",
+                    appears="response",
+                    server_default="auto_increment",
+                ),
+            ],
+        )
+        orm_models = transform_orm_models([model])
+        seq_field = orm_models[0].fields[1]
+        assert seq_field.server_default == "auto_increment"
+
+    def test_no_server_default_for_regular_field(self):
+        model = InputModel(
+            name="Thing",
+            fields=[
+                InputField(name="id", type="int", pk=True),
+                InputField(name="name", type="str"),
+            ],
+        )
+        orm_models = transform_orm_models([model])
+        name_field = orm_models[0].fields[1]
+        assert name_field.server_default is None
+        assert name_field.on_update is None
+        assert name_field.default_literal is None
 
 
 from api_craft.models.input import InputAPI, InputEndpoint, InputApiConfig

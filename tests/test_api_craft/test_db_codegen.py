@@ -486,3 +486,125 @@ class TestMixedMode:
         for py_file in mixed_project.rglob("*.py"):
             source = py_file.read_text()
             compile(source, str(py_file), "exec")
+
+
+class TestServerDefaultCodegen:
+    """Tests for generated code with server_default strategies."""
+
+    @pytest.fixture(scope="class")
+    def server_defaults_project(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
+        """Generate an API with various server_default strategies."""
+        from api_craft.models.input import (
+            InputAPI,
+            InputApiConfig,
+            InputDatabaseConfig,
+            InputEndpoint,
+            InputField,
+            InputModel,
+        )
+
+        api_input = InputAPI(
+            name="DefaultsApi",
+            objects=[
+                InputModel(
+                    name="Event",
+                    fields=[
+                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="created_at",
+                            type="datetime",
+                            appears="response",
+                            server_default="now",
+                        ),
+                        InputField(
+                            name="updated_at",
+                            type="datetime",
+                            appears="response",
+                            server_default="now_on_update",
+                        ),
+                        InputField(
+                            name="status",
+                            type="str",
+                            appears="response",
+                            server_default="literal",
+                            default_literal="active",
+                        ),
+                        InputField(name="title", type="str"),
+                    ],
+                ),
+            ],
+            endpoints=[
+                InputEndpoint(
+                    name="GetEvents",
+                    path="/events",
+                    method="GET",
+                    response="Event",
+                    response_shape="list",
+                ),
+            ],
+            config=InputApiConfig(
+                database=InputDatabaseConfig(enabled=True),
+            ),
+        )
+        tmp_path = tmp_path_factory.mktemp("defaults_api")
+        APIGenerator().generate(api_input, path=str(tmp_path))
+        return tmp_path / "defaults-api"
+
+    def test_orm_file_compiles(self, server_defaults_project: Path):
+        content = (server_defaults_project / "src" / "orm_models.py").read_text()
+        compile(content, "orm_models.py", "exec")
+
+    def test_now_renders_func_now_in_orm(self, server_defaults_project: Path):
+        """server_default='now' renders server_default=func.now() in ORM model."""
+        content = (server_defaults_project / "src" / "orm_models.py").read_text()
+        assert "server_default=func.now()" in content
+
+    def test_func_imported_in_orm(self, server_defaults_project: Path):
+        """func must be imported when server_default='now' is used."""
+        content = (server_defaults_project / "src" / "orm_models.py").read_text()
+        assert "from sqlalchemy import" in content
+        assert "func" in content
+
+    def test_now_on_update_renders_onupdate(self, server_defaults_project: Path):
+        """server_default='now_on_update' renders onupdate=func.now() in ORM."""
+        content = (server_defaults_project / "src" / "orm_models.py").read_text()
+        assert "onupdate=func.now()" in content
+
+    def test_literal_renders_server_default_string(self, server_defaults_project: Path):
+        """server_default='literal' renders server_default="'value'" in ORM."""
+        content = (server_defaults_project / "src" / "orm_models.py").read_text()
+        assert "server_default=\"'active'\"" in content
+
+    def test_migration_file_compiles(self, server_defaults_project: Path):
+        content = (
+            server_defaults_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        compile(content, "0001_initial.py", "exec")
+
+    def test_now_renders_in_migration(self, server_defaults_project: Path):
+        """server_default='now' renders server_default=sa.func.now() in migration."""
+        content = (
+            server_defaults_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        assert "server_default=sa.func.now()" in content
+
+    def test_literal_renders_in_migration(self, server_defaults_project: Path):
+        """server_default='literal' renders server_default="'value'" in migration."""
+        content = (
+            server_defaults_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        assert "server_default=\"'active'\"" in content
+
+    def test_now_on_update_migration_has_no_onupdate(
+        self, server_defaults_project: Path
+    ):
+        """onupdate is ORM-level only, not DDL -- should not appear in migration."""
+        content = (
+            server_defaults_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        assert "onupdate" not in content
+
+    def test_all_python_files_compile(self, server_defaults_project: Path):
+        for py_file in server_defaults_project.rglob("*.py"):
+            source = py_file.read_text()
+            compile(source, str(py_file), "exec")

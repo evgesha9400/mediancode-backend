@@ -37,7 +37,6 @@ class TemplateField(BaseModel):
     name: str
     optional: bool
     description: str | None = None
-    default_value: str | None = None
     validators: list[TemplateValidator] = []
     field_validators: list[TemplateResolvedFieldValidator] = []
     pk: bool = False
@@ -119,8 +118,9 @@ class TemplateORMField(BaseModel):
     column_type: str
     primary_key: bool = False
     nullable: bool = False
-    autoincrement: bool = False
-    uuid_default: bool = False
+    server_default: str | None = None
+    on_update: str | None = None
+    default_literal: str | None = None
     foreign_key: str | None = None
 
 

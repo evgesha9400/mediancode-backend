@@ -89,7 +89,7 @@ class TestTemplateORMModels:
             python_type="int",
             column_type="Integer",
             primary_key=True,
-            autoincrement=True,
+            server_default="auto_increment",
         )
         assert field.primary_key is True
         assert field.nullable is False

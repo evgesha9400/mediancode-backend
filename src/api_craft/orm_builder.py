@@ -121,7 +121,38 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
             )
             python_type = orm_type if not field.optional else f"{orm_type} | None"
 
-            is_uuid_pk = field.pk and base_type in ("uuid", "UUID")
+            # Determine server_default strategy
+            sd = None
+            on_update = None
+            default_literal = None
+
+            if field.pk:
+                # PK auto-gen: infer from type
+                if base_type in ("uuid", "UUID"):
+                    sd = "uuid4"
+                elif base_type in ("int",):
+                    sd = "auto_increment"
+            elif field.server_default:
+                if field.server_default == "now_on_update":
+                    sd = "now"
+                    on_update = "now"
+                else:
+                    sd = field.server_default
+                default_literal = field.default_literal
+
+            # SQL-quote string literals so the DDL emits DEFAULT 'value' not DEFAULT value
+            if (
+                sd == "literal"
+                and default_literal
+                and base_type
+                in (
+                    "str",
+                    "EmailStr",
+                    "HttpUrl",
+                )
+            ):
+                default_literal = f"'{default_literal}'"
+
             orm_fields.append(
                 TemplateORMField(
                     name=str(field.name),
@@ -129,8 +160,9 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
                     column_type=column_type,
                     primary_key=field.pk,
                     nullable=field.optional,
-                    autoincrement=field.pk and base_type in ("int",),
-                    uuid_default=is_uuid_pk,
+                    server_default=sd,
+                    on_update=on_update,
+                    default_literal=default_literal,
                 )
             )
 

@@ -12,12 +12,18 @@ pydantic_types = sorted({t for t in all_types if t in ("EmailStr", "HttpUrl")})
 has_fk = any(f.foreign_key for m in orm_models for f in m.fields)
 has_relationships = any(m.relationships for m in orm_models)
 has_assoc_tables = bool(association_tables)
+needs_func = any(
+    f.server_default == "now" or f.on_update == "now"
+    for m in orm_models for f in m.fields
+)
 extra_sa = set()
 if has_fk:
     extra_sa.add("ForeignKey")
 if has_assoc_tables:
     extra_sa.add("Column")
     extra_sa.add("Table")
+if needs_func:
+    extra_sa.add("func")
 combined_sa = sorted(set(sa_imports) | extra_sa)
 orm_imports = ["DeclarativeBase", "Mapped", "mapped_column"]
 if has_relationships:
@@ -64,10 +70,16 @@ class ${model.class_name}(Base):
         parts.append(f'ForeignKey("{field.foreign_key}")')
     if field.primary_key:
         parts.append("primary_key=True")
-    if field.autoincrement:
+    if field.server_default == "auto_increment":
         parts.append("autoincrement=True")
-    if field.uuid_default:
+    elif field.server_default == "uuid4":
         parts.append("default=uuid.uuid4")
+    elif field.server_default == "now":
+        parts.append("server_default=func.now()")
+    elif field.server_default == "literal":
+        parts.append(f'server_default="{field.default_literal}"')
+    if field.on_update == "now":
+        parts.append("onupdate=func.now()")
     if field.nullable and not field.primary_key:
         parts.append("nullable=True")
 %>\

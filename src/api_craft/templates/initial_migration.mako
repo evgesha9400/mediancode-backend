@@ -28,8 +28,17 @@ def upgrade() -> None:
 <%
     col_type = field.column_type
     sa_type = f"sa.{col_type}" if "(" in col_type else f"sa.{col_type}()"
+    extras = ""
+    if field.server_default == "auto_increment":
+        extras += ", autoincrement=True"
+    elif field.server_default == "now":
+        extras += ", server_default=sa.func.now()"
+    elif field.server_default == "literal":
+        extras += f', server_default="{field.default_literal}"'
+    if field.foreign_key:
+        extras += f', sa.ForeignKey("{field.foreign_key}")'
 %>\
-        sa.Column("${field.name}", ${sa_type}${"" if not field.autoincrement else ", autoincrement=True"}${"" if not field.foreign_key else f', sa.ForeignKey("{field.foreign_key}")'}, nullable=${"True" if field.nullable and not field.primary_key else "False"}),
+        sa.Column("${field.name}", ${sa_type}${extras}, nullable=${"True" if field.nullable and not field.primary_key else "False"}),
 % endfor
         sa.PrimaryKeyConstraint(${", ".join(f'"{f.name}"' for f in model.fields if f.primary_key)}),
     )
