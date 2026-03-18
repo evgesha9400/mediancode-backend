@@ -488,3 +488,30 @@ class TestResponseShapeForMethod:
             response="Product",
         )
         assert endpoint.response_shape == "object"
+
+
+class TestServerDefaultField:
+    """Tests for the server_default and default_literal fields on InputField."""
+
+    def test_server_default_accepts_valid_strategies(self):
+        for strategy in ("uuid4", "now", "now_on_update", "auto_increment", "literal"):
+            field = InputField(name="test_field", type="str", server_default=strategy)
+            assert field.server_default == strategy
+
+    def test_server_default_defaults_to_none(self):
+        field = InputField(name="test_field", type="str")
+        assert field.server_default is None
+
+    def test_default_literal_stored(self):
+        field = InputField(
+            name="status",
+            type="str",
+            server_default="literal",
+            default_literal="active",
+        )
+        assert field.default_literal == "active"
+
+    def test_no_default_value_field(self):
+        """default_value was removed — verify it's not stored."""
+        field = InputField(name="test_field", type="str")
+        assert "default_value" not in InputField.model_fields

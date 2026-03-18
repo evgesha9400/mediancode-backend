@@ -18,6 +18,7 @@ OnDeleteAction = Literal["cascade", "restrict", "set_null"]
 FieldAppearance = Literal["both", "request", "response"]
 Cardinality = Literal["has_one", "has_many", "references", "many_to_many"]
 FilterOperator = Literal["eq", "gte", "lte", "gt", "lt", "like", "ilike", "in"]
+ServerDefault = Literal["uuid4", "now", "now_on_update", "auto_increment", "literal"]
 
 
 def check_constraint_sql(column: str, literal_type: type) -> str:

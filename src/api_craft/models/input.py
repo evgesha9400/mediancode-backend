@@ -8,6 +8,7 @@ from api_craft.models.enums import (
     FilterOperator,
     HttpMethod,
     ResponseShape,
+    ServerDefault,
     ValidatorMode,
 )
 from api_craft.models.types import PascalCaseName, SnakeCaseName
@@ -69,7 +70,8 @@ class InputField(BaseModel):
     :ivar name: Field identifier within the object.
     :ivar optional: Whether this field is optional (default False = required).
     :ivar description: Human-readable description of the field.
-    :ivar default_value: Default value expression (Python code).
+    :ivar server_default: Server default strategy for this field.
+    :ivar default_literal: Literal value when server_default is 'literal'.
     :ivar validators: List of validators applied to this field.
     :ivar field_validators: List of resolved field validators with rendered code.
     """
@@ -78,7 +80,8 @@ class InputField(BaseModel):
     name: SnakeCaseName
     optional: bool = False
     description: str | None = None
-    default_value: str | None = None
+    server_default: ServerDefault | None = None
+    default_literal: str | None = None
     validators: list[InputValidator] = Field(default_factory=list)
     field_validators: list[InputResolvedFieldValidator] = Field(default_factory=list)
     pk: bool = False

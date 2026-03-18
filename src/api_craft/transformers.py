@@ -102,7 +102,6 @@ def transform_field(
         name=input_field.name,
         optional=force_optional or input_field.optional,
         description=input_field.description,
-        default_value=input_field.default_value,
         validators=validators,
         field_validators=field_validators,
         pk=input_field.pk,
