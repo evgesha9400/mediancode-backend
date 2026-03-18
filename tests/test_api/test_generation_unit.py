@@ -149,6 +149,8 @@ class TestConvertToInputApiOptions:
         assoc.position = 0
         assoc.is_pk = True
         assoc.appears = "both"
+        assoc.server_default = None
+        assoc.default_literal = None
         obj = MagicMock()
         obj.id = "obj-1"
         obj.name = "Item"
@@ -234,6 +236,8 @@ class TestConvertToInputApiPk:
         assoc.position = 0
         assoc.is_pk = is_pk
         assoc.appears = "both"
+        assoc.server_default = None
+        assoc.default_literal = None
 
         obj = MagicMock()
         obj.id = "obj-1"

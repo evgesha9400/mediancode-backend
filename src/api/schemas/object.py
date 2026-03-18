@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from api.schemas.literals import FieldAppearance
+from api.schemas.literals import FieldAppearance, ServerDefault
 from api.schemas.relationship import ObjectRelationshipResponse
 from api_craft.models.types import PascalCaseName
 
@@ -17,6 +17,8 @@ class ObjectFieldReferenceSchema(BaseModel):
     :ivar optional: Whether this field is optional in the object.
     :ivar is_pk: Whether this field is the primary key.
     :ivar appears: Where this field appears: both, request, or response.
+    :ivar server_default: Server default strategy for this field.
+    :ivar default_literal: Literal value when server_default is 'literal'.
     """
 
     field_id: UUID = Field(
@@ -25,6 +27,8 @@ class ObjectFieldReferenceSchema(BaseModel):
     optional: bool = Field(default=False, examples=[False])
     is_pk: bool = Field(default=False, alias="isPk", examples=[False])
     appears: FieldAppearance = Field(default="both")
+    server_default: ServerDefault | None = Field(default=None, alias="serverDefault")
+    default_literal: str | None = Field(default=None, alias="defaultLiteral")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

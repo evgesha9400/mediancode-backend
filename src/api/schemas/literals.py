@@ -13,6 +13,7 @@ from api_craft.models.enums import (  # noqa: F401
     HttpMethod,
     OnDeleteAction,
     ResponseShape,
+    ServerDefault,
     ValidatorMode,
     check_constraint_sql,
 )

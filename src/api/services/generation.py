@@ -208,7 +208,8 @@ def _convert_to_input_api(
                     ),
                     optional=assoc.optional,
                     description=field.description,
-                    default_value=field.default_value,
+                    server_default=assoc.server_default,
+                    default_literal=assoc.default_literal,
                     validators=_build_field_validators(field),
                     field_validators=[
                         InputResolvedFieldValidator(**rv)
