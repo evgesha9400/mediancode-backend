@@ -269,6 +269,75 @@ def validate_database_config(
         )
 
 
+# Type sets for server_default compatibility
+SERVER_DEFAULT_VALID_TYPES: dict[str, set[str]] = {
+    "uuid4": {"uuid", "UUID"},
+    "now": {"datetime", "date"},
+    "now_on_update": {"datetime", "date"},
+    "auto_increment": {"int"},
+    "literal": {"str", "bool", "int", "float", "decimal", "EmailStr", "HttpUrl"},
+}
+
+
+def validate_server_defaults(
+    config: "InputApiConfig",
+    objects: Iterable["InputModel"],
+) -> None:
+    """Validate server_default constraints on fields.
+
+    Three rules:
+
+    1. Response-only required non-PK fields must have a server_default
+       when database generation is enabled.
+    2. server_default strategy must be compatible with the field's type.
+    3. Literal strategy requires a default_literal value.
+
+    :param config: API configuration containing database settings.
+    :param objects: Collection of declared objects.
+    :raises ValueError: If any constraint is violated.
+    """
+    for obj in objects:
+        for field in obj.fields:
+            if field.pk:
+                continue
+
+            # Rule 1: response + required + non-PK + db enabled → server_default required
+            if (
+                config.database.enabled
+                and field.appears == "response"
+                and not field.optional
+                and field.server_default is None
+            ):
+                raise ValueError(
+                    f"Field '{obj.name}.{field.name}' is response-only and required "
+                    f"but has no server_default. Set a server default strategy "
+                    f"or make the field optional."
+                )
+
+            # Rule 2: type compatibility
+            if field.server_default is not None:
+                base_type = (
+                    field.type.split(".")[0] if "." in field.type else field.type
+                )
+                valid_types = SERVER_DEFAULT_VALID_TYPES.get(
+                    field.server_default, set()
+                )
+                if base_type not in valid_types:
+                    raise ValueError(
+                        f"Field '{obj.name}.{field.name}': server_default "
+                        f"'{field.server_default}' is not valid for type "
+                        f"'{field.type}'. Valid types: "
+                        f"{', '.join(sorted(valid_types))}"
+                    )
+
+                # Rule 3: literal requires default_literal
+                if field.server_default == "literal" and not field.default_literal:
+                    raise ValueError(
+                        f"Field '{obj.name}.{field.name}': server_default "
+                        f"'literal' requires a default_literal value."
+                    )
+
+
 # Type sets for operator compatibility (Rule 6)
 NUMERIC_TYPES = {"int", "float", "Decimal", "decimal", "decimal.Decimal"}
 DATE_TIME_TYPES = {

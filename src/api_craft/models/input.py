@@ -22,6 +22,7 @@ from api_craft.models.validators import (
     validate_primary_keys,
     validate_response_shape_for_method,
     validate_response_shape_for_path,
+    validate_server_defaults,
     validate_unique_object_names,
 )
 
@@ -273,5 +274,6 @@ class InputAPI(BaseModel):
         validate_primary_keys(self.objects)
         validate_pk_field_types(self.objects)
         validate_database_config(self.config, self.objects)
+        validate_server_defaults(self.config, self.objects)
         validate_param_inference(self.endpoints, self.objects)
         return self

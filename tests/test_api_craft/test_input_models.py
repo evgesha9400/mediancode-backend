@@ -515,3 +515,237 @@ class TestServerDefaultField:
         """default_value was removed — verify it's not stored."""
         field = InputField(name="test_field", type="str")
         assert "default_value" not in InputField.model_fields
+
+
+class TestServerDefaultValidation:
+    """Tests for validate_server_defaults() triggered via InputAPI construction."""
+
+    def _make_api(self, fields, db_enabled=True):
+        """Helper: build an InputAPI with one object and one GET endpoint."""
+        return InputAPI(
+            name="TestApi",
+            objects=[InputModel(name="Thing", fields=fields)],
+            endpoints=[
+                InputEndpoint(
+                    name="GetThings",
+                    path="/things",
+                    method="GET",
+                    response="Thing",
+                )
+            ],
+            config=InputApiConfig(
+                database=InputDatabaseConfig(enabled=db_enabled),
+            ),
+        )
+
+    # --- Rule: response + required + non-PK + db enabled → server_default required ---
+
+    def test_response_required_no_default_raises(self):
+        with pytest.raises(ValueError, match="server_default"):
+            self._make_api(
+                fields=[
+                    InputField(name="id", type="int", pk=True),
+                    InputField(name="created_at", type="datetime", appears="response"),
+                ]
+            )
+
+    def test_response_required_with_default_passes(self):
+        api = self._make_api(
+            fields=[
+                InputField(name="id", type="int", pk=True),
+                InputField(
+                    name="created_at",
+                    type="datetime",
+                    appears="response",
+                    server_default="now",
+                ),
+            ]
+        )
+        assert api is not None
+
+    def test_response_optional_no_default_passes(self):
+        """Optional response-only fields don't need a server_default."""
+        api = self._make_api(
+            fields=[
+                InputField(name="id", type="int", pk=True),
+                InputField(
+                    name="deleted_at",
+                    type="datetime",
+                    appears="response",
+                    optional=True,
+                ),
+            ]
+        )
+        assert api is not None
+
+    def test_pk_field_exempt(self):
+        """PK fields are exempt from the server_default rule."""
+        api = self._make_api(
+            fields=[
+                InputField(name="id", type="uuid", pk=True, appears="response"),
+            ]
+        )
+        assert api is not None
+
+    def test_database_disabled_skips_validation(self):
+        """When database.enabled is False, no validation needed."""
+        api = self._make_api(
+            fields=[
+                InputField(name="created_at", type="datetime", appears="response"),
+            ],
+            db_enabled=False,
+        )
+        assert api is not None
+
+    def test_both_appears_no_validation(self):
+        """Fields with appears='both' don't trigger the rule."""
+        api = self._make_api(
+            fields=[
+                InputField(name="id", type="int", pk=True),
+                InputField(name="name", type="str"),
+            ]
+        )
+        assert api is not None
+
+    # --- Type compatibility ---
+
+    def test_uuid4_valid_for_uuid(self):
+        api = self._make_api(
+            fields=[
+                InputField(name="id", type="int", pk=True),
+                InputField(
+                    name="ref_id",
+                    type="uuid",
+                    appears="response",
+                    server_default="uuid4",
+                ),
+            ]
+        )
+        assert api is not None
+
+    def test_uuid4_invalid_for_str(self):
+        with pytest.raises(ValueError, match="not valid for type"):
+            self._make_api(
+                fields=[
+                    InputField(name="id", type="int", pk=True),
+                    InputField(
+                        name="name",
+                        type="str",
+                        appears="response",
+                        server_default="uuid4",
+                    ),
+                ]
+            )
+
+    def test_now_valid_for_datetime(self):
+        api = self._make_api(
+            fields=[
+                InputField(name="id", type="int", pk=True),
+                InputField(
+                    name="created_at",
+                    type="datetime",
+                    appears="response",
+                    server_default="now",
+                ),
+            ]
+        )
+        assert api is not None
+
+    def test_now_on_update_valid_for_datetime(self):
+        api = self._make_api(
+            fields=[
+                InputField(name="id", type="int", pk=True),
+                InputField(
+                    name="updated_at",
+                    type="datetime",
+                    appears="response",
+                    server_default="now_on_update",
+                ),
+            ]
+        )
+        assert api is not None
+
+    def test_now_invalid_for_int(self):
+        with pytest.raises(ValueError, match="not valid for type"):
+            self._make_api(
+                fields=[
+                    InputField(name="id", type="int", pk=True),
+                    InputField(
+                        name="count",
+                        type="int",
+                        appears="response",
+                        server_default="now",
+                    ),
+                ]
+            )
+
+    def test_auto_increment_valid_for_int(self):
+        api = self._make_api(
+            fields=[
+                InputField(name="id", type="uuid", pk=True),
+                InputField(
+                    name="seq",
+                    type="int",
+                    appears="response",
+                    server_default="auto_increment",
+                ),
+            ]
+        )
+        assert api is not None
+
+    def test_auto_increment_invalid_for_str(self):
+        with pytest.raises(ValueError, match="not valid for type"):
+            self._make_api(
+                fields=[
+                    InputField(name="id", type="int", pk=True),
+                    InputField(
+                        name="name",
+                        type="str",
+                        appears="response",
+                        server_default="auto_increment",
+                    ),
+                ]
+            )
+
+    def test_literal_valid_for_str(self):
+        api = self._make_api(
+            fields=[
+                InputField(name="id", type="int", pk=True),
+                InputField(
+                    name="status",
+                    type="str",
+                    appears="response",
+                    server_default="literal",
+                    default_literal="active",
+                ),
+            ]
+        )
+        assert api is not None
+
+    def test_literal_requires_default_literal(self):
+        with pytest.raises(ValueError, match="default_literal"):
+            self._make_api(
+                fields=[
+                    InputField(name="id", type="int", pk=True),
+                    InputField(
+                        name="status",
+                        type="str",
+                        appears="response",
+                        server_default="literal",
+                    ),
+                ]
+            )
+
+    def test_server_default_on_both_field_validates_type_compat(self):
+        """Even non-response fields with server_default get type-checked."""
+        with pytest.raises(ValueError, match="not valid for type"):
+            self._make_api(
+                fields=[
+                    InputField(name="id", type="int", pk=True),
+                    InputField(
+                        name="name",
+                        type="str",
+                        server_default="now",
+                    ),
+                ]
+            )
