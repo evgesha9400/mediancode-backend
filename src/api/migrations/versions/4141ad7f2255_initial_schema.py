@@ -324,12 +324,19 @@ def upgrade() -> None:
             "is_pk", sa.Boolean(), nullable=False, server_default=sa.text("false")
         ),
         sa.Column("appears", sa.Text(), nullable=False, server_default="both"),
+        sa.Column("server_default", sa.Text(), nullable=True),
+        sa.Column("default_literal", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["field_id"], ["fields.id"]),
         sa.ForeignKeyConstraint(["object_id"], ["objects.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
             "appears IN ('both', 'request', 'response')",
             name="ck_fields_on_objects_appears",
+        ),
+        sa.CheckConstraint(
+            "server_default IS NULL OR server_default IN "
+            "('uuid4', 'now', 'now_on_update', 'auto_increment', 'literal')",
+            name="ck_fields_on_objects_server_default",
         ),
     )
     op.create_index(

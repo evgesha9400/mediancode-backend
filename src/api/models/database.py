@@ -463,6 +463,8 @@ class ObjectFieldAssociation(Base):
     :ivar optional: Whether this field is optional in the object (default False = required).
     :ivar position: Order position for field display.
     :ivar appears: Where this field appears: both, request, or response.
+    :ivar server_default: Server default strategy for this field.
+    :ivar default_literal: Literal value when server_default is 'literal'.
     """
 
     __tablename__ = "fields_on_objects"
@@ -470,6 +472,11 @@ class ObjectFieldAssociation(Base):
         CheckConstraint(
             "appears IN ('both', 'request', 'response')",
             name="ck_fields_on_objects_appears",
+        ),
+        CheckConstraint(
+            "server_default IS NULL OR server_default IN "
+            "('uuid4', 'now', 'now_on_update', 'auto_increment', 'literal')",
+            name="ck_fields_on_objects_server_default",
         ),
     )
 
@@ -489,6 +496,8 @@ class ObjectFieldAssociation(Base):
     position: Mapped[int] = mapped_column(default=0, nullable=False)
     is_pk: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     appears: Mapped[str] = mapped_column(Text, default="both", server_default="both")
+    server_default: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_literal: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     object: Mapped["ObjectDefinition"] = relationship(
