@@ -580,7 +580,7 @@ def validate_pascal_case_name(value: str) -> None:
             f"PascalCaseName must start with uppercase letter, got: {value}"
         )
 
-    if not value.replace("_", "").isalnum():
+    if not value.isalnum():
         raise ValueError(
             f"PascalCaseName must contain only letters and numbers, got: {value}"
         )
