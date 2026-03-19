@@ -227,7 +227,7 @@ def validate_primary_keys(objects: Iterable["InputModel"]) -> None:
                 )
 
 
-ALLOWED_PK_TYPES = {"int", "uuid", "UUID"}
+ALLOWED_PK_TYPES = {"int", "uuid"}
 
 
 def validate_pk_field_types(objects: Iterable["InputModel"]) -> None:
