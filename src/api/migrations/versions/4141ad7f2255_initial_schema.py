@@ -13,6 +13,17 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
+from api_craft.models.enums import (
+    Cardinality,
+    Container,
+    FieldAppearance,
+    HttpMethod,
+    ResponseShape,
+    ServerDefault,
+    ValidatorMode,
+    check_constraint_sql,
+)
+
 # revision identifiers, used by Alembic.
 revision: str = "4141ad7f2255"
 down_revision: str | None = None
@@ -144,7 +155,7 @@ def upgrade() -> None:
         sa.Column("body_template", sa.Text(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
-            "mode IN ('before', 'after')",
+            check_constraint_sql("mode", ValidatorMode),
             name="ck_field_validator_templates_mode",
         ),
     )
@@ -170,7 +181,7 @@ def upgrade() -> None:
         sa.Column("body_template", sa.Text(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
-            "mode IN ('before', 'after')",
+            check_constraint_sql("mode", ValidatorMode),
             name="ck_model_validator_templates_mode",
         ),
     )
@@ -241,7 +252,9 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("default_value", sa.Text(), nullable=True),
         sa.Column("container", sa.Text(), nullable=True),
-        sa.CheckConstraint("container IN ('List')", name="ck_fields_container"),
+        sa.CheckConstraint(
+            check_constraint_sql("container", Container), name="ck_fields_container"
+        ),
         sa.ForeignKeyConstraint(["namespace_id"], ["namespaces.id"]),
         sa.ForeignKeyConstraint(["type_id"], ["types.id"]),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
@@ -330,12 +343,11 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["object_id"], ["objects.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
-            "appears IN ('both', 'request', 'response')",
+            check_constraint_sql("appears", FieldAppearance),
             name="ck_fields_on_objects_appears",
         ),
         sa.CheckConstraint(
-            "server_default IS NULL OR server_default IN "
-            "('uuid4', 'now', 'now_on_update', 'auto_increment', 'literal')",
+            f"server_default IS NULL OR {check_constraint_sql('server_default', ServerDefault)}",
             name="ck_fields_on_objects_server_default",
         ),
     )
@@ -384,7 +396,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
-            "cardinality IN ('has_one', 'has_many', 'references', 'many_to_many')",
+            check_constraint_sql("cardinality", Cardinality),
             name="ck_object_relationships_cardinality",
         ),
     )
@@ -498,11 +510,11 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["object_id"], ["objects.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
-            "method IN ('GET', 'POST', 'PUT', 'PATCH', 'DELETE')",
+            check_constraint_sql("method", HttpMethod),
             name="ck_api_endpoints_method",
         ),
         sa.CheckConstraint(
-            "response_shape IN ('object', 'list')",
+            check_constraint_sql("response_shape", ResponseShape),
             name="ck_api_endpoints_response_shape",
         ),
     )

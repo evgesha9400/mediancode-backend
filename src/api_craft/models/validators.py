@@ -6,6 +6,17 @@ import re
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
+from api_craft.models.validation_catalog import (
+    ALLOWED_PK_TYPES,
+    DATE_TIME_TYPES,
+    NUMERIC_TYPES,
+    OPERATOR_VALID_TYPES,
+    ORDERED_TYPES,
+    SERVER_DEFAULT_VALID_TYPES,
+    SNAKE_CASE_PATTERN,
+    STRING_TYPES,
+)
+
 if TYPE_CHECKING:  # pragma: no cover - imports used for type checking only
     from api_craft.models.input import InputApiConfig, InputEndpoint, InputModel
 
@@ -227,9 +238,6 @@ def validate_primary_keys(objects: Iterable["InputModel"]) -> None:
                 )
 
 
-ALLOWED_PK_TYPES = {"int", "uuid", "UUID"}
-
-
 def validate_pk_field_types(objects: Iterable["InputModel"]) -> None:
     """Validate that PK fields use only supported types (int or uuid).
 
@@ -267,16 +275,6 @@ def validate_database_config(
             "Database generation requires at least one object with a primary key field. "
             "Mark a field as PK on your objects, or disable database generation."
         )
-
-
-# Type sets for server_default compatibility
-SERVER_DEFAULT_VALID_TYPES: dict[str, set[str]] = {
-    "uuid4": {"uuid", "UUID"},
-    "now": {"datetime", "date"},
-    "now_on_update": {"datetime", "date"},
-    "auto_increment": {"int"},
-    "literal": {"str", "bool", "int", "float", "decimal", "EmailStr", "HttpUrl"},
-}
 
 
 def validate_server_defaults(
@@ -336,31 +334,6 @@ def validate_server_defaults(
                         f"Field '{obj.name}.{field.name}': server_default "
                         f"'literal' requires a default_literal value."
                     )
-
-
-# Type sets for operator compatibility (Rule 6)
-NUMERIC_TYPES = {"int", "float", "Decimal", "decimal", "decimal.Decimal"}
-DATE_TIME_TYPES = {
-    "date",
-    "datetime",
-    "datetime.date",
-    "datetime.datetime",
-    "time",
-    "datetime.time",
-}
-ORDERED_TYPES = NUMERIC_TYPES | DATE_TIME_TYPES
-STRING_TYPES = {"str"}
-
-OPERATOR_VALID_TYPES: dict[str, set[str]] = {
-    "eq": set(),  # empty = all types valid
-    "in": set(),  # empty = all types valid
-    "gte": ORDERED_TYPES,
-    "lte": ORDERED_TYPES,
-    "gt": ORDERED_TYPES,
-    "lt": ORDERED_TYPES,
-    "like": STRING_TYPES,
-    "ilike": STRING_TYPES,
-}
 
 
 def _resolve_target(
@@ -543,9 +516,6 @@ def _validate_operator_type_compat(
             f"Endpoint '{endpoint_name}': operator '{operator}' is not valid "
             f"for field type '{field_type}' on param '{param_name}'"
         )
-
-
-SNAKE_CASE_PATTERN = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
 
 
 def validate_snake_case_name(value: str) -> None:
