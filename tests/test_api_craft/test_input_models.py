@@ -255,6 +255,27 @@ class TestPrimaryKeyTypeRestriction:
                 ],
             )
 
+    def test_pk_rejects_uppercase_uuid(self):
+        """PK type 'UUID' (uppercase) should be rejected — only 'uuid' is valid."""
+        with pytest.raises(ValueError, match="unsupported type"):
+            InputAPI(
+                name="PkTypeTest",
+                endpoints=[
+                    InputEndpoint(
+                        name="GetItems",
+                        path="/items",
+                        method="GET",
+                        response="Item",
+                    )
+                ],
+                objects=[
+                    InputModel(
+                        name="Item",
+                        fields=[InputField(name="id", type="UUID", pk=True)],
+                    )
+                ],
+            )
+
     def test_non_pk_field_any_type_allowed(self):
         """Non-PK fields should not be restricted by PK type rules."""
         api = InputAPI(
