@@ -11,7 +11,7 @@ Phases:
  8. Update object (change field optionality)
  9. Create API
 10. Update API
-11. Create 7 endpoints (UUID path params → JSONB round-trip)
+11. Create 9 endpoints (UUID path params → JSONB round-trip)
 12. Read and verify endpoints
 13. Update endpoint (UUID-in-JSONB regression test)
 14. Generate API with database backend
@@ -43,6 +43,12 @@ from api.models.database import (
     Namespace,
     ObjectDefinition,
     UserModel,
+)
+from api.seeding.shop_data import (
+    CUSTOMER_FIELDS,
+    CUSTOMER_OPTIONAL,
+    PRODUCT_FIELDS,
+    PRODUCT_OPTIONAL,
 )
 
 pytestmark = [
@@ -96,171 +102,22 @@ async def client():
 
 
 # ---------------------------------------------------------------------------
-# Field definitions
+# Field definitions imported from shared seed data (see imports above).
+# shop_data defines the FINAL state. For update testing, we override initial values.
 # ---------------------------------------------------------------------------
-
-PRODUCT_FIELDS = [
-    {
-        "name": "name",
-        "type": "str",
-        "constraints": [("min_length", "1"), ("max_length", "200")],
-        "validators": [("Trim", None), ("Normalize Whitespace", None)],
-    },
-    {
-        "name": "sku",
-        "type": "str",
-        "constraints": [("pattern", r"^[A-Z]{2}-\d{4}$")],
-        "validators": [("Normalize Case", {"case": "upper"})],
-    },
-    {
-        "name": "price",
-        "type": "Decimal",
-        "constraints": [("gt", "0")],
-        "validators": [("Round Decimal", {"places": "2"})],
-    },
-    {
-        "name": "sale_price",
-        "type": "Decimal",
-        "constraints": [("ge", "0")],
-        "validators": [],
-    },
-    {
-        "name": "sale_end_date",
-        "type": "date",
-        "constraints": [],
-        "validators": [],
-    },
-    {
-        "name": "weight",
-        "type": "float",
-        "constraints": [("ge", "0"), ("lt", "1000")],
-        "validators": [("Clamp to Range", {"min_value": "0", "max_value": "1000"})],
-    },
-    {
-        "name": "quantity",
-        "type": "int",
-        "constraints": [("ge", "0")],
-        "validators": [],
-    },
-    {
-        "name": "min_order_quantity",
-        "type": "int",
-        "constraints": [("ge", "1")],
-        "validators": [],
-    },
-    {
-        "name": "max_order_quantity",
-        "type": "int",
-        "constraints": [("le", "1000")],
-        "validators": [],
-    },
-    {
-        "name": "discount_percent",
-        "type": "int",
-        "constraints": [("ge", "0"), ("le", "100"), ("multiple_of", "5")],
-        "validators": [],
-    },
-    {
-        "name": "discount_amount",
-        "type": "Decimal",
-        "constraints": [("ge", "0")],
-        "validators": [],
-    },
-    {
-        "name": "in_stock",
-        "type": "bool",
-        "constraints": [],
-        "validators": [],
-    },
-    {
-        "name": "product_url",
-        "type": "HttpUrl",
-        "constraints": [],
-        "validators": [],
-    },
-    {
-        "name": "release_date",
-        "type": "date",
-        "constraints": [],
-        "validators": [],
-    },
-    {
-        "name": "created_at",
-        "type": "datetime",
-        "constraints": [],
-        "validators": [],
-    },
-    {
-        "name": "tracking_id",
-        "type": "uuid",
-        "constraints": [],
-        "validators": [],
-    },
-]
-
-CUSTOMER_FIELDS = [
-    {
-        "name": "customer_id",
-        "type": "int",
-        "constraints": [],
-        "validators": [],
-    },
-    {
-        "name": "customer_name",
-        "type": "str",
-        "constraints": [("min_length", "1"), ("max_length", "100")],
-        "validators": [("Trim", None), ("Normalize Case", {"case": "title"})],
-    },
-    {
-        "name": "email",
-        "type": "EmailStr",
-        "constraints": [],
-        "validators": [],
-    },
-    {
-        "name": "phone",
-        "type": "str",
-        "constraints": [("min_length", "7"), ("max_length", "15")],
-        "validators": [],
-    },
-    {
-        "name": "date_of_birth",
-        "type": "date",
-        "constraints": [],
-        "validators": [],
-    },
-    {
-        "name": "last_login_time",
-        "type": "time",
-        "constraints": [],
-        "validators": [],
-    },
-    {
-        "name": "is_active",
-        "type": "bool",
-        "constraints": [],
-        "validators": [],
-    },
-    {
-        "name": "registered_at",
-        "type": "datetime",
-        "constraints": [],
-        "validators": [],
-    },
-]
 
 ALL_FIELDS = PRODUCT_FIELDS + CUSTOMER_FIELDS
 
-PRODUCT_OPTIONAL = {
-    "sale_price",
-    "sale_end_date",
-    "min_order_quantity",
-    "max_order_quantity",
-    "discount_percent",
-    "discount_amount",
+# Phase 3 creates with these overrides; Phase 5 updates to final (from shop_data).
+FIELD_CREATION_OVERRIDES = {
+    "name": {"constraints": [("min_length", "1"), ("max_length", "200")]},
+    "customer_name": {
+        "validators": [("Trim", None), ("Normalize Case", {"case": "title"})]
+    },
 }
 
-CUSTOMER_OPTIONAL = {"email", "phone"}
+# Phase 6 creates Product with min_order_quantity optional; Phase 8 makes it required.
+PRODUCT_OPTIONAL_INITIAL = PRODUCT_OPTIONAL | {"min_order_quantity"}
 
 
 # ---------------------------------------------------------------------------
@@ -281,6 +138,7 @@ class TestShopApiFullE2E:
     product_id: str = ""
     customer_id: str = ""
     api_id: str = ""
+    relationship_id: str = ""
     endpoint_ids: dict[str, str] = {}
     zip_bytes: bytes = b""
     generated_dir: str = ""
@@ -388,17 +246,20 @@ class TestShopApiFullE2E:
         cls = TestShopApiFullE2E
 
         for field_def in ALL_FIELDS:
+            overrides = FIELD_CREATION_OVERRIDES.get(field_def["name"], {})
+            constraints = overrides.get("constraints", field_def["constraints"])
+            validators = overrides.get("validators", field_def["validators"])
             payload = {
                 "namespaceId": cls.namespace_id,
                 "name": field_def["name"],
                 "typeId": cls.type_ids[field_def["type"]],
                 "constraints": [
                     {"constraintId": cls.constraint_ids[name], "value": value}
-                    for name, value in field_def["constraints"]
+                    for name, value in constraints
                 ],
                 "validators": [
                     {"templateId": cls.fv_template_ids[name], "parameters": params}
-                    for name, params in field_def["validators"]
+                    for name, params in validators
                 ],
             }
             resp = await client.post("/fields", json=payload)
@@ -407,8 +268,8 @@ class TestShopApiFullE2E:
             ), f"Failed to create field '{field_def['name']}': {resp.text}"
             field = resp.json()
             assert field["typeId"] == cls.type_ids[field_def["type"]]
-            assert len(field["constraints"]) == len(field_def["constraints"])
-            assert len(field["validators"]) == len(field_def["validators"])
+            assert len(field["constraints"]) == len(constraints)
+            assert len(field["validators"]) == len(validators)
             cls.field_ids[field_def["name"]] = field["id"]
 
         assert len(cls.field_ids) == 24
@@ -496,11 +357,19 @@ class TestShopApiFullE2E:
         cls = TestShopApiFullE2E
 
         # --- Product ---
+        product_appears = {"created_at": "response"}
+        product_server_defaults = {"created_at": "now"}
         product_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
-                "optional": f["name"] in PRODUCT_OPTIONAL,
+                "optional": f["name"] in PRODUCT_OPTIONAL_INITIAL,
                 "isPk": f["name"] == "tracking_id",
+                "appears": product_appears.get(f["name"], "both"),
+                **(
+                    {"serverDefault": product_server_defaults[f["name"]]}
+                    if f["name"] in product_server_defaults
+                    else {}
+                ),
             }
             for f in PRODUCT_FIELDS
         ]
@@ -553,11 +422,19 @@ class TestShopApiFullE2E:
         cls.product_id = product["id"]
 
         # --- Customer ---
+        customer_appears = {"registered_at": "response"}
+        customer_server_defaults = {"registered_at": "now"}
         customer_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
                 "optional": f["name"] in CUSTOMER_OPTIONAL,
                 "isPk": f["name"] == "customer_id",
+                "appears": customer_appears.get(f["name"], "both"),
+                **(
+                    {"serverDefault": customer_server_defaults[f["name"]]}
+                    if f["name"] in customer_server_defaults
+                    else {}
+                ),
             }
             for f in CUSTOMER_FIELDS
         ]
@@ -628,13 +505,15 @@ class TestShopApiFullE2E:
             optional = f["optional"]
             if f["fieldId"] == cls.field_ids["min_order_quantity"]:
                 optional = False
-            updated_fields.append(
-                {
-                    "fieldId": f["fieldId"],
-                    "optional": optional,
-                    "isPk": f.get("isPk", False),
-                }
-            )
+            entry = {
+                "fieldId": f["fieldId"],
+                "optional": optional,
+                "isPk": f.get("isPk", False),
+                "appears": f.get("appears", "both"),
+            }
+            if f.get("serverDefault"):
+                entry["serverDefault"] = f["serverDefault"]
+            updated_fields.append(entry)
 
         resp = await client.put(
             f"/objects/{cls.product_id}",
@@ -652,6 +531,27 @@ class TestShopApiFullE2E:
             if f["fieldId"] == cls.field_ids["min_order_quantity"]
         )
         assert moq["optional"] is False
+
+    # --- Phase 8b: Create relationship ---
+
+    async def test_phase_08b_create_relationship(self, client: AsyncClient):
+        """Create Customer has_many Products relationship."""
+        cls = TestShopApiFullE2E
+        resp = await client.post(
+            f"/objects/{cls.customer_id}/relationships",
+            json={
+                "targetObjectId": cls.product_id,
+                "name": "products",
+                "cardinality": "has_many",
+            },
+        )
+        assert resp.status_code == 201
+        rel = resp.json()
+        assert rel["name"] == "products"
+        assert rel["cardinality"] == "has_many"
+        assert rel["isInferred"] is False
+        assert rel.get("inverseId") is not None
+        cls.relationship_id = rel["id"]
 
     # --- Phase 9: Create API ---
 
@@ -699,7 +599,7 @@ class TestShopApiFullE2E:
     # --- Phase 11: Create endpoints ---
 
     async def test_phase_11_create_endpoints(self, client: AsyncClient):
-        """Create all 7 endpoints with UUID path params (JSONB round-trip)."""
+        """Create all 9 endpoints with UUID path params (JSONB round-trip)."""
         cls = TestShopApiFullE2E
 
         endpoints = [
@@ -785,6 +685,33 @@ class TestShopApiFullE2E:
             },
             {
                 "apiId": cls.api_id,
+                "method": "POST",
+                "path": "/customers",
+                "description": "Create a customer",
+                "tagName": "Customers",
+                "pathParams": [],
+                "objectId": cls.customer_id,
+                "useEnvelope": False,
+                "responseShape": "object",
+            },
+            {
+                "apiId": cls.api_id,
+                "method": "GET",
+                "path": "/customers/{email}",
+                "description": "Get customer by email",
+                "tagName": "Customers",
+                "pathParams": [
+                    {
+                        "name": "email",
+                        "fieldId": cls.field_ids["email"],
+                    }
+                ],
+                "objectId": cls.customer_id,
+                "useEnvelope": False,
+                "responseShape": "object",
+            },
+            {
+                "apiId": cls.api_id,
                 "method": "PATCH",
                 "path": "/customers/{email}",
                 "description": "Update a customer by email",
@@ -817,18 +744,18 @@ class TestShopApiFullE2E:
                 assert created["pathParams"][i]["fieldId"] == pp["fieldId"]
             cls.endpoint_ids[f"{ep['method']} {ep['path']}"] = created["id"]
 
-        assert len(cls.endpoint_ids) == 7
+        assert len(cls.endpoint_ids) == 9
 
     # --- Phase 12: Read and verify endpoints ---
 
     async def test_phase_12_read_endpoints(self, client: AsyncClient):
-        """Verify all 7 endpoints via list and individual GET."""
+        """Verify all 9 endpoints via list and individual GET."""
         cls = TestShopApiFullE2E
 
         resp = await client.get("/endpoints")
         assert resp.status_code == 200
         endpoints = resp.json()
-        assert len(endpoints) == 7
+        assert len(endpoints) == 9
 
         # Verify endpoint with UUID path param
         ep_id = cls.endpoint_ids["GET /products/{tracking_id}"]
@@ -1054,7 +981,7 @@ class TestShopApiFullE2E:
     # --- Phase 22: Delete endpoints ---
 
     async def test_phase_22_delete_endpoints(self, client: AsyncClient):
-        """Delete all 7 endpoints and verify list is empty."""
+        """Delete all 9 endpoints and verify list is empty."""
         cls = TestShopApiFullE2E
 
         for key, ep_id in cls.endpoint_ids.items():
