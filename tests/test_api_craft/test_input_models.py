@@ -32,6 +32,52 @@ class TestDatabaseConfig:
         assert config.database.enabled is True
 
 
+class TestPascalCaseValidation:
+    """PascalCase name validation must reject underscores."""
+
+    def test_rejects_underscores(self):
+        """Names with underscores are not valid PascalCase."""
+        with pytest.raises(ValueError, match="PascalCaseName"):
+            InputAPI(
+                name="User_Profile",
+                endpoints=[
+                    InputEndpoint(
+                        name="GetUsers",
+                        path="/users",
+                        method="GET",
+                        response="User",
+                    )
+                ],
+                objects=[
+                    InputModel(
+                        name="User",
+                        fields=[InputField(name="id", type="int")],
+                    )
+                ],
+            )
+
+    def test_accepts_valid_pascal_case(self):
+        """Standard PascalCase names are accepted."""
+        api = InputAPI(
+            name="UserProfile",
+            endpoints=[
+                InputEndpoint(
+                    name="GetUsers",
+                    path="/users",
+                    method="GET",
+                    response="User",
+                )
+            ],
+            objects=[
+                InputModel(
+                    name="User",
+                    fields=[InputField(name="id", type="int")],
+                )
+            ],
+        )
+        assert api.name == "UserProfile"
+
+
 class TestPrimaryKeyValidation:
     def test_optional_pk_rejected(self):
         """PK field must not be optional."""
@@ -206,6 +252,27 @@ class TestPrimaryKeyTypeRestriction:
                         name="Item",
                         fields=[InputField(name="id", type=bad_type, pk=True)],
                     ),
+                ],
+            )
+
+    def test_pk_rejects_uppercase_uuid(self):
+        """PK type 'UUID' (uppercase) should be rejected — only 'uuid' is valid."""
+        with pytest.raises(ValueError, match="unsupported type"):
+            InputAPI(
+                name="PkTypeTest",
+                endpoints=[
+                    InputEndpoint(
+                        name="GetItems",
+                        path="/items",
+                        method="GET",
+                        response="Item",
+                    )
+                ],
+                objects=[
+                    InputModel(
+                        name="Item",
+                        fields=[InputField(name="id", type="UUID", pk=True)],
+                    )
                 ],
             )
 

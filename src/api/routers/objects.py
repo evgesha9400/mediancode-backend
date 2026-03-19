@@ -43,6 +43,8 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
             optional=fa.optional,
             is_pk=fa.is_pk,
             appears=fa.appears,
+            server_default=fa.server_default,
+            default_literal=fa.default_literal,
         )
         for fa in sorted(obj.field_associations, key=lambda x: x.position)
     ]

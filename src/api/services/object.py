@@ -191,6 +191,8 @@ class ObjectService(BaseService[ObjectDefinition]):
                 optional=field_ref.optional,
                 is_pk=field_ref.is_pk,
                 appears=field_ref.appears,
+                server_default=field_ref.server_default,
+                default_literal=field_ref.default_literal,
                 position=position,
             )
             self.db.add(assoc)
