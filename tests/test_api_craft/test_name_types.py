@@ -118,6 +118,18 @@ class TestPascalCaseName:
         with pytest.raises(ValueError):
             PascalCaseName("userEmail")
 
+    def test_spaced_name(self):
+        name = PascalCaseName("ShopApi")
+        assert name.spaced_name == "Shop Api"
+
+    def test_spaced_name_single_word(self):
+        name = PascalCaseName("User")
+        assert name.spaced_name == "User"
+
+    def test_spaced_name_multi_word(self):
+        name = PascalCaseName("UserEmailAddress")
+        assert name.spaced_name == "User Email Address"
+
     def test_is_str_subclass(self):
         name = PascalCaseName("User")
         assert isinstance(name, str)

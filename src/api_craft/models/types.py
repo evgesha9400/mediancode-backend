@@ -50,6 +50,16 @@ class PascalCaseName(str):
             result.append(char.lower())
         return "".join(result)
 
+    @property
+    def spaced_name(self) -> str:
+        """Return the name with spaces before uppercase letters."""
+        result = []
+        for i, char in enumerate(self):
+            if char.isupper() and i > 0:
+                result.append(" ")
+            result.append(char)
+        return "".join(result)
+
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: type, handler: GetCoreSchemaHandler
