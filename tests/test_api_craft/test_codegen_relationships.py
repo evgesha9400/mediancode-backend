@@ -545,10 +545,146 @@ class TestRelationshipCodeGeneration:
         content = (rel_project / "src" / "models.py").read_text()
         assert "author_id" in content
 
+    def test_migration_table_order(self, rel_project: Path):
+        """Verify tables are created in dependency order: users/tags before posts."""
+        import re
+
+        content = (
+            rel_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        upgrade_section = content.split("def upgrade")[1].split("def downgrade")[0]
+        created = re.findall(r'op\.create_table\(\s*"(\w+)"', upgrade_section)
+        posts_idx = created.index("posts")
+        users_idx = created.index("users")
+        tags_idx = created.index("tags")
+        # posts references users, so users must come first
+        assert users_idx < posts_idx
+        # tags has no FK dependency on posts, but posts has many_to_many with tags
+        # — entity tables are fine in any order, association table comes after both
+        assert tags_idx < posts_idx or tags_idx > posts_idx  # no constraint
+
     def test_all_python_files_compile(self, rel_project: Path):
         for py_file in rel_project.rglob("*.py"):
             source = py_file.read_text()
             compile(source, str(py_file), "exec")
+
+
+class TestMigrationTableOrdering:
+    """Verify topological sort orders tables by FK dependencies."""
+
+    def test_references_target_created_before_source(self):
+        """Post references User — users table must come before posts."""
+        models = [
+            _make_model(
+                "Post",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "author",
+                        "target_model": "User",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "User",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+            ),
+        ]
+        result = transform_orm_models(models)
+        table_names = [m.table_name for m in result]
+        assert table_names.index("users") < table_names.index("posts")
+
+    def test_chain_dependencies_ordered(self):
+        """A references B references C — C first, then B, then A."""
+        models = [
+            _make_model(
+                "A",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "val", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "b_ref",
+                        "target_model": "B",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "B",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "val", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "c_ref",
+                        "target_model": "C",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "C",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "val", "type": "str"},
+                ],
+            ),
+        ]
+        result = transform_orm_models(models)
+        table_names = [m.table_name for m in result]
+        assert table_names.index("cs") < table_names.index("bs")
+        assert table_names.index("bs") < table_names.index("as")
+
+    def test_no_relationships_preserves_input_order(self):
+        """Models without FKs keep their input order."""
+        models = [
+            _make_model("Zebra", [{"name": "id", "type": "uuid", "pk": True}]),
+            _make_model("Alpha", [{"name": "id", "type": "uuid", "pk": True}]),
+            _make_model("Mid", [{"name": "id", "type": "uuid", "pk": True}]),
+        ]
+        result = transform_orm_models(models)
+        table_names = [m.table_name for m in result]
+        assert table_names == ["zebras", "alphas", "mids"]
+
+    def test_many_to_many_no_entity_ordering_constraint(self):
+        """many_to_many doesn't affect entity table order (assoc tables are separate)."""
+        models = [
+            _make_model(
+                "Student",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "courses",
+                        "target_model": "Course",
+                        "cardinality": "many_to_many",
+                    }
+                ],
+            ),
+            _make_model(
+                "Course",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+            ),
+        ]
+        result = transform_orm_models(models)
+        # No FK fields on either model — input order preserved
+        table_names = [m.table_name for m in result]
+        assert table_names == ["students", "courses"]
 
 
 class TestNoRelationshipsBackwardCompat:

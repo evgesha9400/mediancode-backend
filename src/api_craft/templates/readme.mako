@@ -176,22 +176,6 @@ ${"##"} Health Check
 A health check endpoint is available at `${api.config.healthcheck}` for container orchestration and monitoring.
 % endif
 
-${"##"} Models
-% for model in api.models:
-
-${"###"} ${model.name}
-% if model.description:
-
-${model.description}
-% endif
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-% for field in model.fields:
-| `${field.name}` | `${field.type}` | ${"No" if field.optional else "Yes"} | ${field.description or "-"} |
-% endfor
-% endfor
-
 ---
 
 *Generated with [Median Code](https://mediancode.ai)*

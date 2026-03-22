@@ -86,6 +86,55 @@ def _make_association_table_name(table_a: str, table_b: str) -> str:
     return "_".join(sorted([table_a, table_b]))
 
 
+def _sort_by_dependencies(orm_models: list[TemplateORMModel]) -> list[TemplateORMModel]:
+    """Sort ORM models so tables with FK dependencies come after the tables they reference.
+
+    Uses Kahn's algorithm for topological sort. Models without FK dependencies
+    retain their relative input order.
+    """
+    if not orm_models:
+        return orm_models
+
+    # Map table_name -> model and build dependency graph
+    model_by_table: dict[str, TemplateORMModel] = {m.table_name: m for m in orm_models}
+    # deps[table] = set of table names this table depends on (via FK)
+    deps: dict[str, set[str]] = {m.table_name: set() for m in orm_models}
+
+    for model in orm_models:
+        for field in model.fields:
+            if field.foreign_key:
+                ref_table = field.foreign_key.split(".")[0]
+                if ref_table in model_by_table and ref_table != model.table_name:
+                    deps[model.table_name].add(ref_table)
+
+    # Kahn's algorithm: iteratively pick tables with zero unresolved deps
+    sorted_tables: list[str] = []
+    # Use input order for tie-breaking (pick first available with 0 deps)
+    input_order = [m.table_name for m in orm_models]
+
+    while input_order:
+        # Find next table with no unresolved dependencies, preserving input order
+        ready = None
+        for table in input_order:
+            if not deps[table]:
+                ready = table
+                break
+
+        if ready is None:
+            remaining = ", ".join(input_order)
+            raise ValueError(
+                f"Circular foreign key dependency detected among tables: {remaining}"
+            )
+
+        sorted_tables.append(ready)
+        input_order.remove(ready)
+        # Remove this table from others' dependency sets
+        for d in deps.values():
+            d.discard(ready)
+
+    return [model_by_table[t] for t in sorted_tables]
+
+
 def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMModel]:
     """Convert InputModels with pk fields into TemplateORMModels."""
     # Build entity lookup: name -> (table_name, pk_column_name, class_name)
@@ -239,4 +288,4 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
             )
         )
 
-    return orm_models
+    return _sort_by_dependencies(orm_models)
