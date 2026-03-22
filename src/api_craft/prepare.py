@@ -148,6 +148,92 @@ class PreparedAPI:
     has_path_params: bool = False
     has_query_params: bool = False
     has_no_response: bool = False
+    # Pre-computed fields for models.mako imports
+    pydantic_imports: list[str] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Template helper functions (passed to models.mako as context)
+# ---------------------------------------------------------------------------
+
+
+def indent_body(body: str, spaces: int = 4) -> str:
+    """Add extra indentation to each line of a function body."""
+    prefix = " " * spaces
+    lines = body.split("\n")
+    return "\n".join(prefix + line if line.strip() else line for line in lines)
+
+
+def render_field_constraint(validator) -> str | None:
+    """Render a validator as a Pydantic Field constraint string."""
+    name = validator.name
+    params = validator.params or {}
+    value = params.get("value")
+
+    constraint_map = {
+        "min_length": "min_length",
+        "max_length": "max_length",
+        "pattern": "pattern",
+        "gt": "gt",
+        "ge": "ge",
+        "lt": "lt",
+        "le": "le",
+        "multiple_of": "multiple_of",
+    }
+
+    pydantic_name = constraint_map.get(name)
+    if not pydantic_name:
+        return None
+
+    if pydantic_name == "pattern":
+        return f'{pydantic_name}=r"{value}"'
+    elif isinstance(value, str):
+        return f'{pydantic_name}="{value}"'
+    else:
+        return f"{pydantic_name}={value}"
+
+
+def render_field(field) -> str:
+    """Render a complete field definition with validators."""
+    constraints = []
+    for v in field.validators:
+        constraint = render_field_constraint(v)
+        if constraint:
+            constraints.append(constraint)
+
+    type_annotation = field.type
+
+    if constraints:
+        field_args = ", ".join(constraints)
+        if not field.optional:
+            return f"{field.name}: {type_annotation} = Field({field_args})"
+        else:
+            return f"{field.name}: {type_annotation} | None = Field(default=None, {field_args})"
+    else:
+        if not field.optional:
+            return f"{field.name}: {type_annotation}"
+        else:
+            return f"{field.name}: {type_annotation} | None = None"
+
+
+def _compute_pydantic_imports(models: list[InputModel]) -> list[str]:
+    """Compute the sorted list of pydantic imports needed by the models."""
+    has_field_constraints = any(
+        any(f.validators for f in model.fields) for model in models
+    )
+    has_field_validators = any(
+        any(f.field_validators for f in model.fields) for model in models
+    )
+    has_model_validators = any(model.model_validators for model in models)
+
+    imports = ["BaseModel"]
+    if has_field_constraints:
+        imports.append("Field")
+    if has_field_validators:
+        imports.append("field_validator")
+    if has_model_validators:
+        imports.append("model_validator")
+    return sorted(imports)
 
 
 # ---------------------------------------------------------------------------
@@ -669,4 +755,5 @@ def prepare_api(input_api: InputAPI) -> PreparedAPI:
         has_path_params=has_path_params,
         has_query_params=has_query_params,
         has_no_response=has_no_response,
+        pydantic_imports=_compute_pydantic_imports(prepared_models),
     )

@@ -26,7 +26,7 @@ from api_craft.extractors import (
     extract_query_parameters,
 )
 from api_craft.models.input import InputAPI
-from api_craft.prepare import PreparedAPI, prepare_api
+from api_craft.prepare import PreparedAPI, indent_body, prepare_api, render_field
 from api_craft.utils import camel_to_kebab, create_dir, write_file
 
 # Configure logging
@@ -185,7 +185,11 @@ class APIGenerator:
 
             rendered_components = {
                 "models.py": self.templates["models"].render(
-                    models=components["models"], imports=model_imports
+                    models=components["models"],
+                    imports=model_imports,
+                    pydantic_imports=template_api.pydantic_imports,
+                    render_field=render_field,
+                    indent_body=indent_body,
                 ),
                 "views.py": self.templates["views"].render(
                     views=components["views"],

@@ -1,98 +1,15 @@
 <%doc>
 - Template Parameters:
-- models: List[TemplateModel]
+- models: List[InputModel] - model definitions to generate
 - imports: Set[str] - set of import statements
+- pydantic_imports: List[str] - sorted pydantic import names (e.g. ["BaseModel", "Field"])
+- render_field: callable(field) -> str - renders a field definition line
+- indent_body: callable(body, spaces=4) -> str - indents a function body
 </%doc>\
-<%
-def indent_body(body, spaces=4):
-    """Add extra indentation to each line of a function body."""
-    prefix = ' ' * spaces
-    lines = body.split('\n')
-    return '\n'.join(prefix + line if line.strip() else line for line in lines)
-
-def render_field_constraint(validator):
-    """Render a validator as a Pydantic Field constraint."""
-    name = validator.name
-    params = validator.params or {}
-    value = params.get('value')
-
-    # Map validator names to Pydantic Field parameter names
-    constraint_map = {
-        'min_length': 'min_length',
-        'max_length': 'max_length',
-        'pattern': 'pattern',
-        'gt': 'gt',
-        'ge': 'ge',
-        'lt': 'lt',
-        'le': 'le',
-        'multiple_of': 'multiple_of',
-    }
-
-    pydantic_name = constraint_map.get(name)
-    if not pydantic_name:
-        return None
-
-    if pydantic_name == 'pattern':
-        # Pattern needs to be a raw string
-        return f'{pydantic_name}=r"{value}"'
-    elif isinstance(value, str):
-        return f'{pydantic_name}="{value}"'
-    else:
-        return f'{pydantic_name}={value}'
-
-def render_field(field):
-    """Render a complete field definition with validators."""
-    constraints = []
-    for v in field.validators:
-        constraint = render_field_constraint(v)
-        if constraint:
-            constraints.append(constraint)
-
-    type_annotation = field.type
-
-    if constraints:
-        field_args = ', '.join(constraints)
-        if not field.optional:
-            return f'{field.name}: {type_annotation} = Field({field_args})'
-        else:
-            return f'{field.name}: {type_annotation} | None = Field(default=None, {field_args})'
-    else:
-        if not field.optional:
-            return f'{field.name}: {type_annotation}'
-        else:
-            return f'{field.name}: {type_annotation} | None = None'
-
-# Check if any model has Field() constraints
-has_field_constraints = any(
-    any(field.validators for field in model.fields)
-    for model in models
-)
-
-# Check if any model has @field_validator functions
-has_field_validators = any(
-    any(field.field_validators for field in model.fields)
-    for model in models
-)
-
-# Check if any model has @model_validator functions
-has_model_validators = any(
-    model.model_validators
-    for model in models
-)
-
-# Build pydantic imports
-pydantic_imports = ['BaseModel']
-if has_field_constraints:
-    pydantic_imports.append('Field')
-if has_field_validators:
-    pydantic_imports.append('field_validator')
-if has_model_validators:
-    pydantic_imports.append('model_validator')
-%>\
 % for import_stmt in sorted(imports):
 ${import_stmt}
 % endfor
-from pydantic import ${', '.join(sorted(pydantic_imports))}
+from pydantic import ${', '.join(pydantic_imports)}
 % for model in models:
 
 
