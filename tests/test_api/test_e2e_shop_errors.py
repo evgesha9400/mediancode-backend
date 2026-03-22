@@ -208,7 +208,13 @@ class TestShopApiErrors:
                 "namespaceId": cls.blog_namespace_id,
                 "name": "Post",
                 "description": "Blog post",
-                "fields": [{"fieldId": cls.title_field_id, "nullable": False}],
+                "fields": [
+                    {
+                        "fieldId": cls.title_field_id,
+                        "nullable": False,
+                        "role": "writable",
+                    }
+                ],
             },
         )
         assert resp.status_code == 201, f"Failed to create Post object: {resp.text}"

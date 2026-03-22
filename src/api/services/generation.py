@@ -183,6 +183,48 @@ async def _fetch_fields(
     return {f.id: f for f in fields}
 
 
+# --- Role → InputField property derivation ---
+
+_ROLE_TO_EXPOSURE: dict[str, str] = {
+    "pk": "read_only",
+    "writable": "read_write",
+    "write_only": "write_only",
+    "read_only": "read_only",
+    "created_timestamp": "read_only",
+    "updated_timestamp": "read_only",
+    "generated_uuid": "read_only",
+}
+
+_ROLE_GENERATED_STRATEGY: dict[str, str] = {
+    "created_timestamp": "now",
+    "updated_timestamp": "now_on_update",
+    "generated_uuid": "uuid4",
+}
+
+_ROLE_IS_PK = {"pk"}
+
+
+def _derive_input_field_props(assoc):
+    """Derive InputField properties (pk, exposure, default) from a role-based association.
+
+    :param assoc: An ObjectFieldAssociation record.
+    :returns: Tuple of (pk, exposure, default).
+    """
+    pk = assoc.role in _ROLE_IS_PK
+    exposure = _ROLE_TO_EXPOSURE[assoc.role]
+
+    if assoc.role in _ROLE_GENERATED_STRATEGY:
+        default = FieldDefaultGenerated(
+            kind="generated", strategy=_ROLE_GENERATED_STRATEGY[assoc.role]
+        )
+    elif assoc.default_value is not None:
+        default = FieldDefaultLiteral(kind="literal", value=assoc.default_value)
+    else:
+        default = None
+
+    return pk, exposure, default
+
+
 def _convert_to_input_api(
     api: ApiModel,
     objects_map: dict[str, ObjectDefinition],
@@ -203,6 +245,7 @@ def _convert_to_input_api(
         for assoc in sorted(obj.field_associations, key=lambda x: x.position):
             field = fields_map.get(assoc.field_id)
             if field:
+                pk, exposure, default = _derive_input_field_props(assoc)
                 input_field = InputField(
                     name=field.name,
                     type=_build_field_type(
@@ -210,24 +253,14 @@ def _convert_to_input_api(
                     ),
                     nullable=assoc.nullable,
                     description=field.description,
-                    default=(
-                        FieldDefaultLiteral(kind="literal", value=assoc.default_value)
-                        if assoc.default_kind == "literal"
-                        else (
-                            FieldDefaultGenerated(
-                                kind="generated", strategy=assoc.default_value
-                            )
-                            if assoc.default_kind == "generated"
-                            else None
-                        )
-                    ),
+                    default=default,
                     validators=_build_field_validators(field),
                     field_validators=[
                         InputResolvedFieldValidator(**rv)
                         for rv in _build_resolved_field_validators(field)
                     ],
-                    pk=assoc.is_pk,
-                    exposure=assoc.exposure,
+                    pk=pk,
+                    exposure=exposure,
                 )
                 fields.append(input_field)
 

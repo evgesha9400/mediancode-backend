@@ -11,6 +11,7 @@ from api_craft.models.enums import (  # noqa: F401
     Container,
     FieldAppearance,
     FieldExposure,
+    FieldRole,
     GeneratedStrategy,
     HttpMethod,
     OnDeleteAction,

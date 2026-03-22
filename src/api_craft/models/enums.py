@@ -22,6 +22,15 @@ FilterOperator = Literal["eq", "gte", "lte", "gt", "lt", "like", "ilike", "in"]
 GeneratedStrategy = Literal["uuid4", "now", "now_on_update", "auto_increment"]
 ServerDefault = GeneratedStrategy  # deprecated alias, remove after full migration
 DefaultKind = Literal["literal", "generated"]
+FieldRole = Literal[
+    "pk",
+    "writable",
+    "write_only",
+    "read_only",
+    "created_timestamp",
+    "updated_timestamp",
+    "generated_uuid",
+]
 
 
 def check_constraint_sql(column: str, literal_type: type) -> str:

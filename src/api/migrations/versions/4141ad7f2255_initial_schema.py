@@ -329,24 +329,17 @@ def upgrade() -> None:
         ),
         sa.Column("object_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("field_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("role", sa.Text(), nullable=False),
         sa.Column("nullable", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("position", sa.Integer(), nullable=False),
-        sa.Column(
-            "is_pk", sa.Boolean(), nullable=False, server_default=sa.text("false")
-        ),
-        sa.Column("exposure", sa.Text(), nullable=False, server_default="read_write"),
-        sa.Column("default_kind", sa.Text(), nullable=True),
         sa.Column("default_value", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["field_id"], ["fields.id"]),
         sa.ForeignKeyConstraint(["object_id"], ["objects.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
-            "exposure IN ('read_write', 'write_only', 'read_only')",
-            name="ck_fields_on_objects_exposure",
-        ),
-        sa.CheckConstraint(
-            "default_kind IN ('literal', 'generated') OR default_kind IS NULL",
-            name="ck_fields_on_objects_default_kind",
+            "role IN ('pk', 'writable', 'write_only', 'read_only', "
+            "'created_timestamp', 'updated_timestamp', 'generated_uuid')",
+            name="ck_fields_on_objects_role",
         ),
     )
     op.create_index(

@@ -86,8 +86,8 @@ class TestDefaultPersistence:
         assert resp.status_code == 201
         cls.field_ids = [resp.json()["id"]]
 
-    async def test_create_object_with_generated_default(self, client: AsyncClient):
-        """Generated default should be persisted and returned."""
+    async def test_create_object_with_created_timestamp_role(self, client: AsyncClient):
+        """created_timestamp role should be persisted and returned."""
         cls = TestDefaultPersistence
         resp = await client.post(
             "/objects",
@@ -97,10 +97,7 @@ class TestDefaultPersistence:
                 "fields": [
                     {
                         "fieldId": cls.field_ids[0],
-                        "nullable": False,
-                        "isPk": False,
-                        "exposure": "read_only",
-                        "default": {"kind": "generated", "strategy": "now"},
+                        "role": "created_timestamp",
                     }
                 ],
             },
@@ -109,10 +106,10 @@ class TestDefaultPersistence:
         body = resp.json()
         cls.object_id = body["id"]
         assert len(body["fields"]) == 1
-        assert body["fields"][0]["default"] == {
-            "kind": "generated",
-            "strategy": "now",
-        }
+        assert body["fields"][0]["role"] == "created_timestamp"
+        # Generated roles normalize nullable to false and default_value to null
+        assert body["fields"][0]["nullable"] is False
+        assert body["fields"][0]["defaultValue"] is None
 
     async def test_update_object_with_literal_default(self, client: AsyncClient):
         """Literal default should be persisted and returned."""
@@ -139,9 +136,8 @@ class TestDefaultPersistence:
                     {
                         "fieldId": int_field_id,
                         "nullable": False,
-                        "isPk": False,
-                        "exposure": "read_only",
-                        "default": {"kind": "literal", "value": "0"},
+                        "role": "read_only",
+                        "defaultValue": "0",
                     }
                 ],
             },
@@ -149,7 +145,8 @@ class TestDefaultPersistence:
         assert resp.status_code == 200, f"Unexpected: {resp.text}"
         body = resp.json()
         assert len(body["fields"]) == 1
-        assert body["fields"][0]["default"] == {"kind": "literal", "value": "0"}
+        assert body["fields"][0]["defaultValue"] == "0"
+        assert body["fields"][0]["role"] == "read_only"
 
     async def test_phase_99_cleanup(self, client: AsyncClient):
         cls = TestDefaultPersistence

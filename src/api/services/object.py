@@ -37,6 +37,22 @@ class ObjectService(BaseService[ObjectDefinition]):
 
     model_class = ObjectDefinition
 
+    # Roles whose nullable and default_value are structurally forced
+    _GENERATED_ROLES = {
+        "pk",
+        "created_timestamp",
+        "updated_timestamp",
+        "generated_uuid",
+    }
+
+    # Role → allowed field type base names
+    _ROLE_TYPE_CONSTRAINTS: dict[str, set[str]] = {
+        "pk": ALLOWED_PK_TYPES,
+        "created_timestamp": {"datetime", "date"},
+        "updated_timestamp": {"datetime", "date"},
+        "generated_uuid": {"uuid"},
+    }
+
     def _object_load_options(self):
         """Standard eager-load options for object queries."""
         return [
@@ -111,7 +127,7 @@ class ObjectService(BaseService[ObjectDefinition]):
         self.db.add(obj)
         await self.db.flush()
 
-        await self._validate_pk_field_types(data.fields)
+        await self._validate_role_field_types(data.fields)
         await self._set_field_associations(obj, data.fields)
 
         if data.validators:
@@ -134,7 +150,7 @@ class ObjectService(BaseService[ObjectDefinition]):
         if data.description is not None:
             obj.description = data.description
         if data.fields is not None:
-            await self._validate_pk_field_types(data.fields)
+            await self._validate_role_field_types(data.fields)
             await self._set_field_associations(obj, data.fields)
 
         if data.validators is not None:
@@ -172,30 +188,62 @@ class ObjectService(BaseService[ObjectDefinition]):
         await self.db.delete(obj)
         await self.db.flush()
 
-    async def _validate_pk_field_types(
+    async def _validate_role_field_types(
         self, fields: list[ObjectFieldReferenceSchema]
     ) -> None:
-        """Validate that PK fields use only supported types (int or uuid).
+        """Validate that fields with constrained roles use compatible types.
+
+        Checks:
+        - pk role: field type must be int or uuid
+        - created_timestamp / updated_timestamp: field type must be datetime or date
+        - generated_uuid: field type must be uuid
+        - Exactly one pk field per object (if any pk fields present)
 
         :param fields: List of field references to validate.
-        :raises HTTPException: If a PK field uses an unsupported type.
+        :raises HTTPException: If a field uses an incompatible type for its role.
         """
-        pk_field_ids = [f.field_id for f in fields if f.is_pk]
-        if not pk_field_ids:
+        # Collect field IDs that need type checking, grouped by role
+        role_field_ids: dict[str, list[UUID]] = {}
+        for f in fields:
+            if f.role in self._ROLE_TYPE_CONSTRAINTS:
+                role_field_ids.setdefault(f.role, []).append(f.field_id)
+
+        # Validate exactly one PK
+        pk_count = sum(1 for f in fields if f.role == "pk")
+        if pk_count > 1:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="An object may have at most one primary key field.",
+            )
+
+        # Fetch types for all constrained fields in one query
+        all_constrained_ids = [fid for ids in role_field_ids.values() for fid in ids]
+        if not all_constrained_ids:
             return
 
         result = await self.db.execute(
             select(FieldModel.id, TypeModel.name)
             .join(TypeModel, FieldModel.type_id == TypeModel.id)
-            .where(FieldModel.id.in_(pk_field_ids))
+            .where(FieldModel.id.in_(all_constrained_ids))
         )
-        for field_id, type_name in result.all():
-            base_type = type_name.split(".")[0] if "." in type_name else type_name
-            if base_type not in ALLOWED_PK_TYPES:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=f"Field type '{type_name}' is not supported as a primary key. Only 'int' and 'uuid' types are allowed.",
-                )
+        field_type_map = {
+            row[0]: (row[1].split(".")[0] if "." in row[1] else row[1])
+            for row in result.all()
+        }
+
+        for role, field_ids in role_field_ids.items():
+            allowed = self._ROLE_TYPE_CONSTRAINTS[role]
+            for field_id in field_ids:
+                base_type = field_type_map.get(field_id)
+                if base_type and base_type not in allowed:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail=(
+                            f"Field type '{base_type}' is not compatible with "
+                            f"role '{role}'. Allowed types: "
+                            f"{', '.join(sorted(allowed))}."
+                        ),
+                    )
 
     async def _set_field_associations(
         self,
@@ -203,6 +251,9 @@ class ObjectService(BaseService[ObjectDefinition]):
         fields: list[ObjectFieldReferenceSchema],
     ) -> None:
         """Set field associations for an object, replacing existing ones.
+
+        For generated roles (pk, created_timestamp, updated_timestamp,
+        generated_uuid), nullable and default_value are silently normalized.
 
         :param obj: The object to update field associations for.
         :param fields: List of field reference schemas.
@@ -215,22 +266,18 @@ class ObjectService(BaseService[ObjectDefinition]):
             await self.db.delete(assoc)
 
         for position, field_ref in enumerate(fields):
-            default_kind = None
-            default_value = None
-            if field_ref.default is not None:
-                default_kind = field_ref.default.kind
-                if default_kind == "literal":
-                    default_value = field_ref.default.value
-                elif default_kind == "generated":
-                    default_value = field_ref.default.strategy
+            # Normalize: generated roles ignore nullable and default_value
+            nullable = field_ref.nullable
+            default_value = field_ref.default_value
+            if field_ref.role in self._GENERATED_ROLES:
+                nullable = False
+                default_value = None
 
             assoc = ObjectFieldAssociation(
                 object_id=obj.id,
                 field_id=field_ref.field_id,
-                is_pk=field_ref.is_pk,
-                exposure=field_ref.exposure,
-                nullable=field_ref.nullable,
-                default_kind=default_kind,
+                role=field_ref.role,
+                nullable=nullable,
                 default_value=default_value,
                 position=position,
             )

@@ -362,19 +362,15 @@ class TestShopApiFullE2E:
         cls = TestShopApiFullE2E
 
         # --- Product ---
-        product_exposure = {"created_at": "read_only"}
-        product_defaults = {"created_at": {"kind": "generated", "strategy": "now"}}
+        product_roles = {
+            "created_at": "created_timestamp",
+            "tracking_id": "pk",
+        }
         product_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
                 "nullable": f["name"] in PRODUCT_NULLABLE_INITIAL,
-                "isPk": f["name"] == "tracking_id",
-                "exposure": product_exposure.get(f["name"], "read_write"),
-                **(
-                    {"default": product_defaults[f["name"]]}
-                    if f["name"] in product_defaults
-                    else {}
-                ),
+                "role": product_roles.get(f["name"], "writable"),
             }
             for f in PRODUCT_FIELDS
         ]
@@ -427,21 +423,15 @@ class TestShopApiFullE2E:
         cls.product_id = product["id"]
 
         # --- Customer ---
-        customer_exposure = {"registered_at": "read_only"}
-        customer_defaults = {
-            "registered_at": {"kind": "generated", "strategy": "now"},
+        customer_roles = {
+            "registered_at": "created_timestamp",
+            "id": "pk",
         }
         customer_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
                 "nullable": f["name"] in CUSTOMER_NULLABLE,
-                "isPk": f["name"] == "customer_id",
-                "exposure": customer_exposure.get(f["name"], "read_write"),
-                **(
-                    {"default": customer_defaults[f["name"]]}
-                    if f["name"] in customer_defaults
-                    else {}
-                ),
+                "role": customer_roles.get(f["name"], "writable"),
             }
             for f in CUSTOMER_FIELDS
         ]
@@ -515,11 +505,10 @@ class TestShopApiFullE2E:
             entry = {
                 "fieldId": f["fieldId"],
                 "nullable": nullable,
-                "isPk": f.get("isPk", False),
-                "exposure": f.get("exposure", "read_write"),
+                "role": f.get("role", "writable"),
             }
-            if f.get("default"):
-                entry["default"] = f["default"]
+            if f.get("defaultValue"):
+                entry["defaultValue"] = f["defaultValue"]
             updated_fields.append(entry)
 
         resp = await client.put(

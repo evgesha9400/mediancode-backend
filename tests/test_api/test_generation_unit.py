@@ -147,9 +147,7 @@ class TestConvertToInputApiOptions:
         assoc.field_id = "field-1"
         assoc.nullable = False
         assoc.position = 0
-        assoc.is_pk = True
-        assoc.exposure = "read_only"
-        assoc.default_kind = None
+        assoc.role = "pk"
         assoc.default_value = None
         obj = MagicMock()
         obj.id = "obj-1"
@@ -234,9 +232,7 @@ class TestConvertToInputApiPk:
         assoc.field_id = "field-1"
         assoc.nullable = False
         assoc.position = 0
-        assoc.is_pk = is_pk
-        assoc.exposure = "read_only" if is_pk else "read_write"
-        assoc.default_kind = None
+        assoc.role = "pk" if is_pk else "writable"
         assoc.default_value = None
 
         obj = MagicMock()

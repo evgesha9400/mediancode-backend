@@ -455,27 +455,23 @@ class ObjectDefinition(Base):
 
 
 class ObjectFieldAssociation(Base):
-    """Association between objects and fields with exposure and default settings.
+    """Association between objects and fields with role-based structural intent.
 
     :ivar id: Unique identifier for the association.
     :ivar object_id: Reference to the parent object.
     :ivar field_id: Reference to the field.
+    :ivar role: Structural role of the field (pk, writable, etc.).
     :ivar nullable: Whether this field is nullable (default False).
     :ivar position: Order position for field display.
-    :ivar exposure: Where this field appears: read_write, write_only, or read_only.
-    :ivar default_kind: Default type discriminator: literal or generated.
-    :ivar default_value: Default value (literal string or generated strategy name).
+    :ivar default_value: Optional literal default value for writable roles.
     """
 
     __tablename__ = "fields_on_objects"
     __table_args__ = (
         CheckConstraint(
-            "exposure IN ('read_write', 'write_only', 'read_only')",
-            name="ck_fields_on_objects_exposure",
-        ),
-        CheckConstraint(
-            "default_kind IN ('literal', 'generated') OR default_kind IS NULL",
-            name="ck_fields_on_objects_default_kind",
+            "role IN ('pk', 'writable', 'write_only', 'read_only', "
+            "'created_timestamp', 'updated_timestamp', 'generated_uuid')",
+            name="ck_fields_on_objects_role",
         ),
     )
 
@@ -491,13 +487,9 @@ class ObjectFieldAssociation(Base):
     field_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("fields.id"), nullable=False, index=True
     )
+    role: Mapped[str] = mapped_column(Text, nullable=False)
     nullable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     position: Mapped[int] = mapped_column(default=0, nullable=False)
-    is_pk: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    exposure: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default="read_write"
-    )
-    default_kind: Mapped[str | None] = mapped_column(Text, nullable=True)
     default_value: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships

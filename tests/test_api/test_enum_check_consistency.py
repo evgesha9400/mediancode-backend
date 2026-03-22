@@ -7,8 +7,7 @@ import pytest
 from api_craft.models.enums import (
     Cardinality,
     Container,
-    DefaultKind,
-    FieldExposure,
+    FieldRole,
     GeneratedStrategy,
     HttpMethod,
     ResponseShape,
@@ -20,7 +19,7 @@ from api_craft.models.enums import (
 # These tuples map: (Literal type, column name used in migration, table context)
 ENUM_CHECK_PAIRS = [
     (Container, "container", "fields"),
-    (FieldExposure, "exposure", "fields_on_objects"),
+    (FieldRole, "role", "fields_on_objects"),
     (Cardinality, "cardinality", "object_relationships"),
     (HttpMethod, "method", "api_endpoints"),
     (ResponseShape, "response_shape", "api_endpoints"),
@@ -48,7 +47,17 @@ class TestEnumCheckConsistency:
             ), f"Value '{val}' missing from CHECK SQL for {table}.{column}"
         assert sql.startswith(f"{column} IN (")
 
-    def test_default_kind_check_allows_null(self):
-        """DefaultKind CHECK must allow NULL (default_kind is nullable)."""
-        sql = check_constraint_sql("default_kind", DefaultKind)
-        assert "default_kind IN (" in sql
+    def test_field_role_check_contains_all_values(self):
+        """FieldRole CHECK must contain all seven role values."""
+        sql = check_constraint_sql("role", FieldRole)
+        assert "role IN (" in sql
+        for value in (
+            "pk",
+            "writable",
+            "write_only",
+            "read_only",
+            "created_timestamp",
+            "updated_timestamp",
+            "generated_uuid",
+        ):
+            assert f"'{value}'" in sql

@@ -427,11 +427,12 @@ class TestShopApiE2E:
         cls = TestShopApiE2E
 
         # --- Product ---
+        product_pk = {"tracking_id"}
         product_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
                 "nullable": f["name"] in PRODUCT_NULLABLE,
-                "isPk": f["name"] == "tracking_id",
+                "role": "pk" if f["name"] in product_pk else "writable",
             }
             for f in PRODUCT_FIELDS
         ]
@@ -484,11 +485,12 @@ class TestShopApiE2E:
         cls.product_id = product["id"]
 
         # --- Customer ---
+        customer_pk = {"customer_id"}
         customer_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
                 "nullable": f["name"] in CUSTOMER_NULLABLE,
-                "isPk": f["name"] == "customer_id",
+                "role": "pk" if f["name"] in customer_pk else "writable",
             }
             for f in CUSTOMER_FIELDS
         ]
@@ -563,7 +565,7 @@ class TestShopApiE2E:
                 {
                     "fieldId": f["fieldId"],
                     "nullable": nullable,
-                    "isPk": f.get("isPk", False),
+                    "role": f.get("role", "writable"),
                 }
             )
 

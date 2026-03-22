@@ -84,7 +84,7 @@ class TestSeedRunner:
         assert resp.status_code == 200
         assert len(resp.json()) == len(OBJECTS)
 
-        # Verify exposure on Product.created_at
+        # Verify role on Product.created_at
         resp = await client.get(f"/objects/{result.object_ids['Product']}")
         assert resp.status_code == 200
         product = resp.json()
@@ -93,7 +93,7 @@ class TestSeedRunner:
             for f in product["fields"]
             if f["fieldId"] == result.field_ids["created_at"]
         )
-        assert created_at_field["exposure"] == "read_only"
+        assert created_at_field["role"] == "created_timestamp"
 
         # Verify relationship exists on Customer
         resp = await client.get(f"/objects/{result.object_ids['Customer']}")
@@ -122,6 +122,7 @@ class TestSeedRunner:
     async def test_seed_after_clean_works(self, client: AsyncClient):
         """Verify replace mode (clean then seed) works."""
         from seeding.runner import clean_shop, seed_shop
+        from seeding.shop_data import ALL_FIELDS
 
         result = await seed_shop(client)
         assert result.namespace_id

@@ -1,53 +1,22 @@
 # src/api/schemas/object.py
 """Pydantic schemas for Object entity."""
 
-from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-from pydantic import Field as PydanticField
 
-from api.schemas.literals import FieldExposure
+from api.schemas.literals import FieldRole
 from api.schemas.relationship import ObjectRelationshipResponse
 from api_craft.models.types import PascalCaseName
-
-
-class FieldDefaultLiteralSchema(BaseModel):
-    """API schema for a literal default value.
-
-    :ivar kind: Discriminator tag, always 'literal'.
-    :ivar value: The literal default value as a string.
-    """
-
-    kind: Literal["literal"]
-    value: str
-
-
-class FieldDefaultGeneratedSchema(BaseModel):
-    """API schema for a generated default value.
-
-    :ivar kind: Discriminator tag, always 'generated'.
-    :ivar strategy: The generation strategy to apply.
-    """
-
-    kind: Literal["generated"]
-    strategy: Literal["uuid4", "now", "now_on_update", "auto_increment"]
-
-
-FieldDefaultSchema = Annotated[
-    FieldDefaultLiteralSchema | FieldDefaultGeneratedSchema,
-    PydanticField(discriminator="kind"),
-]
 
 
 class ObjectFieldReferenceSchema(BaseModel):
     """Schema for a field reference in an object.
 
     :ivar field_id: Reference to Field.id.
-    :ivar is_pk: Whether this field is the primary key.
-    :ivar exposure: Where this field appears: read_write, write_only, or read_only.
+    :ivar role: Structural role of the field (pk, writable, etc.).
     :ivar nullable: Whether this field is nullable in the object.
-    :ivar default: Optional default value (literal or generated strategy).
+    :ivar default_value: Optional literal default value (only for writable roles).
     """
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -55,10 +24,9 @@ class ObjectFieldReferenceSchema(BaseModel):
     field_id: UUID = Field(
         ..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"]
     )
-    is_pk: bool = Field(default=False, alias="isPk", examples=[False])
-    exposure: FieldExposure = Field(default="read_write")
+    role: FieldRole = Field(default="writable")
     nullable: bool = Field(default=False)
-    default: FieldDefaultSchema | None = Field(default=None)
+    default_value: str | None = Field(default=None, alias="defaultValue")
 
 
 class ModelValidatorInput(BaseModel):

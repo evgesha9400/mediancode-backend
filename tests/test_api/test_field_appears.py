@@ -1,5 +1,5 @@
 # tests/test_api/test_field_appears.py
-"""Integration tests for the `exposure` field on object field references."""
+"""Integration tests for the `role` field on object field references."""
 
 import pytest
 from httpx import AsyncClient
@@ -10,8 +10,8 @@ pytestmark = [
 ]
 
 
-class TestFieldExposure:
-    """Tests for the `exposure` column on fields_on_objects."""
+class TestFieldRole:
+    """Tests for the `role` column on fields_on_objects."""
 
     namespace_id: str = ""
     field_ids: dict[str, str] = {}
@@ -20,7 +20,7 @@ class TestFieldExposure:
 
     async def test_setup_namespace_and_fields(self, client: AsyncClient):
         """Create a namespace and three fields for testing."""
-        cls = TestFieldExposure
+        cls = TestFieldRole
 
         # Get system type (str)
         resp = await client.get("/types")
@@ -30,7 +30,7 @@ class TestFieldExposure:
 
         # Create namespace
         resp = await client.post(
-            "/namespaces", json={"name": "ExposureTestNs", "description": "test"}
+            "/namespaces", json={"name": "RoleTestNs", "description": "test"}
         )
         assert resp.status_code == 201
         cls.namespace_id = resp.json()["id"]
@@ -50,34 +50,31 @@ class TestFieldExposure:
             ), f"Failed to create field {name}: {resp.text}"
             cls.field_ids[name] = resp.json()["id"]
 
-    async def test_create_object_with_exposure(self, client: AsyncClient):
-        """Create an object with mixed exposure values."""
-        cls = TestFieldExposure
+    async def test_create_object_with_roles(self, client: AsyncClient):
+        """Create an object with mixed role values."""
+        cls = TestFieldRole
 
         resp = await client.post(
             "/objects",
             json={
                 "namespaceId": cls.namespace_id,
                 "name": "Account",
-                "description": "Test object with exposure flags",
+                "description": "Test object with role flags",
                 "fields": [
                     {
                         "fieldId": cls.field_ids["email"],
                         "nullable": False,
-                        "isPk": False,
-                        "exposure": "read_write",
+                        "role": "writable",
                     },
                     {
                         "fieldId": cls.field_ids["password"],
                         "nullable": False,
-                        "isPk": False,
-                        "exposure": "write_only",
+                        "role": "write_only",
                     },
                     {
                         "fieldId": cls.field_ids["created_at"],
                         "nullable": False,
-                        "isPk": False,
-                        "exposure": "read_only",
+                        "role": "read_only",
                     },
                 ],
             },
@@ -86,30 +83,30 @@ class TestFieldExposure:
         obj = resp.json()
         cls.object_id = obj["id"]
 
-        # Verify exposure values in create response
+        # Verify role values in create response
         fields_by_id = {f["fieldId"]: f for f in obj["fields"]}
-        assert fields_by_id[cls.field_ids["email"]]["exposure"] == "read_write"
-        assert fields_by_id[cls.field_ids["password"]]["exposure"] == "write_only"
-        assert fields_by_id[cls.field_ids["created_at"]]["exposure"] == "read_only"
+        assert fields_by_id[cls.field_ids["email"]]["role"] == "writable"
+        assert fields_by_id[cls.field_ids["password"]]["role"] == "write_only"
+        assert fields_by_id[cls.field_ids["created_at"]]["role"] == "read_only"
 
-    async def test_get_object_returns_exposure(self, client: AsyncClient):
-        """Verify exposure values are returned on GET."""
-        cls = TestFieldExposure
+    async def test_get_object_returns_role(self, client: AsyncClient):
+        """Verify role values are returned on GET."""
+        cls = TestFieldRole
 
         resp = await client.get(f"/objects/{cls.object_id}")
         assert resp.status_code == 200
         obj = resp.json()
 
         fields_by_id = {f["fieldId"]: f for f in obj["fields"]}
-        assert fields_by_id[cls.field_ids["email"]]["exposure"] == "read_write"
-        assert fields_by_id[cls.field_ids["password"]]["exposure"] == "write_only"
-        assert fields_by_id[cls.field_ids["created_at"]]["exposure"] == "read_only"
+        assert fields_by_id[cls.field_ids["email"]]["role"] == "writable"
+        assert fields_by_id[cls.field_ids["password"]]["role"] == "write_only"
+        assert fields_by_id[cls.field_ids["created_at"]]["role"] == "read_only"
 
-    async def test_default_exposure_is_read_write(self, client: AsyncClient):
-        """When exposure is not specified, it defaults to 'read_write'."""
-        cls = TestFieldExposure
+    async def test_default_role_is_writable(self, client: AsyncClient):
+        """When role is not specified, it defaults to 'writable'."""
+        cls = TestFieldRole
 
-        # Update object with fields that don't specify exposure
+        # Update object with fields that don't specify role
         resp = await client.put(
             f"/objects/{cls.object_id}",
             json={
@@ -117,7 +114,6 @@ class TestFieldExposure:
                     {
                         "fieldId": cls.field_ids["email"],
                         "nullable": False,
-                        "isPk": False,
                     },
                 ],
             },
@@ -125,11 +121,11 @@ class TestFieldExposure:
         assert resp.status_code == 200
         obj = resp.json()
         assert len(obj["fields"]) == 1
-        assert obj["fields"][0]["exposure"] == "read_write"
+        assert obj["fields"][0]["role"] == "writable"
 
     async def test_cleanup(self, client: AsyncClient):
         """Clean up test data."""
-        cls = TestFieldExposure
+        cls = TestFieldRole
 
         if cls.object_id:
             resp = await client.delete(f"/objects/{cls.object_id}")
