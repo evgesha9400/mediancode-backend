@@ -26,8 +26,8 @@ ENV PYTHONPATH=/app/src
 # Default port
 ENV PORT=8080
 
-# Copy Alembic config, entrypoint, and seed data
-COPY alembic.ini entrypoint.sh docs/seed-shop-api.sql ./
+# Copy Alembic config and entrypoint
+COPY alembic.ini entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]

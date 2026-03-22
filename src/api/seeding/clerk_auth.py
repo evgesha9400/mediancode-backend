@@ -70,6 +70,7 @@ async def mint_clerk_jwt(email: str, clerk_secret_key: str) -> str:
         # 3. Mint JWT
         resp = await client.post(
             f"{CLERK_API_BASE}/sessions/{session_id}/tokens",
+            json={},
             headers=headers,
         )
         if resp.status_code != 200:
