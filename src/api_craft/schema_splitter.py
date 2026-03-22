@@ -5,7 +5,31 @@ from api_craft.models.input import InputAPI, InputField, InputModel
 from api_craft.models.types import PascalCaseName
 
 
-def split_model_schemas(input_model: InputModel) -> list[InputModel]:
+def _resolve_fk_type(
+    fk_name: str,
+    target_model_name: str,
+    source_model: InputModel,
+    all_models: list[InputModel] | None = None,
+) -> str:
+    """Resolve the FK field type from the target model's PK type.
+
+    Falls back to "uuid" if the target model or its PK cannot be found.
+    """
+    if all_models:
+        target = next(
+            (m for m in all_models if str(m.name) == target_model_name), None
+        )
+        if target:
+            pk_field = next((f for f in target.fields if f.pk), None)
+            if pk_field:
+                return pk_field.type
+    return "uuid"
+
+
+def split_model_schemas(
+    input_model: InputModel,
+    all_models: list[InputModel] | None = None,
+) -> list[InputModel]:
     """Split an InputModel into Create, Update, and Response InputModels.
 
     - Create: fields with exposure in (read_write, write_only), PK excluded
@@ -33,7 +57,7 @@ def split_model_schemas(input_model: InputModel) -> list[InputModel]:
     for rel in input_model.relationships:
         if rel.cardinality == "references":
             fk_name = f"{rel.name}_id"
-            fk_type = "uuid"
+            fk_type = _resolve_fk_type(fk_name, rel.target_model, input_model, all_models)
 
             # Add to Create (required)
             existing_create = {str(f.name) for f in create_fields}

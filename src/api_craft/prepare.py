@@ -624,7 +624,7 @@ def prepare_api(input_api: InputAPI) -> PreparedAPI:
         split_model_names: set[str] = set()
         for model in input_api.objects:
             if _model_needs_split(model):
-                prepared_models.extend(split_model_schemas(model))
+                prepared_models.extend(split_model_schemas(model, input_api.objects))
                 split_model_names.add(str(model.name))
             else:
                 prepared_models.append(model)
