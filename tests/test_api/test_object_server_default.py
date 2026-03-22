@@ -1,4 +1,4 @@
-"""Tests: server_default and default_literal persistence through object CRUD."""
+"""Tests: default persistence through object CRUD."""
 
 import pytest
 import pytest_asyncio
@@ -57,8 +57,8 @@ async def client():
 
 @pytest.mark.integration
 @pytest.mark.asyncio(loop_scope="session")
-class TestServerDefaultPersistence:
-    """server_default and default_literal must round-trip through object CRUD."""
+class TestDefaultPersistence:
+    """Default values must round-trip through object CRUD."""
 
     namespace_id: str = ""
     type_ids: dict[str, str] = {}
@@ -66,7 +66,7 @@ class TestServerDefaultPersistence:
     object_id: str = ""
 
     async def test_phase_00_setup(self, client: AsyncClient):
-        cls = TestServerDefaultPersistence
+        cls = TestDefaultPersistence
         resp = await client.get("/types")
         assert resp.status_code == 200
         cls.type_ids = {t["name"]: t["id"] for t in resp.json()}
@@ -86,9 +86,9 @@ class TestServerDefaultPersistence:
         assert resp.status_code == 201
         cls.field_ids = [resp.json()["id"]]
 
-    async def test_create_object_with_server_default(self, client: AsyncClient):
-        """server_default should be persisted and returned."""
-        cls = TestServerDefaultPersistence
+    async def test_create_object_with_generated_default(self, client: AsyncClient):
+        """Generated default should be persisted and returned."""
+        cls = TestDefaultPersistence
         resp = await client.post(
             "/objects",
             json={
@@ -97,10 +97,10 @@ class TestServerDefaultPersistence:
                 "fields": [
                     {
                         "fieldId": cls.field_ids[0],
-                        "optional": False,
+                        "nullable": False,
                         "isPk": False,
-                        "appears": "response",
-                        "serverDefault": "now",
+                        "exposure": "read_only",
+                        "default": {"kind": "generated", "strategy": "now"},
                     }
                 ],
             },
@@ -109,11 +109,14 @@ class TestServerDefaultPersistence:
         body = resp.json()
         cls.object_id = body["id"]
         assert len(body["fields"]) == 1
-        assert body["fields"][0]["serverDefault"] == "now"
+        assert body["fields"][0]["default"] == {
+            "kind": "generated",
+            "strategy": "now",
+        }
 
-    async def test_update_object_with_default_literal(self, client: AsyncClient):
-        """default_literal should be persisted and returned."""
-        cls = TestServerDefaultPersistence
+    async def test_update_object_with_literal_default(self, client: AsyncClient):
+        """Literal default should be persisted and returned."""
+        cls = TestDefaultPersistence
         int_type_id = cls.type_ids["int"]
 
         # Create an int field for literal default
@@ -135,11 +138,10 @@ class TestServerDefaultPersistence:
                 "fields": [
                     {
                         "fieldId": int_field_id,
-                        "optional": False,
+                        "nullable": False,
                         "isPk": False,
-                        "appears": "response",
-                        "serverDefault": "literal",
-                        "defaultLiteral": "0",
+                        "exposure": "read_only",
+                        "default": {"kind": "literal", "value": "0"},
                     }
                 ],
             },
@@ -147,11 +149,10 @@ class TestServerDefaultPersistence:
         assert resp.status_code == 200, f"Unexpected: {resp.text}"
         body = resp.json()
         assert len(body["fields"]) == 1
-        assert body["fields"][0]["serverDefault"] == "literal"
-        assert body["fields"][0]["defaultLiteral"] == "0"
+        assert body["fields"][0]["default"] == {"kind": "literal", "value": "0"}
 
     async def test_phase_99_cleanup(self, client: AsyncClient):
-        cls = TestServerDefaultPersistence
+        cls = TestDefaultPersistence
         if cls.object_id:
             resp = await client.delete(f"/objects/{cls.object_id}")
             assert resp.status_code == 204

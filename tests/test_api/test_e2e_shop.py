@@ -181,7 +181,7 @@ CUSTOMER_FIELDS = [
 
 ALL_FIELDS = PRODUCT_FIELDS + CUSTOMER_FIELDS
 
-PRODUCT_OPTIONAL = {
+PRODUCT_NULLABLE = {
     "sale_price",
     "sale_end_date",
     "min_order_quantity",
@@ -190,7 +190,7 @@ PRODUCT_OPTIONAL = {
     "discount_amount",
 }
 
-CUSTOMER_OPTIONAL = {"email", "phone"}
+CUSTOMER_NULLABLE = {"email", "phone"}
 
 # ---------------------------------------------------------------------------
 # Test class
@@ -430,7 +430,7 @@ class TestShopApiE2E:
         product_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
-                "optional": f["name"] in PRODUCT_OPTIONAL,
+                "nullable": f["name"] in PRODUCT_NULLABLE,
                 "isPk": f["name"] == "tracking_id",
             }
             for f in PRODUCT_FIELDS
@@ -487,7 +487,7 @@ class TestShopApiE2E:
         customer_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
-                "optional": f["name"] in CUSTOMER_OPTIONAL,
+                "nullable": f["name"] in CUSTOMER_NULLABLE,
                 "isPk": f["name"] == "customer_id",
             }
             for f in CUSTOMER_FIELDS
@@ -556,13 +556,13 @@ class TestShopApiE2E:
         product = resp.json()
         updated_fields = []
         for f in product["fields"]:
-            optional = f["optional"]
+            nullable = f["nullable"]
             if f["fieldId"] == cls.field_ids["min_order_quantity"]:
-                optional = False
+                nullable = False
             updated_fields.append(
                 {
                     "fieldId": f["fieldId"],
-                    "optional": optional,
+                    "nullable": nullable,
                     "isPk": f.get("isPk", False),
                 }
             )
@@ -582,7 +582,7 @@ class TestShopApiE2E:
             for f in product["fields"]
             if f["fieldId"] == cls.field_ids["min_order_quantity"]
         )
-        assert moq["optional"] is False
+        assert moq["nullable"] is False
 
     # --- Phase 9: Create API ---
 

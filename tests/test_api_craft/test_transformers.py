@@ -196,13 +196,13 @@ class TestTypeMapping:
         result = transform_orm_models(models)
         assert result[0].fields[1].column_type == "String(320)"
 
-    def test_optional_field_is_nullable(self):
+    def test_nullable_field_is_nullable(self):
         models = [
             _make_model(
                 "Item",
                 [
                     {"name": "id", "type": "int", "pk": True},
-                    {"name": "description", "type": "str", "optional": True},
+                    {"name": "description", "type": "str", "nullable": True},
                 ],
             )
         ]
@@ -326,7 +326,7 @@ class TestOrmBuilderServerDefaults:
         assert id_field.server_default == "auto_increment"
         assert id_field.on_update is None
 
-    def test_now_server_default(self):
+    def test_now_generated_default(self):
         model = InputModel(
             name="Thing",
             fields=[
@@ -334,8 +334,8 @@ class TestOrmBuilderServerDefaults:
                 InputField(
                     name="created_at",
                     type="datetime",
-                    appears="response",
-                    server_default="now",
+                    exposure="read_only",
+                    default={"kind": "generated", "strategy": "now"},
                 ),
             ],
         )
@@ -352,8 +352,8 @@ class TestOrmBuilderServerDefaults:
                 InputField(
                     name="updated_at",
                     type="datetime",
-                    appears="response",
-                    server_default="now_on_update",
+                    exposure="read_only",
+                    default={"kind": "generated", "strategy": "now_on_update"},
                 ),
             ],
         )
@@ -362,7 +362,7 @@ class TestOrmBuilderServerDefaults:
         assert updated_field.server_default == "now"
         assert updated_field.on_update == "now"
 
-    def test_literal_server_default(self):
+    def test_literal_default(self):
         model = InputModel(
             name="Thing",
             fields=[
@@ -370,9 +370,8 @@ class TestOrmBuilderServerDefaults:
                 InputField(
                     name="status",
                     type="str",
-                    appears="response",
-                    server_default="literal",
-                    default_literal="active",
+                    exposure="read_only",
+                    default={"kind": "literal", "value": "active"},
                 ),
             ],
         )
@@ -389,8 +388,8 @@ class TestOrmBuilderServerDefaults:
                 InputField(
                     name="seq",
                     type="int",
-                    appears="response",
-                    server_default="auto_increment",
+                    exposure="read_only",
+                    default={"kind": "generated", "strategy": "auto_increment"},
                 ),
             ],
         )
@@ -398,7 +397,7 @@ class TestOrmBuilderServerDefaults:
         seq_field = orm_models[0].fields[1]
         assert seq_field.server_default == "auto_increment"
 
-    def test_no_server_default_for_regular_field(self):
+    def test_no_default_for_regular_field(self):
         model = InputModel(
             name="Thing",
             fields=[
@@ -430,7 +429,12 @@ class TestTransformApiWithDatabase:
                 _make_model(
                     "Item",
                     [
-                        {"name": "id", "type": "int", "pk": True},
+                        {
+                            "name": "id",
+                            "type": "int",
+                            "pk": True,
+                            "exposure": "read_only",
+                        },
                         {"name": "name", "type": "str"},
                     ],
                 )
@@ -453,7 +457,12 @@ class TestTransformApiWithDatabase:
                 _make_model(
                     "Item",
                     [
-                        {"name": "id", "type": "int", "pk": True},
+                        {
+                            "name": "id",
+                            "type": "int",
+                            "pk": True,
+                            "exposure": "read_only",
+                        },
                         {"name": "name", "type": "str"},
                     ],
                 )
@@ -480,7 +489,12 @@ class TestTransformApiWithDatabase:
                 _make_model(
                     "Item",
                     [
-                        {"name": "id", "type": "int", "pk": True},
+                        {
+                            "name": "id",
+                            "type": "int",
+                            "pk": True,
+                            "exposure": "read_only",
+                        },
                         {"name": "name", "type": "str"},
                     ],
                 )
@@ -525,7 +539,9 @@ class TestDatabaseValidation:
                 InputModel(
                     name="Item",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),

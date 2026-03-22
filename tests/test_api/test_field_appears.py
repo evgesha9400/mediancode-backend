@@ -1,5 +1,5 @@
 # tests/test_api/test_field_appears.py
-"""Integration tests for the `appears` field on object field references."""
+"""Integration tests for the `exposure` field on object field references."""
 
 import pytest
 from httpx import AsyncClient
@@ -10,8 +10,8 @@ pytestmark = [
 ]
 
 
-class TestFieldAppears:
-    """Tests for the `appears` column on fields_on_objects."""
+class TestFieldExposure:
+    """Tests for the `exposure` column on fields_on_objects."""
 
     namespace_id: str = ""
     field_ids: dict[str, str] = {}
@@ -20,7 +20,7 @@ class TestFieldAppears:
 
     async def test_setup_namespace_and_fields(self, client: AsyncClient):
         """Create a namespace and three fields for testing."""
-        cls = TestFieldAppears
+        cls = TestFieldExposure
 
         # Get system type (str)
         resp = await client.get("/types")
@@ -30,7 +30,7 @@ class TestFieldAppears:
 
         # Create namespace
         resp = await client.post(
-            "/namespaces", json={"name": "AppearTestNs", "description": "test"}
+            "/namespaces", json={"name": "ExposureTestNs", "description": "test"}
         )
         assert resp.status_code == 201
         cls.namespace_id = resp.json()["id"]
@@ -50,34 +50,34 @@ class TestFieldAppears:
             ), f"Failed to create field {name}: {resp.text}"
             cls.field_ids[name] = resp.json()["id"]
 
-    async def test_create_object_with_appears(self, client: AsyncClient):
-        """Create an object with mixed appears values."""
-        cls = TestFieldAppears
+    async def test_create_object_with_exposure(self, client: AsyncClient):
+        """Create an object with mixed exposure values."""
+        cls = TestFieldExposure
 
         resp = await client.post(
             "/objects",
             json={
                 "namespaceId": cls.namespace_id,
                 "name": "Account",
-                "description": "Test object with appears flags",
+                "description": "Test object with exposure flags",
                 "fields": [
                     {
                         "fieldId": cls.field_ids["email"],
-                        "optional": False,
+                        "nullable": False,
                         "isPk": False,
-                        "appears": "both",
+                        "exposure": "read_write",
                     },
                     {
                         "fieldId": cls.field_ids["password"],
-                        "optional": False,
+                        "nullable": False,
                         "isPk": False,
-                        "appears": "request",
+                        "exposure": "write_only",
                     },
                     {
                         "fieldId": cls.field_ids["created_at"],
-                        "optional": False,
+                        "nullable": False,
                         "isPk": False,
-                        "appears": "response",
+                        "exposure": "read_only",
                     },
                 ],
             },
@@ -86,37 +86,37 @@ class TestFieldAppears:
         obj = resp.json()
         cls.object_id = obj["id"]
 
-        # Verify appears values in create response
+        # Verify exposure values in create response
         fields_by_id = {f["fieldId"]: f for f in obj["fields"]}
-        assert fields_by_id[cls.field_ids["email"]]["appears"] == "both"
-        assert fields_by_id[cls.field_ids["password"]]["appears"] == "request"
-        assert fields_by_id[cls.field_ids["created_at"]]["appears"] == "response"
+        assert fields_by_id[cls.field_ids["email"]]["exposure"] == "read_write"
+        assert fields_by_id[cls.field_ids["password"]]["exposure"] == "write_only"
+        assert fields_by_id[cls.field_ids["created_at"]]["exposure"] == "read_only"
 
-    async def test_get_object_returns_appears(self, client: AsyncClient):
-        """Verify appears values are returned on GET."""
-        cls = TestFieldAppears
+    async def test_get_object_returns_exposure(self, client: AsyncClient):
+        """Verify exposure values are returned on GET."""
+        cls = TestFieldExposure
 
         resp = await client.get(f"/objects/{cls.object_id}")
         assert resp.status_code == 200
         obj = resp.json()
 
         fields_by_id = {f["fieldId"]: f for f in obj["fields"]}
-        assert fields_by_id[cls.field_ids["email"]]["appears"] == "both"
-        assert fields_by_id[cls.field_ids["password"]]["appears"] == "request"
-        assert fields_by_id[cls.field_ids["created_at"]]["appears"] == "response"
+        assert fields_by_id[cls.field_ids["email"]]["exposure"] == "read_write"
+        assert fields_by_id[cls.field_ids["password"]]["exposure"] == "write_only"
+        assert fields_by_id[cls.field_ids["created_at"]]["exposure"] == "read_only"
 
-    async def test_default_appears_is_both(self, client: AsyncClient):
-        """When appears is not specified, it defaults to 'both'."""
-        cls = TestFieldAppears
+    async def test_default_exposure_is_read_write(self, client: AsyncClient):
+        """When exposure is not specified, it defaults to 'read_write'."""
+        cls = TestFieldExposure
 
-        # Update object with fields that don't specify appears
+        # Update object with fields that don't specify exposure
         resp = await client.put(
             f"/objects/{cls.object_id}",
             json={
                 "fields": [
                     {
                         "fieldId": cls.field_ids["email"],
-                        "optional": False,
+                        "nullable": False,
                         "isPk": False,
                     },
                 ],
@@ -125,11 +125,11 @@ class TestFieldAppears:
         assert resp.status_code == 200
         obj = resp.json()
         assert len(obj["fields"]) == 1
-        assert obj["fields"][0]["appears"] == "both"
+        assert obj["fields"][0]["exposure"] == "read_write"
 
     async def test_cleanup(self, client: AsyncClient):
         """Clean up test data."""
-        cls = TestFieldAppears
+        cls = TestFieldExposure
 
         if cls.object_id:
             resp = await client.delete(f"/objects/{cls.object_id}")

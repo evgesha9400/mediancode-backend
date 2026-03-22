@@ -51,6 +51,10 @@ from api.seeding.shop_data import (
     PRODUCT_OPTIONAL,
 )
 
+# Map seed data OPTIONAL sets to NULLABLE for test payloads
+PRODUCT_NULLABLE = PRODUCT_OPTIONAL
+CUSTOMER_NULLABLE = CUSTOMER_OPTIONAL
+
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.asyncio(loop_scope="session"),
@@ -116,8 +120,8 @@ FIELD_CREATION_OVERRIDES = {
     },
 }
 
-# Phase 6 creates Product with min_order_quantity optional; Phase 8 makes it required.
-PRODUCT_OPTIONAL_INITIAL = PRODUCT_OPTIONAL | {"min_order_quantity"}
+# Phase 6 creates Product with min_order_quantity nullable; Phase 8 makes it required.
+PRODUCT_NULLABLE_INITIAL = PRODUCT_NULLABLE | {"min_order_quantity"}
 
 
 # ---------------------------------------------------------------------------
@@ -357,17 +361,17 @@ class TestShopApiFullE2E:
         cls = TestShopApiFullE2E
 
         # --- Product ---
-        product_appears = {"created_at": "response"}
-        product_server_defaults = {"created_at": "now"}
+        product_exposure = {"created_at": "read_only"}
+        product_defaults = {"created_at": {"kind": "generated", "strategy": "now"}}
         product_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
-                "optional": f["name"] in PRODUCT_OPTIONAL_INITIAL,
+                "nullable": f["name"] in PRODUCT_NULLABLE_INITIAL,
                 "isPk": f["name"] == "tracking_id",
-                "appears": product_appears.get(f["name"], "both"),
+                "exposure": product_exposure.get(f["name"], "read_write"),
                 **(
-                    {"serverDefault": product_server_defaults[f["name"]]}
-                    if f["name"] in product_server_defaults
+                    {"default": product_defaults[f["name"]]}
+                    if f["name"] in product_defaults
                     else {}
                 ),
             }
@@ -422,17 +426,19 @@ class TestShopApiFullE2E:
         cls.product_id = product["id"]
 
         # --- Customer ---
-        customer_appears = {"registered_at": "response"}
-        customer_server_defaults = {"registered_at": "now"}
+        customer_exposure = {"registered_at": "read_only"}
+        customer_defaults = {
+            "registered_at": {"kind": "generated", "strategy": "now"},
+        }
         customer_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
-                "optional": f["name"] in CUSTOMER_OPTIONAL,
+                "nullable": f["name"] in CUSTOMER_NULLABLE,
                 "isPk": f["name"] == "customer_id",
-                "appears": customer_appears.get(f["name"], "both"),
+                "exposure": customer_exposure.get(f["name"], "read_write"),
                 **(
-                    {"serverDefault": customer_server_defaults[f["name"]]}
-                    if f["name"] in customer_server_defaults
+                    {"default": customer_defaults[f["name"]]}
+                    if f["name"] in customer_defaults
                     else {}
                 ),
             }
@@ -502,17 +508,17 @@ class TestShopApiFullE2E:
         product = resp.json()
         updated_fields = []
         for f in product["fields"]:
-            optional = f["optional"]
+            nullable = f["nullable"]
             if f["fieldId"] == cls.field_ids["min_order_quantity"]:
-                optional = False
+                nullable = False
             entry = {
                 "fieldId": f["fieldId"],
-                "optional": optional,
+                "nullable": nullable,
                 "isPk": f.get("isPk", False),
-                "appears": f.get("appears", "both"),
+                "exposure": f.get("exposure", "read_write"),
             }
-            if f.get("serverDefault"):
-                entry["serverDefault"] = f["serverDefault"]
+            if f.get("default"):
+                entry["default"] = f["default"]
             updated_fields.append(entry)
 
         resp = await client.put(
@@ -530,7 +536,7 @@ class TestShopApiFullE2E:
             for f in product["fields"]
             if f["fieldId"] == cls.field_ids["min_order_quantity"]
         )
-        assert moq["optional"] is False
+        assert moq["nullable"] is False
 
     # --- Phase 8b: Create relationship ---
 

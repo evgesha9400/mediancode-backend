@@ -14,6 +14,7 @@ objects:
       - name: id
         type: int
         pk: true
+        exposure: read_only
         description: Product ID
 
       - name: store_id

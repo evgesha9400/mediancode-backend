@@ -11,6 +11,7 @@ objects:
       - name: id
         type: uuid.UUID
         pk: true
+        exposure: read_only
       - name: name
         type: str
       - name: price

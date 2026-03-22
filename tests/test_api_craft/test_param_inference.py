@@ -116,7 +116,9 @@ class TestRule1TargetIsKnown:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),
@@ -146,14 +148,18 @@ class TestRule1TargetIsKnown:
                     InputModel(
                         name="Product",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="id", type="int", pk=True, exposure="read_only"
+                            ),
                             InputField(name="name", type="str"),
                         ],
                     ),
                     InputModel(
                         name="Other",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="id", type="int", pk=True, exposure="read_only"
+                            ),
                         ],
                     ),
                 ],
@@ -189,7 +195,9 @@ class TestRule1TargetIsKnown:
                     InputModel(
                         name="Product",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="id", type="int", pk=True, exposure="read_only"
+                            ),
                             InputField(name="price", type="float"),
                         ],
                     ),
@@ -226,7 +234,9 @@ class TestRule1TargetIsKnown:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="price", type="float"),
                     ],
                 ),
@@ -260,7 +270,9 @@ class TestRule2FieldExistsOnTarget:
                     InputModel(
                         name="Product",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="id", type="int", pk=True, exposure="read_only"
+                            ),
                             InputField(name="name", type="str"),
                         ],
                     ),
@@ -297,7 +309,9 @@ class TestRule2FieldExistsOnTarget:
                     InputModel(
                         name="Product",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="id", type="int", pk=True, exposure="read_only"
+                            ),
                             InputField(name="price", type="float"),
                         ],
                     ),
@@ -330,7 +344,9 @@ class TestRule3DetailLastParamIsPk:
                     InputModel(
                         name="Product",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="id", type="int", pk=True, exposure="read_only"
+                            ),
                             InputField(name="name", type="str"),
                         ],
                     ),
@@ -357,7 +373,9 @@ class TestRule3DetailLastParamIsPk:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="store_id", type="int"),
                         InputField(name="name", type="str"),
                     ],
@@ -399,7 +417,9 @@ class TestRule4DetailNoQueryParams:
                     InputModel(
                         name="Product",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="id", type="int", pk=True, exposure="read_only"
+                            ),
                             InputField(name="deleted", type="bool"),
                         ],
                     ),
@@ -435,7 +455,9 @@ class TestRule5ListNoPathParamPk:
                     InputModel(
                         name="Product",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="id", type="int", pk=True, exposure="read_only"
+                            ),
                             InputField(name="name", type="str"),
                         ],
                     ),
@@ -466,7 +488,9 @@ class TestRule5ListNoPathParamPk:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="store_id", type="int"),
                         InputField(name="name", type="str"),
                     ],
@@ -509,7 +533,9 @@ class TestRule6OperatorFieldTypeCompat:
                     InputModel(
                         name="Product",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="id", type="int", pk=True, exposure="read_only"
+                            ),
                             InputField(name="name", type="str"),
                         ],
                     ),
@@ -546,7 +572,9 @@ class TestRule6OperatorFieldTypeCompat:
                     InputModel(
                         name="Product",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="id", type="int", pk=True, exposure="read_only"
+                            ),
                             InputField(name="price", type="int"),
                         ],
                     ),
@@ -605,7 +633,9 @@ class TestRule6OperatorFieldTypeCompat:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="value", type=field_type),
                     ],
                 ),
@@ -640,7 +670,9 @@ class TestPaginationValidation:
                     InputModel(
                         name="Product",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="id", type="int", pk=True, exposure="read_only"
+                            ),
                         ],
                     ),
                 ],
@@ -669,7 +701,9 @@ class TestPaginationValidation:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                     ],
                 ),
             ],
@@ -698,7 +732,9 @@ class TestPaginationValidation:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                     ],
                 ),
             ],
@@ -877,7 +913,9 @@ class TestTypeDerivation:
             InputModel(
                 name="Product",
                 fields=[
-                    InputField(name="id", type="uuid.UUID", pk=True),
+                    InputField(
+                        name="id", type="uuid.UUID", pk=True, exposure="read_only"
+                    ),
                     InputField(name="store_id", type="uuid.UUID"),
                     InputField(name="price", type="decimal.Decimal"),
                     InputField(name="name", type="str"),
@@ -971,7 +1009,9 @@ class TestTypeDerivation:
             InputModel(
                 name="Product",
                 fields=[
-                    InputField(name="id", type="uuid.UUID", pk=True),
+                    InputField(
+                        name="id", type="uuid.UUID", pk=True, exposure="read_only"
+                    ),
                     InputField(name="store_id", type="uuid.UUID"),
                     InputField(name="price", type="decimal.Decimal"),
                     InputField(name="name", type="str"),
@@ -1033,7 +1073,9 @@ class TestTypeDerivation:
             InputModel(
                 name="Product",
                 fields=[
-                    InputField(name="id", type="uuid.UUID", pk=True),
+                    InputField(
+                        name="id", type="uuid.UUID", pk=True, exposure="read_only"
+                    ),
                     InputField(name="name", type="str"),
                 ],
             ),
@@ -1108,7 +1150,9 @@ class TestPkAutoInference:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),
@@ -1139,7 +1183,9 @@ class TestPkAutoInference:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),
@@ -1173,7 +1219,9 @@ class TestPkAutoInference:
                     InputModel(
                         name="Product",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
+                            InputField(
+                                name="id", type="int", pk=True, exposure="read_only"
+                            ),
                             InputField(name="name", type="str"),
                         ],
                     ),
@@ -1201,7 +1249,9 @@ class TestPkAutoInference:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="store_id", type="int"),
                         InputField(name="name", type="str"),
                     ],
@@ -1268,7 +1318,9 @@ class TestPkAutoInference:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="uuid.UUID", pk=True),
+                        InputField(
+                            name="id", type="uuid.UUID", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),
@@ -1301,7 +1353,9 @@ class TestPkAutoInference:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="store_id", type="int"),
                         InputField(name="name", type="str"),
                     ],
@@ -1337,7 +1391,12 @@ class TestPkAutoInference:
                 InputModel(
                     name="Customer",
                     fields=[
-                        InputField(name="customer_id", type="int", pk=True),
+                        InputField(
+                            name="customer_id",
+                            type="int",
+                            pk=True,
+                            exposure="read_only",
+                        ),
                         InputField(name="email", type="EmailStr"),
                         InputField(name="name", type="str"),
                     ],
@@ -1437,7 +1496,9 @@ class TestFilterCodeGeneration:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="store_id", type="uuid.UUID"),
                         InputField(name="price", type="decimal.Decimal"),
                         InputField(name="name", type="str"),
@@ -1546,7 +1607,9 @@ class TestFilterCodeGeneration:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="store_id", type="uuid.UUID"),
                         InputField(name="price", type="decimal.Decimal"),
                         InputField(name="name", type="str"),
@@ -1631,7 +1694,12 @@ class TestDetailEndpointFilterCodeGen:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="tracking_id", type="uuid", pk=True),
+                        InputField(
+                            name="tracking_id",
+                            type="uuid",
+                            pk=True,
+                            exposure="read_only",
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),
@@ -1669,7 +1737,9 @@ class TestDetailEndpointFilterCodeGen:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="store_id", type="int"),
                         InputField(name="name", type="str"),
                     ],

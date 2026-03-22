@@ -575,7 +575,9 @@ def test_delete_endpoint_without_response_resolves_orm_from_pk(tmp_path):
             InputModel(
                 name="Product",
                 fields=[
-                    InputField(name="tracking_id", type="uuid", pk=True),
+                    InputField(
+                        name="tracking_id", type="uuid", pk=True, exposure="read_only"
+                    ),
                     InputField(name="name", type="str"),
                 ],
             )

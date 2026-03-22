@@ -145,12 +145,12 @@ class TestConvertToInputApiOptions:
         field.validators = []
         assoc = MagicMock()
         assoc.field_id = "field-1"
-        assoc.optional = False
+        assoc.nullable = False
         assoc.position = 0
         assoc.is_pk = True
-        assoc.appears = "both"
-        assoc.server_default = None
-        assoc.default_literal = None
+        assoc.exposure = "read_only"
+        assoc.default_kind = None
+        assoc.default_value = None
         obj = MagicMock()
         obj.id = "obj-1"
         obj.name = "Item"
@@ -232,12 +232,12 @@ class TestConvertToInputApiPk:
 
         assoc = MagicMock()
         assoc.field_id = "field-1"
-        assoc.optional = False
+        assoc.nullable = False
         assoc.position = 0
         assoc.is_pk = is_pk
-        assoc.appears = "both"
-        assoc.server_default = None
-        assoc.default_literal = None
+        assoc.exposure = "read_only" if is_pk else "read_write"
+        assoc.default_kind = None
+        assoc.default_value = None
 
         obj = MagicMock()
         obj.id = "obj-1"

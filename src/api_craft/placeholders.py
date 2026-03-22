@@ -165,7 +165,7 @@ class PlaceholderGenerator:
         required_by_validators = self.validator_fields.get(model_name, set())
 
         for offset, field in enumerate(fields, start=1):
-            if field.optional and field.name not in required_by_validators:
+            if field.nullable and field.name not in required_by_validators:
                 continue
 
             constraints = extract_constraints(field.validators)

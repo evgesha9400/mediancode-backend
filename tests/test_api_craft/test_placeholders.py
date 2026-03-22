@@ -210,13 +210,13 @@ class TestPlaceholderGenerator:
                 TemplateField(
                     type="int",
                     name="id",
-                    optional=False,
+                    nullable=False,
                     validators=[TemplateValidator(name="ge", params={"value": 1})],
                 ),
                 TemplateField(
                     type="str",
                     name="name",
-                    optional=False,
+                    nullable=False,
                     validators=[
                         TemplateValidator(name="min_length", params={"value": 1})
                     ],
@@ -224,11 +224,11 @@ class TestPlaceholderGenerator:
                 TemplateField(
                     type="float",
                     name="price",
-                    optional=False,
+                    nullable=False,
                     validators=[TemplateValidator(name="gt", params={"value": 0})],
                 ),
                 TemplateField(
-                    type="str", name="description", optional=True, validators=[]
+                    type="str", name="description", nullable=True, validators=[]
                 ),
             ]
         }
@@ -238,13 +238,13 @@ class TestPlaceholderGenerator:
         """Models with nesting relationships."""
         return {
             "Address": [
-                TemplateField(type="str", name="street", optional=False, validators=[]),
-                TemplateField(type="str", name="city", optional=False, validators=[]),
+                TemplateField(type="str", name="street", nullable=False, validators=[]),
+                TemplateField(type="str", name="city", nullable=False, validators=[]),
             ],
             "Person": [
-                TemplateField(type="str", name="name", optional=False, validators=[]),
+                TemplateField(type="str", name="name", nullable=False, validators=[]),
                 TemplateField(
-                    type="Address", name="address", optional=False, validators=[]
+                    type="Address", name="address", nullable=False, validators=[]
                 ),
             ],
         }
@@ -254,12 +254,12 @@ class TestPlaceholderGenerator:
         """Models with list fields."""
         return {
             "Tag": [
-                TemplateField(type="str", name="name", optional=False, validators=[]),
+                TemplateField(type="str", name="name", nullable=False, validators=[]),
             ],
             "Article": [
-                TemplateField(type="str", name="title", optional=False, validators=[]),
+                TemplateField(type="str", name="title", nullable=False, validators=[]),
                 TemplateField(
-                    type="List[Tag]", name="tags", optional=False, validators=[]
+                    type="List[Tag]", name="tags", nullable=False, validators=[]
                 ),
             ],
         }
@@ -271,7 +271,7 @@ class TestPlaceholderGenerator:
         assert "id" in result
         assert "name" in result
         assert "price" in result
-        assert "description" not in result  # Optional field skipped
+        assert "description" not in result  # Nullable field skipped
 
         assert isinstance(result["id"], int)
         assert result["id"] >= 1
@@ -312,8 +312,8 @@ class TestPlaceholderGenerator:
         """Test that circular references don't cause infinite loops."""
         circular_models = {
             "Node": [
-                TemplateField(type="str", name="value", optional=False, validators=[]),
-                TemplateField(type="Node", name="child", optional=False, validators=[]),
+                TemplateField(type="str", name="value", nullable=False, validators=[]),
+                TemplateField(type="Node", name="child", nullable=False, validators=[]),
             ]
         }
         generator = PlaceholderGenerator(circular_models)
@@ -332,7 +332,7 @@ class TestComplexTypes:
         models = {
             "Numbers": [
                 TemplateField(
-                    type="List[int]", name="values", optional=False, validators=[]
+                    type="List[int]", name="values", nullable=False, validators=[]
                 ),
             ]
         }
@@ -348,7 +348,7 @@ class TestComplexTypes:
                 TemplateField(
                     type="Dict[str, int]",
                     name="settings",
-                    optional=False,
+                    nullable=False,
                     validators=[],
                 ),
             ]
@@ -363,21 +363,21 @@ class TestComplexTypes:
         models = {
             "Item": [
                 TemplateField(
-                    type="str | None", name="value", optional=False, validators=[]
+                    type="str | None", name="value", nullable=False, validators=[]
                 ),
             ]
         }
         generator = PlaceholderGenerator(models)
         result = generator.generate_for_model("Item")
 
-        # Optional with optional=False generates the inner type
+        # Optional with nullable=False generates the inner type
         assert isinstance(result["value"], str)
 
     def test_nested_list(self):
         models = {
             "Matrix": [
                 TemplateField(
-                    type="List[List[int]]", name="rows", optional=False, validators=[]
+                    type="List[List[int]]", name="rows", nullable=False, validators=[]
                 ),
             ]
         }

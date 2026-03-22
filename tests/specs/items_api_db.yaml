@@ -15,6 +15,7 @@ objects:
       - name: id
         type: int
         pk: true
+        exposure: read_only
         validators:
           - name: ge
             params: { value: 1 }
@@ -80,19 +81,19 @@ objects:
     fields:
       - name: name
         type: str
-        optional: true
+        nullable: true
         validators:
           - name: max_length
             params: { value: 100 }
       - name: price
         type: float
-        optional: true
+        nullable: true
         validators:
           - name: gt
             params: { value: 0 }
       - name: quantity
         type: int
-        optional: true
+        nullable: true
 
 endpoints:
   - name: GetItem

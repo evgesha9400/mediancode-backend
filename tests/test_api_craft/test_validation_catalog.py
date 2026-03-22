@@ -6,7 +6,7 @@ match the patterns used across the codebase.
 
 from typing import get_args
 
-from api_craft.models.enums import FilterOperator, ServerDefault
+from api_craft.models.enums import FilterOperator, GeneratedStrategy
 from api_craft.models.validation_catalog import (
     ALLOWED_PK_TYPES,
     OPERATOR_VALID_TYPES,
@@ -51,13 +51,13 @@ class TestNamePatterns:
 
 
 class TestServerDefaultCoverage:
-    """SERVER_DEFAULT_VALID_TYPES must cover all ServerDefault enum values."""
+    """SERVER_DEFAULT_VALID_TYPES must cover all GeneratedStrategy values."""
 
-    def test_all_server_defaults_have_valid_types(self):
-        for sd in get_args(ServerDefault):
+    def test_all_generated_strategies_have_valid_types(self):
+        for sd in get_args(GeneratedStrategy):
             assert (
                 sd in SERVER_DEFAULT_VALID_TYPES
-            ), f"ServerDefault '{sd}' missing from SERVER_DEFAULT_VALID_TYPES"
+            ), f"GeneratedStrategy '{sd}' missing from SERVER_DEFAULT_VALID_TYPES"
 
 
 class TestOperatorCoverage:

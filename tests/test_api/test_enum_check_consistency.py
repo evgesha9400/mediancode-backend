@@ -7,10 +7,11 @@ import pytest
 from api_craft.models.enums import (
     Cardinality,
     Container,
-    FieldAppearance,
+    DefaultKind,
+    FieldExposure,
+    GeneratedStrategy,
     HttpMethod,
     ResponseShape,
-    ServerDefault,
     ValidatorMode,
     check_constraint_sql,
 )
@@ -19,7 +20,7 @@ from api_craft.models.enums import (
 # These tuples map: (Literal type, column name used in migration, table context)
 ENUM_CHECK_PAIRS = [
     (Container, "container", "fields"),
-    (FieldAppearance, "appears", "fields_on_objects"),
+    (FieldExposure, "exposure", "fields_on_objects"),
     (Cardinality, "cardinality", "object_relationships"),
     (HttpMethod, "method", "api_endpoints"),
     (ResponseShape, "response_shape", "api_endpoints"),
@@ -47,7 +48,7 @@ class TestEnumCheckConsistency:
             ), f"Value '{val}' missing from CHECK SQL for {table}.{column}"
         assert sql.startswith(f"{column} IN (")
 
-    def test_server_default_check_allows_null(self):
-        """ServerDefault CHECK must allow NULL (server_default is nullable)."""
-        sql = check_constraint_sql("server_default", ServerDefault)
-        assert "server_default IN (" in sql
+    def test_default_kind_check_allows_null(self):
+        """DefaultKind CHECK must allow NULL (default_kind is nullable)."""
+        sql = check_constraint_sql("default_kind", DefaultKind)
+        assert "default_kind IN (" in sql

@@ -422,7 +422,9 @@ class TestMixedMode:
                 InputModel(
                     name="Item",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),
@@ -493,7 +495,7 @@ class TestServerDefaultCodegen:
 
     @pytest.fixture(scope="class")
     def server_defaults_project(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
-        """Generate an API with various server_default strategies."""
+        """Generate an API with various default strategies."""
         from api_craft.models.input import (
             InputAPI,
             InputApiConfig,
@@ -509,25 +511,26 @@ class TestServerDefaultCodegen:
                 InputModel(
                     name="Event",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(
                             name="created_at",
                             type="datetime",
-                            appears="response",
-                            server_default="now",
+                            exposure="read_only",
+                            default={"kind": "generated", "strategy": "now"},
                         ),
                         InputField(
                             name="updated_at",
                             type="datetime",
-                            appears="response",
-                            server_default="now_on_update",
+                            exposure="read_only",
+                            default={"kind": "generated", "strategy": "now_on_update"},
                         ),
                         InputField(
                             name="status",
                             type="str",
-                            appears="response",
-                            server_default="literal",
-                            default_literal="active",
+                            exposure="read_only",
+                            default={"kind": "literal", "value": "active"},
                         ),
                         InputField(name="title", type="str"),
                     ],

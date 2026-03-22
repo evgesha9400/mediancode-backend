@@ -79,9 +79,9 @@ class TestPascalCaseValidation:
 
 
 class TestPrimaryKeyValidation:
-    def test_optional_pk_rejected(self):
-        """PK field must not be optional."""
-        with pytest.raises(ValueError, match="cannot be optional"):
+    def test_nullable_pk_rejected(self):
+        """PK field must not be nullable."""
+        with pytest.raises(ValueError, match="cannot be nullable"):
             InputAPI(
                 name="PkTest",
                 endpoints=[
@@ -93,7 +93,13 @@ class TestPrimaryKeyValidation:
                     InputModel(
                         name="Item",
                         fields=[
-                            InputField(name="id", type="int", pk=True, optional=True)
+                            InputField(
+                                name="id",
+                                type="int",
+                                pk=True,
+                                nullable=True,
+                                exposure="read_only",
+                            )
                         ],
                     ),
                 ],
@@ -113,8 +119,18 @@ class TestPrimaryKeyValidation:
                     InputModel(
                         name="Item",
                         fields=[
-                            InputField(name="id", type="int", pk=True),
-                            InputField(name="uuid", type="uuid", pk=True),
+                            InputField(
+                                name="id",
+                                type="int",
+                                pk=True,
+                                exposure="read_only",
+                            ),
+                            InputField(
+                                name="uuid",
+                                type="uuid",
+                                pk=True,
+                                exposure="read_only",
+                            ),
                         ],
                     ),
                 ],
@@ -183,7 +199,9 @@ class TestPrimaryKeyTypeRestriction:
                 InputModel(
                     name="Item",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),
@@ -203,7 +221,9 @@ class TestPrimaryKeyTypeRestriction:
                 InputModel(
                     name="Item",
                     fields=[
-                        InputField(name="id", type="uuid", pk=True),
+                        InputField(
+                            name="id", type="uuid", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),
@@ -223,7 +243,12 @@ class TestPrimaryKeyTypeRestriction:
                 InputModel(
                     name="Item",
                     fields=[
-                        InputField(name="id", type="uuid.UUID", pk=True),
+                        InputField(
+                            name="id",
+                            type="uuid.UUID",
+                            pk=True,
+                            exposure="read_only",
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),
@@ -250,7 +275,14 @@ class TestPrimaryKeyTypeRestriction:
                 objects=[
                     InputModel(
                         name="Item",
-                        fields=[InputField(name="id", type=bad_type, pk=True)],
+                        fields=[
+                            InputField(
+                                name="id",
+                                type=bad_type,
+                                pk=True,
+                                exposure="read_only",
+                            )
+                        ],
                     ),
                 ],
             )
@@ -271,7 +303,14 @@ class TestPrimaryKeyTypeRestriction:
                 objects=[
                     InputModel(
                         name="Item",
-                        fields=[InputField(name="id", type="UUID", pk=True)],
+                        fields=[
+                            InputField(
+                                name="id",
+                                type="UUID",
+                                pk=True,
+                                exposure="read_only",
+                            )
+                        ],
                     )
                 ],
             )
@@ -289,7 +328,9 @@ class TestPrimaryKeyTypeRestriction:
                 InputModel(
                     name="Item",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="created_at", type="datetime"),
                         InputField(name="email", type="EmailStr"),
                     ],
@@ -309,7 +350,9 @@ class TestDatabaseConfigValidation:
             objects=[
                 InputModel(
                     name="Item",
-                    fields=[InputField(name="id", type="int", pk=True)],
+                    fields=[
+                        InputField(name="id", type="int", pk=True, exposure="read_only")
+                    ],
                 ),
             ],
             endpoints=[
@@ -332,7 +375,9 @@ class TestDatabaseConfigValidation:
             objects=[
                 InputModel(
                     name="Item",
-                    fields=[InputField(name="id", type="int", pk=True)],
+                    fields=[
+                        InputField(name="id", type="int", pk=True, exposure="read_only")
+                    ],
                 ),
             ],
             endpoints=[
@@ -398,7 +443,9 @@ class TestDatabaseConfigValidation:
                 InputModel(
                     name="Item",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),
@@ -557,34 +604,41 @@ class TestResponseShapeForMethod:
         assert endpoint.response_shape == "object"
 
 
-class TestServerDefaultField:
-    """Tests for the server_default and default_literal fields on InputField."""
+class TestFieldDefault:
+    """Tests for the default field (FieldDefault union) on InputField."""
 
-    def test_server_default_accepts_valid_strategies(self):
-        for strategy in ("uuid4", "now", "now_on_update", "auto_increment", "literal"):
-            field = InputField(name="test_field", type="str", server_default=strategy)
-            assert field.server_default == strategy
+    def test_generated_strategies_accepted(self):
+        from api_craft.models.input import FieldDefaultGenerated
 
-    def test_server_default_defaults_to_none(self):
+        for strategy in ("uuid4", "now", "now_on_update", "auto_increment"):
+            field = InputField(
+                name="test_field",
+                type="str",
+                default={"kind": "generated", "strategy": strategy},
+            )
+            assert field.default.kind == "generated"
+            assert field.default.strategy == strategy
+
+    def test_default_defaults_to_none(self):
         field = InputField(name="test_field", type="str")
-        assert field.server_default is None
+        assert field.default is None
 
-    def test_default_literal_stored(self):
+    def test_literal_default_stored(self):
         field = InputField(
             name="status",
             type="str",
-            server_default="literal",
-            default_literal="active",
+            default={"kind": "literal", "value": "active"},
         )
-        assert field.default_literal == "active"
+        assert field.default.kind == "literal"
+        assert field.default.value == "active"
 
-    def test_no_default_value_field(self):
-        """default_value was removed — verify it's not stored."""
-        field = InputField(name="test_field", type="str")
-        assert "default_value" not in InputField.model_fields
+    def test_old_fields_removed(self):
+        """server_default and default_literal no longer exist on InputField."""
+        assert "server_default" not in InputField.model_fields
+        assert "default_literal" not in InputField.model_fields
 
 
-class TestServerDefaultValidation:
+class TestDefaultValidation:
     """Tests for validate_server_defaults() triggered via InputAPI construction."""
 
     def _make_api(self, fields, db_enabled=True):
@@ -605,51 +659,38 @@ class TestServerDefaultValidation:
             ),
         )
 
-    # --- Rule: response + required + non-PK + db enabled → server_default required ---
+    # --- Rule: read_only + non-PK + DB enabled → must have a default ---
 
-    def test_response_required_no_default_raises(self):
-        with pytest.raises(ValueError, match="server_default"):
+    def test_read_only_no_default_raises(self):
+        with pytest.raises(ValueError, match="read_only field"):
             self._make_api(
                 fields=[
-                    InputField(name="id", type="int", pk=True),
-                    InputField(name="created_at", type="datetime", appears="response"),
+                    InputField(name="id", type="int", pk=True, exposure="read_only"),
+                    InputField(
+                        name="created_at", type="datetime", exposure="read_only"
+                    ),
                 ]
             )
 
-    def test_response_required_with_default_passes(self):
+    def test_read_only_with_default_passes(self):
         api = self._make_api(
             fields=[
-                InputField(name="id", type="int", pk=True),
+                InputField(name="id", type="int", pk=True, exposure="read_only"),
                 InputField(
                     name="created_at",
                     type="datetime",
-                    appears="response",
-                    server_default="now",
-                ),
-            ]
-        )
-        assert api is not None
-
-    def test_response_optional_no_default_passes(self):
-        """Optional response-only fields don't need a server_default."""
-        api = self._make_api(
-            fields=[
-                InputField(name="id", type="int", pk=True),
-                InputField(
-                    name="deleted_at",
-                    type="datetime",
-                    appears="response",
-                    optional=True,
+                    exposure="read_only",
+                    default={"kind": "generated", "strategy": "now"},
                 ),
             ]
         )
         assert api is not None
 
     def test_pk_field_exempt(self):
-        """PK fields are exempt from the server_default rule."""
+        """PK fields are exempt from the default-required rule."""
         api = self._make_api(
             fields=[
-                InputField(name="id", type="uuid", pk=True, appears="response"),
+                InputField(name="id", type="uuid", pk=True, exposure="read_only"),
             ]
         )
         assert api is not None
@@ -658,48 +699,58 @@ class TestServerDefaultValidation:
         """When database.enabled is False, no validation needed."""
         api = self._make_api(
             fields=[
-                InputField(name="created_at", type="datetime", appears="response"),
+                InputField(name="created_at", type="datetime", exposure="read_only"),
             ],
             db_enabled=False,
         )
         assert api is not None
 
-    def test_both_appears_no_validation(self):
-        """Fields with appears='both' don't trigger the rule."""
+    def test_read_write_no_default_passes(self):
+        """Fields with exposure='read_write' don't require a default."""
         api = self._make_api(
             fields=[
-                InputField(name="id", type="int", pk=True),
+                InputField(name="id", type="int", pk=True, exposure="read_only"),
                 InputField(name="name", type="str"),
             ]
         )
         assert api is not None
 
-    # --- Type compatibility ---
+    # --- PK must be read_only ---
+
+    def test_pk_not_read_only_raises(self):
+        with pytest.raises(ValueError, match="primary key must be read_only"):
+            self._make_api(
+                fields=[
+                    InputField(name="id", type="int", pk=True),
+                ]
+            )
+
+    # --- Generated strategy type compatibility ---
 
     def test_uuid4_valid_for_uuid(self):
         api = self._make_api(
             fields=[
-                InputField(name="id", type="int", pk=True),
+                InputField(name="id", type="int", pk=True, exposure="read_only"),
                 InputField(
                     name="ref_id",
                     type="uuid",
-                    appears="response",
-                    server_default="uuid4",
+                    exposure="read_only",
+                    default={"kind": "generated", "strategy": "uuid4"},
                 ),
             ]
         )
         assert api is not None
 
     def test_uuid4_invalid_for_str(self):
-        with pytest.raises(ValueError, match="not valid for type"):
+        with pytest.raises(ValueError, match="not compatible with type"):
             self._make_api(
                 fields=[
-                    InputField(name="id", type="int", pk=True),
+                    InputField(name="id", type="int", pk=True, exposure="read_only"),
                     InputField(
                         name="name",
                         type="str",
-                        appears="response",
-                        server_default="uuid4",
+                        exposure="read_only",
+                        default={"kind": "generated", "strategy": "uuid4"},
                     ),
                 ]
             )
@@ -707,12 +758,12 @@ class TestServerDefaultValidation:
     def test_now_valid_for_datetime(self):
         api = self._make_api(
             fields=[
-                InputField(name="id", type="int", pk=True),
+                InputField(name="id", type="int", pk=True, exposure="read_only"),
                 InputField(
                     name="created_at",
                     type="datetime",
-                    appears="response",
-                    server_default="now",
+                    exposure="read_only",
+                    default={"kind": "generated", "strategy": "now"},
                 ),
             ]
         )
@@ -721,27 +772,27 @@ class TestServerDefaultValidation:
     def test_now_on_update_valid_for_datetime(self):
         api = self._make_api(
             fields=[
-                InputField(name="id", type="int", pk=True),
+                InputField(name="id", type="int", pk=True, exposure="read_only"),
                 InputField(
                     name="updated_at",
                     type="datetime",
-                    appears="response",
-                    server_default="now_on_update",
+                    exposure="read_only",
+                    default={"kind": "generated", "strategy": "now_on_update"},
                 ),
             ]
         )
         assert api is not None
 
     def test_now_invalid_for_int(self):
-        with pytest.raises(ValueError, match="not valid for type"):
+        with pytest.raises(ValueError, match="not compatible with type"):
             self._make_api(
                 fields=[
-                    InputField(name="id", type="int", pk=True),
+                    InputField(name="id", type="int", pk=True, exposure="read_only"),
                     InputField(
                         name="count",
                         type="int",
-                        appears="response",
-                        server_default="now",
+                        exposure="read_only",
+                        default={"kind": "generated", "strategy": "now"},
                     ),
                 ]
             )
@@ -749,27 +800,27 @@ class TestServerDefaultValidation:
     def test_auto_increment_valid_for_int(self):
         api = self._make_api(
             fields=[
-                InputField(name="id", type="uuid", pk=True),
+                InputField(name="id", type="uuid", pk=True, exposure="read_only"),
                 InputField(
                     name="seq",
                     type="int",
-                    appears="response",
-                    server_default="auto_increment",
+                    exposure="read_only",
+                    default={"kind": "generated", "strategy": "auto_increment"},
                 ),
             ]
         )
         assert api is not None
 
     def test_auto_increment_invalid_for_str(self):
-        with pytest.raises(ValueError, match="not valid for type"):
+        with pytest.raises(ValueError, match="not compatible with type"):
             self._make_api(
                 fields=[
-                    InputField(name="id", type="int", pk=True),
+                    InputField(name="id", type="int", pk=True, exposure="read_only"),
                     InputField(
                         name="name",
                         type="str",
-                        appears="response",
-                        server_default="auto_increment",
+                        exposure="read_only",
+                        default={"kind": "generated", "strategy": "auto_increment"},
                     ),
                 ]
             )
@@ -777,42 +828,27 @@ class TestServerDefaultValidation:
     def test_literal_valid_for_str(self):
         api = self._make_api(
             fields=[
-                InputField(name="id", type="int", pk=True),
+                InputField(name="id", type="int", pk=True, exposure="read_only"),
                 InputField(
                     name="status",
                     type="str",
-                    appears="response",
-                    server_default="literal",
-                    default_literal="active",
+                    exposure="read_only",
+                    default={"kind": "literal", "value": "active"},
                 ),
             ]
         )
         assert api is not None
 
-    def test_literal_requires_default_literal(self):
-        with pytest.raises(ValueError, match="default_literal"):
+    def test_generated_on_read_write_field_validates_type_compat(self):
+        """Even read_write fields with generated default get type-checked."""
+        with pytest.raises(ValueError, match="not compatible with type"):
             self._make_api(
                 fields=[
-                    InputField(name="id", type="int", pk=True),
-                    InputField(
-                        name="status",
-                        type="str",
-                        appears="response",
-                        server_default="literal",
-                    ),
-                ]
-            )
-
-    def test_server_default_on_both_field_validates_type_compat(self):
-        """Even non-response fields with server_default get type-checked."""
-        with pytest.raises(ValueError, match="not valid for type"):
-            self._make_api(
-                fields=[
-                    InputField(name="id", type="int", pk=True),
+                    InputField(name="id", type="int", pk=True, exposure="read_only"),
                     InputField(
                         name="name",
                         type="str",
-                        server_default="now",
+                        default={"kind": "generated", "strategy": "now"},
                     ),
                 ]
             )

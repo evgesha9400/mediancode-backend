@@ -300,7 +300,7 @@ def _convert_to_input_api(
                             InputQueryParam(
                                 name=field.name,
                                 type=_build_field_type(field.field_type.python_type),
-                                optional=assoc.optional,
+                                optional=assoc.nullable,
                                 description=field.description,
                             )
                         )

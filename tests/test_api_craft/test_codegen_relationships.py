@@ -110,7 +110,7 @@ class TestReferencesRelationship:
         model = InputModel(
             name="Post",
             fields=[
-                InputField(name="id", type="uuid", pk=True),
+                InputField(name="id", type="uuid", pk=True, exposure="read_only"),
                 InputField(name="title", type="str"),
             ],
             relationships=[
@@ -130,7 +130,7 @@ class TestReferencesRelationship:
         model = InputModel(
             name="Post",
             fields=[
-                InputField(name="id", type="uuid", pk=True),
+                InputField(name="id", type="uuid", pk=True, exposure="read_only"),
                 InputField(name="title", type="str"),
             ],
             relationships=[
@@ -424,7 +424,9 @@ class TestRelationshipCodeGeneration:
                 InputModel(
                     name="User",
                     fields=[
-                        InputField(name="id", type="uuid", pk=True),
+                        InputField(
+                            name="id", type="uuid", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
                     relationships=[
@@ -438,7 +440,9 @@ class TestRelationshipCodeGeneration:
                 InputModel(
                     name="Post",
                     fields=[
-                        InputField(name="id", type="uuid", pk=True),
+                        InputField(
+                            name="id", type="uuid", pk=True, exposure="read_only"
+                        ),
                         InputField(name="title", type="str"),
                     ],
                     relationships=[
@@ -457,7 +461,9 @@ class TestRelationshipCodeGeneration:
                 InputModel(
                     name="Tag",
                     fields=[
-                        InputField(name="id", type="uuid", pk=True),
+                        InputField(
+                            name="id", type="uuid", pk=True, exposure="read_only"
+                        ),
                         InputField(name="label", type="str"),
                     ],
                 ),
@@ -710,7 +716,9 @@ class TestNoRelationshipsBackwardCompat:
                 InputModel(
                     name="Item",
                     fields=[
-                        InputField(name="id", type="int", pk=True),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),

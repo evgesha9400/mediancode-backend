@@ -1,5 +1,5 @@
 # tests/test_api_craft/test_appears.py
-"""Tests for the `appears` flag in schema derivation."""
+"""Tests for the exposure flag in schema derivation."""
 
 import pytest
 
@@ -27,9 +27,9 @@ class TestSplitModelSchemas:
             name="User",
             fields=[
                 _make_field("email"),
-                _make_field("password", appears="request"),
-                _make_field("created_at", type_="datetime", appears="response"),
-                _make_field("id", type_="int", pk=True),
+                _make_field("password", exposure="write_only"),
+                _make_field("created_at", type_="datetime", exposure="read_only"),
+                _make_field("id", type_="int", pk=True, exposure="read_only"),
             ],
         )
         schemas = split_model_schemas(model)
@@ -42,7 +42,7 @@ class TestSplitModelSchemas:
         model = InputModel(
             name="Item",
             fields=[
-                _make_field("id", type_="int", pk=True),
+                _make_field("id", type_="int", pk=True, exposure="read_only"),
                 _make_field("name"),
             ],
         )
@@ -55,12 +55,12 @@ class TestSplitModelSchemas:
         assert "id" not in update_names
         assert "id" in response_names
 
-    def test_request_only_field_excluded_from_response(self):
+    def test_write_only_field_excluded_from_response(self):
         model = InputModel(
             name="Account",
             fields=[
                 _make_field("username"),
-                _make_field("password", appears="request"),
+                _make_field("password", exposure="write_only"),
             ],
         )
         schemas = split_model_schemas(model)
@@ -70,12 +70,12 @@ class TestSplitModelSchemas:
         assert "password" in create_names
         assert "password" not in response_names
 
-    def test_response_only_field_excluded_from_create(self):
+    def test_read_only_field_excluded_from_create(self):
         model = InputModel(
             name="Post",
             fields=[
                 _make_field("title"),
-                _make_field("created_at", type_="datetime", appears="response"),
+                _make_field("created_at", type_="datetime", exposure="read_only"),
             ],
         )
         schemas = split_model_schemas(model)
@@ -85,7 +85,7 @@ class TestSplitModelSchemas:
         assert "created_at" not in create_names
         assert "created_at" in response_names
 
-    def test_update_fields_are_all_optional(self):
+    def test_update_fields_are_all_nullable(self):
         model = InputModel(
             name="Product",
             fields=[
@@ -97,14 +97,14 @@ class TestSplitModelSchemas:
         update_schema = schemas[1]
         for field in update_schema.fields:
             assert (
-                field.optional is True
-            ), f"Update field '{field.name}' should be optional"
+                field.nullable is True
+            ), f"Update field '{field.name}' should be nullable"
 
-    def test_both_appears_in_all_schemas(self):
+    def test_read_write_appears_in_all_schemas(self):
         model = InputModel(
             name="Tag",
             fields=[
-                _make_field("label", appears="both"),
+                _make_field("label", exposure="read_write"),
             ],
         )
         schemas = split_model_schemas(model)
@@ -114,7 +114,7 @@ class TestSplitModelSchemas:
 
 
 class TestTransformApiWithAppears:
-    """Tests for transform_api() with appears flags triggering split mode."""
+    """Tests for prepare_api() with exposure flags triggering split mode."""
 
     def _make_api(self, objects, endpoints):
         return InputAPI(
@@ -129,7 +129,7 @@ class TestTransformApiWithAppears:
                 InputModel(
                     name="Widget",
                     fields=[
-                        _make_field("id", type_="int", pk=True),
+                        _make_field("id", type_="int", pk=True, exposure="read_only"),
                         _make_field("name"),
                     ],
                 )
@@ -156,7 +156,7 @@ class TestTransformApiWithAppears:
                 InputModel(
                     name="Item",
                     fields=[
-                        _make_field("id", type_="int", pk=True),
+                        _make_field("id", type_="int", pk=True, exposure="read_only"),
                         _make_field("title"),
                     ],
                 )
@@ -180,7 +180,7 @@ class TestTransformApiWithAppears:
                 InputModel(
                     name="Task",
                     fields=[
-                        _make_field("id", type_="int", pk=True),
+                        _make_field("id", type_="int", pk=True, exposure="read_only"),
                         _make_field("title"),
                     ],
                 )
@@ -206,7 +206,7 @@ class TestTransformApiWithAppears:
                 InputModel(
                     name="Task",
                     fields=[
-                        _make_field("id", type_="int", pk=True),
+                        _make_field("id", type_="int", pk=True, exposure="read_only"),
                         _make_field("title"),
                     ],
                 )
@@ -232,7 +232,7 @@ class TestTransformApiWithAppears:
                 InputModel(
                     name="Task",
                     fields=[
-                        _make_field("id", type_="int", pk=True),
+                        _make_field("id", type_="int", pk=True, exposure="read_only"),
                         _make_field("title"),
                     ],
                 )
@@ -252,8 +252,8 @@ class TestTransformApiWithAppears:
         view = prepared.views[0]
         assert view.request_model == "TaskUpdate"
 
-    def test_no_split_when_no_appears_or_pk(self):
-        """When no field has appears != 'both' and no pk, use single model."""
+    def test_no_split_when_no_exposure_or_pk(self):
+        """When no field has exposure != 'read_write' and no pk, use single model."""
         api = self._make_api(
             objects=[
                 InputModel(
