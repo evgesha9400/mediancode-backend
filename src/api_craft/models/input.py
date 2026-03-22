@@ -1,14 +1,14 @@
-from typing import Any, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
 from api_craft.models.enums import (
     Cardinality,
-    FieldAppearance,
+    FieldExposure,
     FilterOperator,
+    GeneratedStrategy,
     HttpMethod,
     ResponseShape,
-    ServerDefault,
     ValidatorMode,
 )
 from api_craft.models.types import PascalCaseName, SnakeCaseName
@@ -64,29 +64,57 @@ class InputResolvedModelValidator(BaseModel):
     function_body: str
 
 
+class FieldDefaultLiteral(BaseModel):
+    """Literal default value for a field.
+
+    :ivar kind: Discriminator tag, always 'literal'.
+    :ivar value: The literal default value as a string.
+    """
+
+    kind: Literal["literal"]
+    value: str
+
+
+class FieldDefaultGenerated(BaseModel):
+    """Generated default value for a field.
+
+    :ivar kind: Discriminator tag, always 'generated'.
+    :ivar strategy: The generation strategy to apply.
+    """
+
+    kind: Literal["generated"]
+    strategy: GeneratedStrategy
+
+
+FieldDefault = Annotated[
+    FieldDefaultLiteral | FieldDefaultGenerated,
+    Field(discriminator="kind"),
+]
+
+
 class InputField(BaseModel):
     """Field definition for an input object.
 
     :ivar type: Declared field type, supporting primitive values and object references.
     :ivar name: Field identifier within the object.
-    :ivar optional: Whether this field is optional (default False = required).
+    :ivar nullable: Whether this field is nullable (default False).
     :ivar description: Human-readable description of the field.
-    :ivar server_default: Server default strategy for this field.
-    :ivar default_literal: Literal value when server_default is 'literal'.
+    :ivar default: Optional default value (literal or generated strategy).
     :ivar validators: List of validators applied to this field.
     :ivar field_validators: List of resolved field validators with rendered code.
+    :ivar pk: Whether this field is the primary key.
+    :ivar exposure: Where this field appears: read_write, write_only, or read_only.
     """
 
     type: str
     name: SnakeCaseName
-    optional: bool = False
+    nullable: bool = False
     description: str | None = None
-    server_default: ServerDefault | None = None
-    default_literal: str | None = None
+    default: FieldDefault | None = None
     validators: list[InputValidator] = Field(default_factory=list)
     field_validators: list[InputResolvedFieldValidator] = Field(default_factory=list)
     pk: bool = False
-    appears: FieldAppearance = "both"
+    exposure: FieldExposure = "read_write"
 
 
 class InputRelationship(BaseModel):
