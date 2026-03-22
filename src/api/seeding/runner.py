@@ -101,14 +101,21 @@ async def seed_shop(client: AsyncClient) -> SeedResult:
         for fref in obj_def["fields"]:
             field_payload: dict = {
                 "fieldId": result.field_ids[fref["field_name"]],
-                "optional": fref["optional"],
                 "isPk": fref["is_pk"],
-                "appears": fref["appears"],
+                "exposure": fref["exposure"],
+                "nullable": fref["nullable"],
             }
-            if fref.get("server_default") is not None:
-                field_payload["serverDefault"] = fref["server_default"]
-            if fref.get("default_literal") is not None:
-                field_payload["defaultLiteral"] = fref["default_literal"]
+            if fref.get("default_kind") is not None:
+                if fref["default_kind"] == "literal":
+                    field_payload["default"] = {
+                        "kind": "literal",
+                        "value": fref["default_value"],
+                    }
+                elif fref["default_kind"] == "generated":
+                    field_payload["default"] = {
+                        "kind": "generated",
+                        "strategy": fref["default_value"],
+                    }
             obj_fields.append(field_payload)
         obj_validators = [
             {

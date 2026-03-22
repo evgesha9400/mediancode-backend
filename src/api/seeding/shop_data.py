@@ -108,12 +108,6 @@ PRODUCT_FIELDS = [
 
 CUSTOMER_FIELDS = [
     {
-        "name": "customer_id",
-        "type": "int",
-        "constraints": [],
-        "validators": [],
-    },
-    {
         "name": "customer_name",
         "type": "str",
         "constraints": [("min_length", "1"), ("max_length", "100")],
@@ -171,7 +165,7 @@ PRODUCT_OPTIONAL = {
     "discount_amount",
 }
 
-CUSTOMER_OPTIONAL = {"email", "phone"}
+CUSTOMER_OPTIONAL = {"phone"}
 
 # ---------------------------------------------------------------------------
 # Objects
@@ -183,100 +177,101 @@ PRODUCT_OBJECT = {
     "fields": [
         {
             "field_name": "name",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "sku",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "price",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "sale_price",
-            "optional": True,
+            "nullable": True,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "sale_end_date",
-            "optional": True,
+            "nullable": True,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "weight",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "quantity",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "min_order_quantity",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "max_order_quantity",
-            "optional": True,
+            "nullable": True,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "discount_percent",
-            "optional": True,
+            "nullable": True,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "discount_amount",
-            "optional": True,
+            "nullable": True,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "in_stock",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "product_url",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "release_date",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "created_at",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "response",
-            "server_default": "now",
+            "exposure": "read_only",
+            "default_kind": "generated",
+            "default_value": "now",
         },
         {
             "field_name": "tracking_id",
-            "optional": False,
+            "nullable": False,
             "is_pk": True,
-            "appears": "both",
+            "exposure": "read_write",
         },
     ],
     "validators": [
@@ -320,65 +315,51 @@ CUSTOMER_OBJECT = {
     "description": "Shop customer",
     "fields": [
         {
-            "field_name": "customer_id",
-            "optional": False,
-            "is_pk": True,
-            "appears": "both",
-        },
-        {
             "field_name": "customer_name",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "email",
-            "optional": True,
-            "is_pk": False,
-            "appears": "both",
+            "nullable": False,
+            "is_pk": True,
+            "exposure": "read_write",
         },
         {
             "field_name": "phone",
-            "optional": True,
+            "nullable": True,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "date_of_birth",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "last_login_time",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "is_active",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "both",
+            "exposure": "read_write",
         },
         {
             "field_name": "registered_at",
-            "optional": False,
+            "nullable": False,
             "is_pk": False,
-            "appears": "response",
-            "server_default": "now",
+            "exposure": "read_only",
+            "default_kind": "generated",
+            "default_value": "now",
         },
     ],
-    "validators": [
-        {
-            "template": "At Least One Required",
-            "parameters": None,
-            "field_mappings": {
-                "field_a": "email",
-                "field_b": "phone",
-            },
-        },
-    ],
+    "validators": [],
 }
 
 OBJECTS = [PRODUCT_OBJECT, CUSTOMER_OBJECT]
