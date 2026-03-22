@@ -8,23 +8,25 @@ from api_craft.models.types import PascalCaseName
 def split_model_schemas(input_model: InputModel) -> list[InputModel]:
     """Split an InputModel into Create, Update, and Response InputModels.
 
-    - Create: fields with appears in (both, request), PK excluded
-    - Update: same as Create but all fields optional
-    - Response: fields with appears in (both, response), PK included
+    - Create: fields with exposure in (read_write, write_only), PK excluded
+    - Update: same as Create but all fields nullable
+    - Response: fields with exposure in (read_write, read_only), PK included
     """
     model_validators = list(input_model.model_validators)
 
-    # Create fields: non-PK, appears in request
+    # Create fields: non-PK, exposure allows writing
     create_fields = [
-        f for f in input_model.fields if f.appears in ("both", "request") and not f.pk
+        f
+        for f in input_model.fields
+        if f.exposure in ("read_write", "write_only") and not f.pk
     ]
 
-    # Update fields: same selection as Create but all optional
-    update_fields = [f.model_copy(update={"optional": True}) for f in create_fields]
+    # Update fields: same selection as Create but all nullable
+    update_fields = [f.model_copy(update={"nullable": True}) for f in create_fields]
 
-    # Response fields: appears in response (PK included)
+    # Response fields: exposure allows reading (PK included)
     response_fields = list(
-        f for f in input_model.fields if f.appears in ("both", "response")
+        f for f in input_model.fields if f.exposure in ("read_write", "read_only")
     )
 
     # Add FK ID fields for `references` relationships
@@ -37,7 +39,7 @@ def split_model_schemas(input_model: InputModel) -> list[InputModel]:
                     InputField(
                         type="uuid",
                         name=fk_name,
-                        optional=False,
+                        nullable=False,
                         description=f"FK reference to {rel.target_model}",
                     )
                 )
@@ -65,13 +67,13 @@ def split_model_schemas(input_model: InputModel) -> list[InputModel]:
 
 
 def _model_needs_split(model: InputModel) -> bool:
-    """Check if a single model uses non-default appears flags or has pk=True."""
+    """Check if a single model uses non-default exposure flags or has pk=True."""
     for field in model.fields:
-        if field.appears != "both" or field.pk:
+        if field.exposure != "read_write" or field.pk:
             return True
     return False
 
 
 def _has_appears_flags(input_api: InputAPI) -> bool:
-    """Check if any field in the API uses non-default appears flags or has pk=True."""
+    """Check if any field in the API uses non-default exposure flags or has pk=True."""
     return any(_model_needs_split(model) for model in input_api.objects)

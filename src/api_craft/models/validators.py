@@ -219,7 +219,7 @@ def validate_unique_object_names(objects: Iterable["InputModel"]) -> None:
 
 
 def validate_primary_keys(objects: Iterable["InputModel"]) -> None:
-    """Validate PK constraints: not optional, at most one per model.
+    """Validate PK constraints: not nullable, at most one per model.
 
     :param objects: Collection of declared objects.
     :raises ValueError: If PK constraints are violated.
@@ -232,9 +232,9 @@ def validate_primary_keys(objects: Iterable["InputModel"]) -> None:
                 f"Composite keys are not supported."
             )
         for field in pk_fields:
-            if field.optional:
+            if field.nullable:
                 raise ValueError(
-                    f"Field '{obj.name}.{field.name}' is a primary key and cannot be optional"
+                    f"Field '{obj.name}.{field.name}' is a primary key and cannot be nullable"
                 )
 
 
@@ -281,14 +281,13 @@ def validate_server_defaults(
     config: "InputApiConfig",
     objects: Iterable["InputModel"],
 ) -> None:
-    """Validate server_default constraints on fields.
+    """Validate default constraints on fields.
 
-    Three rules:
+    Rules:
 
-    1. Response-only required non-PK fields must have a server_default
-       when database generation is enabled.
-    2. server_default strategy must be compatible with the field's type.
-    3. Literal strategy requires a default_literal value.
+    1. read_only non-PK fields (with DB enabled) must have a default.
+    2. Generated strategy must be compatible with the field's type.
+    3. isPk=True forces exposure='read_only'.
 
     :param config: API configuration containing database settings.
     :param objects: Collection of declared objects.
@@ -297,42 +296,36 @@ def validate_server_defaults(
     for obj in objects:
         for field in obj.fields:
             if field.pk:
+                # PK fields must be read_only
+                if field.exposure != "read_only":
+                    raise ValueError(
+                        f"Field '{obj.name}.{field.name}': "
+                        f"primary key must be read_only"
+                    )
                 continue
 
-            # Rule 1: response + required + non-PK + db enabled → server_default required
+            # Rule 1: read_only + non-PK + DB enabled → must have a default
             if (
-                config.database.enabled
-                and field.appears == "response"
-                and not field.optional
-                and field.server_default is None
+                field.exposure == "read_only"
+                and field.default is None
+                and config.database.enabled
             ):
                 raise ValueError(
-                    f"Field '{obj.name}.{field.name}' is response-only and required "
-                    f"but has no server_default. Set a server default strategy "
-                    f"or make the field optional."
+                    f"Field '{obj.name}.{field.name}': read_only field "
+                    f"has no default. Set a default strategy."
                 )
 
-            # Rule 2: type compatibility
-            if field.server_default is not None:
+            # Rule 2: generated strategy must match field type
+            if field.default and field.default.kind == "generated":
+                strategy = field.default.strategy
                 base_type = (
                     field.type.split(".")[0] if "." in field.type else field.type
                 )
-                valid_types = SERVER_DEFAULT_VALID_TYPES.get(
-                    field.server_default, set()
-                )
+                valid_types = SERVER_DEFAULT_VALID_TYPES.get(strategy, set())
                 if base_type not in valid_types:
                     raise ValueError(
-                        f"Field '{obj.name}.{field.name}': server_default "
-                        f"'{field.server_default}' is not valid for type "
-                        f"'{field.type}'. Valid types: "
-                        f"{', '.join(sorted(valid_types))}"
-                    )
-
-                # Rule 3: literal requires default_literal
-                if field.server_default == "literal" and not field.default_literal:
-                    raise ValueError(
-                        f"Field '{obj.name}.{field.name}': server_default "
-                        f"'literal' requires a default_literal value."
+                        f"Field '{obj.name}.{field.name}': strategy '{strategy}' "
+                        f"is not compatible with type '{field.type}'"
                     )
 
 

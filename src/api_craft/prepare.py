@@ -193,8 +193,14 @@ def render_field_constraint(validator) -> str | None:
         return f"{pydantic_name}={value}"
 
 
-def render_field(field) -> str:
-    """Render a complete field definition with validators."""
+def render_field(field, force_optional: bool = False) -> str:
+    """Render a complete field definition with validators.
+
+    :param field: InputField to render.
+    :param force_optional: When True, render as ``Type | None = None``
+        (used for Update schemas where every field is optional).
+    :returns: Python field definition string.
+    """
     constraints = []
     for v in field.validators:
         constraint = render_field_constraint(v)
@@ -202,18 +208,32 @@ def render_field(field) -> str:
             constraints.append(constraint)
 
     type_annotation = field.type
+    field_args = ", ".join(constraints)
 
-    if constraints:
-        field_args = ", ".join(constraints)
-        if not field.optional:
-            return f"{field.name}: {type_annotation} = Field({field_args})"
-        else:
+    if force_optional:
+        # Update schema: all fields become Type | None = None
+        # Never apply literal defaults on Update (exclude_unset=True in PATCH)
+        if field_args:
             return f"{field.name}: {type_annotation} | None = Field(default=None, {field_args})"
-    else:
-        if not field.optional:
-            return f"{field.name}: {type_annotation}"
-        else:
-            return f"{field.name}: {type_annotation} | None = None"
+        return f"{field.name}: {type_annotation} | None = None"
+
+    # Create/Response schema
+    if field.default and field.default.kind == "literal":
+        # Literal default: field is omittable, Pydantic schema default
+        value = repr(field.default.value)
+        if field_args:
+            return f"{field.name}: {type_annotation} = Field(default={value}, {field_args})"
+        return f"{field.name}: {type_annotation} = {value}"
+
+    if field.nullable:
+        if field_args:
+            return f"{field.name}: {type_annotation} | None = Field(default=None, {field_args})"
+        return f"{field.name}: {type_annotation} | None = None"
+
+    # Required field
+    if field_args:
+        return f"{field.name}: {type_annotation} = Field({field_args})"
+    return f"{field.name}: {type_annotation}"
 
 
 def _compute_pydantic_imports(models: list[InputModel]) -> list[str]:
@@ -656,7 +676,7 @@ def prepare_api(input_api: InputAPI) -> PreparedAPI:
     validator_fields: dict[str, set[str]] = {}
     for model in prepared_models:
         referenced: set[str] = set()
-        optional_names = {str(f.name) for f in model.fields if f.optional}
+        optional_names = {str(f.name) for f in model.fields if f.nullable}
         for mv in model.model_validators:
             if mv.mode != "before":
                 continue

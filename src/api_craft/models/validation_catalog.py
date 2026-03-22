@@ -30,10 +30,9 @@ SERVER_DEFAULT_VALID_TYPES: dict[str, set[str]] = {
     "now": {"datetime", "date"},
     "now_on_update": {"datetime", "date"},
     "auto_increment": {"int"},
-    "literal": {"str", "bool", "int", "float", "decimal", "EmailStr", "HttpUrl"},
 }
-"""Maps server_default strategy to compatible field types.
-Must match frontend SERVER_DEFAULT_OPTIONS (transposed direction)."""
+"""Maps generated strategy to compatible field types.
+Must match frontend GENERATED_STRATEGY_OPTIONS (transposed direction)."""
 
 # --- Operator compatibility ---
 

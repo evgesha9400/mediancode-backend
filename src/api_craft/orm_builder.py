@@ -168,7 +168,7 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
             orm_type = ORM_PYTHON_TYPE_MAP.get(field.type) or ORM_PYTHON_TYPE_MAP.get(
                 base_type, base_type
             )
-            python_type = orm_type if not field.optional else f"{orm_type} | None"
+            python_type = orm_type if not field.nullable else f"{orm_type} | None"
 
             # Determine server_default strategy
             sd = None
@@ -181,13 +181,17 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
                     sd = "uuid4"
                 elif base_type in ("int",):
                     sd = "auto_increment"
-            elif field.server_default:
-                if field.server_default == "now_on_update":
-                    sd = "now"
-                    on_update = "now"
-                else:
-                    sd = field.server_default
-                default_literal = field.default_literal
+            elif field.default:
+                if field.default.kind == "literal":
+                    sd = "literal"
+                    default_literal = field.default.value
+                elif field.default.kind == "generated":
+                    strategy = field.default.strategy
+                    if strategy == "now_on_update":
+                        sd = "now"
+                        on_update = "now"
+                    else:
+                        sd = strategy
 
             # SQL-quote string literals so the DDL emits DEFAULT 'value' not DEFAULT value
             if (
@@ -208,7 +212,7 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
                     python_type=python_type,
                     column_type=column_type,
                     primary_key=field.pk,
-                    nullable=field.optional,
+                    nullable=field.nullable,
                     server_default=sd,
                     on_update=on_update,
                     default_literal=default_literal,
