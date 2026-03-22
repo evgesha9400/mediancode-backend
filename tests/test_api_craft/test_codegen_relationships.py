@@ -751,6 +751,92 @@ class TestMigrationTableOrdering:
         assert table_names == ["students", "courses"]
 
 
+class TestFkTypeDerivedFromTargetPk:
+    """Verify FK type matches target model's PK type, not hardcoded uuid."""
+
+    def test_fk_type_matches_int_pk(self):
+        """When target has int PK, FK should be int, not uuid."""
+        models = [
+            _make_model(
+                "Comment",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "body", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "article",
+                        "target_model": "Article",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "Article",
+                [
+                    {"name": "id", "type": "int", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+            ),
+        ]
+        comment_input = models[0]
+        schemas = split_model_schemas(comment_input, all_models=models)
+        response = schemas[2]
+        fk_field = next(f for f in response.fields if str(f.name) == "article_id")
+        assert fk_field.type == "int"
+
+    def test_fk_type_defaults_to_uuid_without_context(self):
+        """When all_models is not provided, FK defaults to uuid."""
+        model = InputModel(
+            name="Post",
+            fields=[
+                InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                InputField(name="title", type="str"),
+            ],
+            relationships=[
+                InputRelationship(
+                    name="author",
+                    target_model="User",
+                    cardinality="references",
+                )
+            ],
+        )
+        schemas = split_model_schemas(model)
+        response = schemas[2]
+        fk_field = next(f for f in response.fields if str(f.name) == "author_id")
+        assert fk_field.type == "uuid"
+
+    def test_fk_type_in_create_matches_target_pk(self):
+        """FK type in Create schema should also match target PK."""
+        models = [
+            _make_model(
+                "Comment",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "body", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "article",
+                        "target_model": "Article",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "Article",
+                [
+                    {"name": "id", "type": "int", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+            ),
+        ]
+        schemas = split_model_schemas(models[0], all_models=models)
+        create = schemas[0]
+        fk_field = next(f for f in create.fields if str(f.name) == "article_id")
+        assert fk_field.type == "int"
+
+
 class TestNoRelationshipsBackwardCompat:
     """Verify models without relationships produce identical output."""
 
