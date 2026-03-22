@@ -14,6 +14,10 @@ from pydantic import ${', '.join(pydantic_imports)}
 
 
 class ${model.name}(BaseModel):
+%     if str(model.name).endswith('Response'):
+    model_config = ConfigDict(from_attributes=True)
+
+%     endif
 %     for field in model.fields:
     ${render_field(field)}
 %     endfor
