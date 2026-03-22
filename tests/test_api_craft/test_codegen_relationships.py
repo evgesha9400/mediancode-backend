@@ -569,6 +569,21 @@ class TestRelationshipCodeGeneration:
         # — entity tables are fine in any order, association table comes after both
         assert tags_idx < posts_idx or tags_idx > posts_idx  # no constraint
 
+    def test_response_schema_has_config_dict(self, rel_project: Path):
+        content = (rel_project / "src" / "models.py").read_text()
+        assert "ConfigDict" in content
+        assert "from_attributes=True" in content
+
+    def test_create_schema_no_config_dict(self, rel_project: Path):
+        content = (rel_project / "src" / "models.py").read_text()
+        # ConfigDict should only appear on Response models
+        lines = content.split("\n")
+        for i, line in enumerate(lines):
+            if "Create(BaseModel)" in line:
+                # Next few lines should NOT have model_config
+                block = "\n".join(lines[i : i + 5])
+                assert "model_config" not in block
+
     def test_all_python_files_compile(self, rel_project: Path):
         for py_file in rel_project.rglob("*.py"):
             source = py_file.read_text()
