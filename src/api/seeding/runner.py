@@ -72,7 +72,7 @@ async def seed_shop(client: AsyncClient) -> SeedResult:
     cat = await _read_catalogues(client)
 
     # 1. Namespace
-    resp = await client.post("/namespaces", json={"name": "Shop", "isDefault": False})
+    resp = await client.post("/namespaces", json={"name": "Shop", "isDefault": True})
     ns = _check(resp, "namespace", "Shop")
     result.namespace_id = ns["id"]
 
@@ -97,15 +97,19 @@ async def seed_shop(client: AsyncClient) -> SeedResult:
 
     # 3. Objects
     for obj_def in OBJECTS:
-        obj_fields = [
-            {
+        obj_fields = []
+        for fref in obj_def["fields"]:
+            field_payload: dict = {
                 "fieldId": result.field_ids[fref["field_name"]],
                 "optional": fref["optional"],
                 "isPk": fref["is_pk"],
                 "appears": fref["appears"],
             }
-            for fref in obj_def["fields"]
-        ]
+            if fref.get("server_default") is not None:
+                field_payload["serverDefault"] = fref["server_default"]
+            if fref.get("default_literal") is not None:
+                field_payload["defaultLiteral"] = fref["default_literal"]
+            obj_fields.append(field_payload)
         obj_validators = [
             {
                 "templateId": cat["mv_templates"][vdef["template"]],

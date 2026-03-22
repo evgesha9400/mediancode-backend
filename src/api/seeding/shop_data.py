@@ -270,6 +270,7 @@ PRODUCT_OBJECT = {
             "optional": False,
             "is_pk": False,
             "appears": "response",
+            "server_default": "now",
         },
         {
             "field_name": "tracking_id",
@@ -365,6 +366,7 @@ CUSTOMER_OBJECT = {
             "optional": False,
             "is_pk": False,
             "appears": "response",
+            "server_default": "now",
         },
     ],
     "validators": [
