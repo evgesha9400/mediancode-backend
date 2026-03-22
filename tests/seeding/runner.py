@@ -46,6 +46,12 @@ def _check(resp, entity_type: str, name: str, expected: int = 201) -> dict:
     return resp.json()
 
 
+def _check_delete(resp, entity_type: str, name: str) -> None:
+    """Check that a DELETE (or similar) succeeded, or raise SeedError with the response body."""
+    if resp.status_code not in (200, 204):
+        raise SeedError(entity_type, name, resp.status_code, resp.text)
+
+
 async def _read_catalogues(client: AsyncClient) -> dict[str, dict[str, str]]:
     """Fetch all read-only catalogues and return name-to-ID maps."""
     catalogues = {}
@@ -253,33 +259,37 @@ async def clean_shop(client: AsyncClient, log=None) -> None:
     if resp.status_code == 200:
         for ep in resp.json():
             if ep.get("apiId") in api_ids:
-                log(f"  Deleting endpoint {ep.get('method', '')} {ep.get('path', ep['id'])}...")
-                resp = await client.delete(f"/endpoints/{ep['id']}")
-                resp.raise_for_status()
+                ep_name = f"{ep.get('method', '')} {ep.get('path', ep['id'])}"
+                log(f"  Deleting endpoint {ep_name}...")
+                r = await client.delete(f"/endpoints/{ep['id']}")
+                _check_delete(r, "endpoint", ep_name)
 
     # Delete APIs
     for api in shop_apis:
-        log(f"Deleting API '{api.get('title', api['id'])}'...")
-        resp = await client.delete(f"/apis/{api['id']}")
-        resp.raise_for_status()
+        api_name = api.get("title", api["id"])
+        log(f"Deleting API '{api_name}'...")
+        r = await client.delete(f"/apis/{api['id']}")
+        _check_delete(r, "api", api_name)
 
     # Delete objects (cascade deletes relationships)
     resp = await client.get(f"/objects?namespace_id={ns_id}")
     if resp.status_code == 200:
         for obj in resp.json():
-            log(f"Deleting object '{obj.get('name', obj['id'])}'...")
-            resp = await client.delete(f"/objects/{obj['id']}")
-            resp.raise_for_status()
+            obj_name = obj.get("name", obj["id"])
+            log(f"Deleting object '{obj_name}'...")
+            r = await client.delete(f"/objects/{obj['id']}")
+            _check_delete(r, "object", obj_name)
 
     # Delete fields
     resp = await client.get(f"/fields?namespace_id={ns_id}")
     if resp.status_code == 200:
         for f in resp.json():
-            log(f"  Deleting field '{f.get('name', f['id'])}'...")
-            resp = await client.delete(f"/fields/{f['id']}")
-            resp.raise_for_status()
+            field_name = f.get("name", f["id"])
+            log(f"  Deleting field '{field_name}'...")
+            r = await client.delete(f"/fields/{f['id']}")
+            _check_delete(r, "field", field_name)
 
     # Delete namespace
     log("Deleting namespace 'Shop'...")
-    resp = await client.delete(f"/namespaces/{ns_id}")
-    resp.raise_for_status()
+    r = await client.delete(f"/namespaces/{ns_id}")
+    _check_delete(r, "namespace", "Shop")
