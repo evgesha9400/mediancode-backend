@@ -245,8 +245,13 @@ def _compute_pydantic_imports(models: list[InputModel]) -> list[str]:
         any(f.field_validators for f in model.fields) for model in models
     )
     has_model_validators = any(model.model_validators for model in models)
+    has_response_model = any(
+        str(model.name).endswith("Response") for model in models
+    )
 
     imports = ["BaseModel"]
+    if has_response_model:
+        imports.append("ConfigDict")
     if has_field_constraints:
         imports.append("Field")
     if has_field_validators:
