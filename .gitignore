@@ -29,6 +29,9 @@ dist/
 # Claude Code
 .claude/
 
+# Serena
+.serena/
+
 # Git worktrees
 .worktrees/
 
