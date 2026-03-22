@@ -20,7 +20,7 @@ from api_craft.models.input import (
     InputModel,
     InputTag,
 )
-from api_craft.models.template import (
+from api_craft.models.orm_types import (
     TemplateDatabaseConfig,
     TemplateORMModel,
 )

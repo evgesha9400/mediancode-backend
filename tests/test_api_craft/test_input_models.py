@@ -121,7 +121,7 @@ class TestPrimaryKeyValidation:
             )
 
 
-from api_craft.models.template import (
+from api_craft.models.orm_types import (
     TemplateORMField,
     TemplateORMModel,
     TemplateDatabaseConfig,

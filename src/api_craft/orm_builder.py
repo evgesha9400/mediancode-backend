@@ -2,7 +2,7 @@
 """ORM model generation: converts InputModels into SQLAlchemy TemplateORMModels."""
 
 from api_craft.models.input import InputModel
-from api_craft.models.template import (
+from api_craft.models.orm_types import (
     TemplateORMField,
     TemplateORMModel,
     TemplateRelationship,

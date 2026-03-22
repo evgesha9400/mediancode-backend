@@ -1,7 +1,7 @@
 import re
 
 from api_craft.models.input import InputModel
-from api_craft.models.template import TemplateORMModel
+from api_craft.models.orm_types import TemplateORMModel
 from api_craft.prepare import PreparedAPI, PreparedPathParam, PreparedQueryParam
 
 # Mapping of module.Type patterns to their import statements

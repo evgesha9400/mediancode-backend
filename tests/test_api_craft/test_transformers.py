@@ -3,7 +3,7 @@
 
 import pytest
 from api_craft.models.input import InputField, InputModel
-from api_craft.models.template import TemplateORMModel
+from api_craft.models.orm_types import TemplateORMModel
 from api_craft.orm_builder import transform_orm_models
 
 
@@ -243,7 +243,7 @@ class TestSnakeToPlural:
 
 
 from api_craft.extractors import collect_orm_imports, collect_database_dependencies
-from api_craft.models.template import TemplateORMField, TemplateORMModel
+from api_craft.models.orm_types import TemplateORMField, TemplateORMModel
 
 
 class TestCollectOrmImports:
