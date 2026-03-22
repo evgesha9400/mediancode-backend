@@ -1,8 +1,8 @@
 """CLI entrypoint for Shop API seeding.
 
 Usage:
-    poetry run python -m api.seeding --target local --user-email user@example.com
-    poetry run python -m api.seeding --base-url https://api.dev.mediancode.com/v1 \
+    PYTHONPATH=src:tests poetry run python -m seeding --target local --user-email user@example.com
+    PYTHONPATH=src:tests poetry run python -m seeding --base-url https://api.dev.mediancode.com/v1 \
         --user-email user@example.com --mode apply
 """
 
@@ -24,7 +24,7 @@ TARGET_URLS = {
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="python -m api.seeding",
+        prog="python -m seeding",
         description="Seed the Shop API structure via REST API calls.",
     )
     url_group = parser.add_mutually_exclusive_group(required=True)
@@ -57,7 +57,7 @@ def _load_clerk_secret_key() -> str | None:
     key = os.environ.get("CLERK_SECRET_KEY")
     if key:
         return key
-    env_file = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env.local")
+    env_file = os.path.join(os.path.dirname(__file__), "..", "..", ".env.local")
     if os.path.exists(env_file):
         with open(env_file) as f:
             for line in f:
@@ -75,7 +75,7 @@ async def main(argv: list[str] | None = None) -> None:
     if args.bearer_token:
         token = args.bearer_token
     else:
-        from api.seeding.clerk_auth import ClerkAuthError, mint_clerk_jwt
+        from seeding.clerk_auth import ClerkAuthError, mint_clerk_jwt
 
         clerk_key = _load_clerk_secret_key()
         if not clerk_key:
@@ -95,7 +95,7 @@ async def main(argv: list[str] | None = None) -> None:
         if args.verbose:
             print("JWT acquired.")
 
-    from api.seeding.runner import SeedError, clean_shop, seed_shop
+    from seeding.runner import SeedError, clean_shop, seed_shop
 
     async with httpx.AsyncClient(
         base_url=base_url,

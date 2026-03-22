@@ -44,7 +44,7 @@ from api.models.database import (
     ObjectDefinition,
     UserModel,
 )
-from api.seeding.shop_data import (
+from seeding.shop_data import (
     ALL_FIELDS,
     CUSTOMER_FIELDS,
     CUSTOMER_OPTIONAL,

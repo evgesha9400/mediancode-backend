@@ -63,8 +63,8 @@ async def client():
 
 class TestSeedRunner:
     async def test_seed_creates_full_shop_structure(self, client: AsyncClient):
-        from api.seeding.runner import seed_shop
-        from api.seeding.shop_data import ALL_FIELDS, ENDPOINTS, OBJECTS
+        from seeding.runner import seed_shop
+        from seeding.shop_data import ALL_FIELDS, ENDPOINTS, OBJECTS
 
         result = await seed_shop(client)
 
@@ -106,7 +106,7 @@ class TestSeedRunner:
         assert len(resp.json()) == len(ENDPOINTS)
 
     async def test_clean_removes_all_shop_data(self, client: AsyncClient):
-        from api.seeding.runner import clean_shop
+        from seeding.runner import clean_shop
 
         await clean_shop(client)
 
@@ -121,7 +121,7 @@ class TestSeedRunner:
 
     async def test_seed_after_clean_works(self, client: AsyncClient):
         """Verify replace mode (clean then seed) works."""
-        from api.seeding.runner import clean_shop, seed_shop
+        from seeding.runner import clean_shop, seed_shop
 
         result = await seed_shop(client)
         assert result.namespace_id

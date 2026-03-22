@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from httpx import AsyncClient
 
-from api.seeding.shop_data import (
+from seeding.shop_data import (
     ALL_FIELDS,
     API,
     ENDPOINTS,

@@ -7,6 +7,6 @@ Public API:
     SeedError                         — Raised on API call failure
 """
 
-from api.seeding.runner import SeedError, SeedResult, clean_shop, seed_shop
+from seeding.runner import SeedError, SeedResult, clean_shop, seed_shop
 
 __all__ = ["seed_shop", "clean_shop", "SeedResult", "SeedError"]

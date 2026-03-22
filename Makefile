@@ -4,6 +4,7 @@
 PYTHON := python3
 POETRY := poetry
 PORT ?= 8001
+SEED_USER_EMAIL := aleshiner@mail.ru
 
 .DEFAULT_GOAL := help
 
@@ -85,6 +86,23 @@ migrate-current: ## Show current migration version (local)
 	@$(POETRY) run alembic current
 
 # =============================================================================
+#  SEEDING
+#  Seed the Shop API structure into a running backend (requires auth)
+# =============================================================================
+
+.PHONY: seed-local
+seed-local: ## Seed Shop data into local backend (localhost:$(PORT))
+	@PYTHONPATH=src:tests $(POETRY) run python -m seeding --target local --user-email $(SEED_USER_EMAIL)
+
+.PHONY: seed-dev
+seed-dev: ## Seed Shop data into dev backend (api.dev.mediancode.com)
+	@PYTHONPATH=src:tests $(POETRY) run python -m seeding --target dev --user-email $(SEED_USER_EMAIL)
+
+.PHONY: seed-prod
+seed-prod: ## Seed Shop data into prod backend (api.mediancode.com)
+	@PYTHONPATH=src:tests $(POETRY) run python -m seeding --target prod --user-email $(SEED_USER_EMAIL)
+
+# =============================================================================
 #  UTILITIES
 # =============================================================================
 
@@ -135,6 +153,11 @@ help: ## Show this help message
 	@echo "  make migrate-down    Rollback last migration"
 	@echo "  make migrate-history Show migration history"
 	@echo "  make migration msg=\"...\"  Create new migration file"
+	@echo ""
+	@echo "SEEDING (SEED_USER_EMAIL=$(SEED_USER_EMAIL)):"
+	@echo "  make seed-local      Seed Shop data into local backend"
+	@echo "  make seed-dev        Seed Shop data into dev backend"
+	@echo "  make seed-prod       Seed Shop data into prod backend"
 	@echo ""
 	@echo "UTILITIES:"
 	@echo "  make install-hooks   Install git pre-commit hook"
