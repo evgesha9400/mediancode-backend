@@ -16,10 +16,8 @@ from sqlalchemy.dialects import postgresql
 from api_craft.models.enums import (
     Cardinality,
     Container,
-    FieldAppearance,
     HttpMethod,
     ResponseShape,
-    ServerDefault,
     ValidatorMode,
     check_constraint_sql,
 )
@@ -331,24 +329,24 @@ def upgrade() -> None:
         ),
         sa.Column("object_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("field_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("optional", sa.Boolean(), nullable=False),
+        sa.Column("nullable", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("position", sa.Integer(), nullable=False),
         sa.Column(
             "is_pk", sa.Boolean(), nullable=False, server_default=sa.text("false")
         ),
-        sa.Column("appears", sa.Text(), nullable=False, server_default="both"),
-        sa.Column("server_default", sa.Text(), nullable=True),
-        sa.Column("default_literal", sa.Text(), nullable=True),
+        sa.Column("exposure", sa.Text(), nullable=False, server_default="read_write"),
+        sa.Column("default_kind", sa.Text(), nullable=True),
+        sa.Column("default_value", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["field_id"], ["fields.id"]),
         sa.ForeignKeyConstraint(["object_id"], ["objects.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
-            check_constraint_sql("appears", FieldAppearance),
-            name="ck_fields_on_objects_appears",
+            "exposure IN ('read_write', 'write_only', 'read_only')",
+            name="ck_fields_on_objects_exposure",
         ),
         sa.CheckConstraint(
-            f"server_default IS NULL OR {check_constraint_sql('server_default', ServerDefault)}",
-            name="ck_fields_on_objects_server_default",
+            "default_kind IN ('literal', 'generated') OR default_kind IS NULL",
+            name="ck_fields_on_objects_default_kind",
         ),
     )
     op.create_index(

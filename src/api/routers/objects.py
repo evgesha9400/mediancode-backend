@@ -30,6 +30,19 @@ def get_service(db: DbSession) -> ObjectService:
     return get_object_service(db)
 
 
+def _build_field_default(fa) -> dict | None:
+    """Build a FieldDefault dict from a DB association row.
+
+    :param fa: ObjectFieldAssociation instance.
+    :returns: Dict matching FieldDefaultSchema shape, or None.
+    """
+    if fa.default_kind == "literal":
+        return {"kind": "literal", "value": fa.default_value}
+    if fa.default_kind == "generated":
+        return {"kind": "generated", "strategy": fa.default_value}
+    return None
+
+
 async def _to_response(obj, service: ObjectService) -> ObjectResponse:
     """Convert an object model to response schema.
 
@@ -40,11 +53,10 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
     fields = [
         ObjectFieldReferenceSchema(
             field_id=fa.field_id,
-            optional=fa.optional,
             is_pk=fa.is_pk,
-            appears=fa.appears,
-            server_default=fa.server_default,
-            default_literal=fa.default_literal,
+            exposure=fa.exposure,
+            nullable=fa.nullable,
+            default=_build_field_default(fa),
         )
         for fa in sorted(obj.field_associations, key=lambda x: x.position)
     ]

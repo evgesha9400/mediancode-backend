@@ -23,6 +23,8 @@ from api.models.database import (
 from api_craft.main import APIGenerator
 from api.schemas.api import GenerateOptions
 from api_craft.models.input import (
+    FieldDefaultGenerated,
+    FieldDefaultLiteral,
     InputAPI,
     InputApiConfig,
     InputDatabaseConfig,
@@ -206,17 +208,26 @@ def _convert_to_input_api(
                     type=_build_field_type(
                         field.field_type.python_type, field.container
                     ),
-                    optional=assoc.optional,
+                    nullable=assoc.nullable,
                     description=field.description,
-                    server_default=assoc.server_default,
-                    default_literal=assoc.default_literal,
+                    default=(
+                        FieldDefaultLiteral(kind="literal", value=assoc.default_value)
+                        if assoc.default_kind == "literal"
+                        else (
+                            FieldDefaultGenerated(
+                                kind="generated", strategy=assoc.default_value
+                            )
+                            if assoc.default_kind == "generated"
+                            else None
+                        )
+                    ),
                     validators=_build_field_validators(field),
                     field_validators=[
                         InputResolvedFieldValidator(**rv)
                         for rv in _build_resolved_field_validators(field)
                     ],
                     pk=assoc.is_pk,
-                    appears=assoc.appears,
+                    exposure=assoc.exposure,
                 )
                 fields.append(input_field)
 

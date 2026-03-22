@@ -10,6 +10,8 @@ from api_craft.models.enums import (  # noqa: F401
     Cardinality,
     Container,
     FieldAppearance,
+    FieldExposure,
+    GeneratedStrategy,
     HttpMethod,
     OnDeleteAction,
     ResponseShape,

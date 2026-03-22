@@ -455,28 +455,27 @@ class ObjectDefinition(Base):
 
 
 class ObjectFieldAssociation(Base):
-    """Association between objects and fields with optional flag.
+    """Association between objects and fields with exposure and default settings.
 
     :ivar id: Unique identifier for the association.
     :ivar object_id: Reference to the parent object.
     :ivar field_id: Reference to the field.
-    :ivar optional: Whether this field is optional in the object (default False = required).
+    :ivar nullable: Whether this field is nullable (default False).
     :ivar position: Order position for field display.
-    :ivar appears: Where this field appears: both, request, or response.
-    :ivar server_default: Server default strategy for this field.
-    :ivar default_literal: Literal value when server_default is 'literal'.
+    :ivar exposure: Where this field appears: read_write, write_only, or read_only.
+    :ivar default_kind: Default type discriminator: literal or generated.
+    :ivar default_value: Default value (literal string or generated strategy name).
     """
 
     __tablename__ = "fields_on_objects"
     __table_args__ = (
         CheckConstraint(
-            "appears IN ('both', 'request', 'response')",
-            name="ck_fields_on_objects_appears",
+            "exposure IN ('read_write', 'write_only', 'read_only')",
+            name="ck_fields_on_objects_exposure",
         ),
         CheckConstraint(
-            "server_default IS NULL OR server_default IN "
-            "('uuid4', 'now', 'now_on_update', 'auto_increment', 'literal')",
-            name="ck_fields_on_objects_server_default",
+            "default_kind IN ('literal', 'generated') OR default_kind IS NULL",
+            name="ck_fields_on_objects_default_kind",
         ),
     )
 
@@ -492,12 +491,14 @@ class ObjectFieldAssociation(Base):
     field_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("fields.id"), nullable=False, index=True
     )
-    optional: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    nullable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     position: Mapped[int] = mapped_column(default=0, nullable=False)
     is_pk: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    appears: Mapped[str] = mapped_column(Text, default="both", server_default="both")
-    server_default: Mapped[str | None] = mapped_column(Text, nullable=True)
-    default_literal: Mapped[str | None] = mapped_column(Text, nullable=True)
+    exposure: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default="read_write"
+    )
+    default_kind: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_value: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     object: Mapped["ObjectDefinition"] = relationship(

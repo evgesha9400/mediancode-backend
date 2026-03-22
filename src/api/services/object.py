@@ -185,14 +185,23 @@ class ObjectService(BaseService[ObjectDefinition]):
             await self.db.delete(assoc)
 
         for position, field_ref in enumerate(fields):
+            default_kind = None
+            default_value = None
+            if field_ref.default is not None:
+                default_kind = field_ref.default.kind
+                if default_kind == "literal":
+                    default_value = field_ref.default.value
+                elif default_kind == "generated":
+                    default_value = field_ref.default.strategy
+
             assoc = ObjectFieldAssociation(
                 object_id=obj.id,
                 field_id=field_ref.field_id,
-                optional=field_ref.optional,
                 is_pk=field_ref.is_pk,
-                appears=field_ref.appears,
-                server_default=field_ref.server_default,
-                default_literal=field_ref.default_literal,
+                exposure=field_ref.exposure,
+                nullable=field_ref.nullable,
+                default_kind=default_kind,
+                default_value=default_value,
                 position=position,
             )
             self.db.add(assoc)
