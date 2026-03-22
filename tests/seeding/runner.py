@@ -78,7 +78,7 @@ async def seed_shop(client: AsyncClient, log=None) -> SeedResult:
 
     # 1. Namespace
     log("Creating namespace 'Shop'...")
-    resp = await client.post("/namespaces", json={"name": "Shop", "isDefault": True})
+    resp = await client.post("/namespaces", json={"name": "Shop", "isDefault": False})
     ns = _check(resp, "namespace", "Shop")
     result.namespace_id = ns["id"]
 
