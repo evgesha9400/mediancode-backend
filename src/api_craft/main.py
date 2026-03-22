@@ -192,6 +192,7 @@ class APIGenerator:
                     database_config=database_config,
                     orm_model_map=orm_model_map or {},
                     orm_pk_map=orm_pk_map or {},
+                    api=template_api,
                 ),
                 "main.py": self.templates["main"].render(api=template_api),
                 "pyproject.toml": self.templates["pyproject"].render(

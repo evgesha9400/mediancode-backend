@@ -73,6 +73,14 @@ class PreparedPathParam:
 
 
 @dataclass
+class PreparedFilter:
+    """A pre-computed query filter expression for views.mako."""
+
+    param_name: str
+    filter_expr: str
+
+
+@dataclass
 class PreparedView:
     """Endpoint/view ready for template rendering."""
 
@@ -91,6 +99,18 @@ class PreparedView:
     response_shape: ResponseShape = "object"
     target: str | None = None
     pagination: bool = False
+    # Pre-computed fields for template rendering (Phase 2)
+    signature_lines: list[str] = field(default_factory=list)
+    has_signature: bool = False
+    orm_class: str = ""
+    has_orm: bool = False
+    pk_param: str = "id"
+    # Filter pre-computations for list endpoints
+    list_path_where: str | None = None
+    query_filters: list[PreparedFilter] = field(default_factory=list)
+    pagination_params: list[PreparedQueryParam] = field(default_factory=list)
+    # Detail endpoint pre-computations
+    detail_where: str = ""
 
 
 @dataclass
@@ -122,6 +142,12 @@ class PreparedAPI:
     config: PreparedAPIConfig
     orm_models: list[TemplateORMModel] = field(default_factory=list)
     database_config: TemplateDatabaseConfig | None = None
+    # Pre-computed fields for views.mako imports (Phase 2)
+    view_model_names: list[str] = field(default_factory=list)
+    view_orm_names: list[str] = field(default_factory=list)
+    has_path_params: bool = False
+    has_query_params: bool = False
+    has_no_response: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -290,6 +316,186 @@ def _prepare_view(
 
 
 # ---------------------------------------------------------------------------
+# View enrichment — pre-compute data used by views.mako
+# ---------------------------------------------------------------------------
+
+
+def _build_signature_lines(view: PreparedView, has_database: bool) -> list[str]:
+    """Build the function signature lines for a view."""
+    lines = []
+    for p_param in view.path_params:
+        lines.append(f"    {p_param.snake_name}: path.{p_param.camel_name},")
+    if view.request_model:
+        lines.append(f"    request: {view.request_model},")
+    for q_param in view.query_params:
+        suffix = " = None" if q_param.optional else ""
+        lines.append(f"    {q_param.snake_name}: query.{q_param.camel_name}{suffix},")
+    if has_database:
+        lines.append("    session: AsyncSession = Depends(get_session),")
+    return lines
+
+
+def _resolve_orm_class(
+    view: PreparedView,
+    orm_model_map: dict[str, str] | None,
+    orm_pk_map: dict[str, str] | None,
+) -> tuple[str, bool]:
+    """Resolve the ORM class name for a view. Returns (orm_class, has_orm)."""
+    if not orm_model_map:
+        return "", False
+
+    # Try response model first
+    if view.response_model and view.response_model in orm_model_map:
+        return orm_model_map[view.response_model], True
+
+    # Try target for list endpoints
+    if view.target and view.target in orm_model_map:
+        return orm_model_map[view.target], True
+
+    # For delete without response model, resolve from path param PK
+    if view.method == "delete" and orm_pk_map and view.path_params:
+        for p in view.path_params:
+            if p.snake_name in orm_pk_map:
+                return orm_pk_map[p.snake_name], True
+
+    return "", False
+
+
+def _compute_view_imports(
+    views: list[PreparedView],
+    orm_model_map: dict[str, str] | None,
+    orm_pk_map: dict[str, str] | None,
+) -> tuple[list[str], list[str], bool, bool, bool]:
+    """Compute import-related data from views for views.mako header."""
+    model_names: list[str] = []
+    for view in views:
+        if view.response_model and view.response_model not in model_names:
+            model_names.append(view.response_model)
+        if view.request_model and view.request_model not in model_names:
+            model_names.append(view.request_model)
+
+    has_path_params = any(view.path_params for view in views)
+    has_query_params = any(view.query_params for view in views)
+    has_no_response = any(not view.response_model for view in views)
+
+    orm_names_from_response = {
+        orm_model_map[view.response_model]
+        for view in views
+        if view.response_model
+        and orm_model_map
+        and view.response_model in orm_model_map
+    }
+    orm_names_from_pk: set[str] = set()
+    if orm_pk_map:
+        for view in views:
+            if view.method == "delete" and not view.response_model and view.path_params:
+                for p in view.path_params:
+                    if p.snake_name in orm_pk_map:
+                        orm_names_from_pk.add(orm_pk_map[p.snake_name])
+    orm_names_from_target: set[str] = set()
+    if orm_model_map:
+        for view in views:
+            if view.target and view.target in orm_model_map:
+                orm_names_from_target.add(orm_model_map[view.target])
+    orm_names = sorted(
+        orm_names_from_response | orm_names_from_pk | orm_names_from_target
+    )
+
+    return model_names, orm_names, has_path_params, has_query_params, has_no_response
+
+
+def _build_filter_expr(
+    orm_class: str, field: str, operator: str, param_name: str
+) -> str:
+    """Build a SQLAlchemy filter expression string."""
+    match operator:
+        case "eq":
+            return f"{orm_class}.{field} == {param_name}"
+        case "gte":
+            return f"{orm_class}.{field} >= {param_name}"
+        case "lte":
+            return f"{orm_class}.{field} <= {param_name}"
+        case "gt":
+            return f"{orm_class}.{field} > {param_name}"
+        case "lt":
+            return f"{orm_class}.{field} < {param_name}"
+        case "like":
+            return f'{orm_class}.{field}.like(f"%{{{param_name}}}%")'
+        case "ilike":
+            return f'{orm_class}.{field}.ilike(f"%{{{param_name}}}%")'
+        case "in":
+            return f"{orm_class}.{field}.in_({param_name})"
+        case _:
+            return f"{orm_class}.{field} == {param_name}"
+
+
+def _enrich_views(
+    views: list[PreparedView],
+    database_config: TemplateDatabaseConfig | None,
+    orm_model_map: dict[str, str] | None,
+    orm_pk_map: dict[str, str] | None,
+) -> None:
+    """Enrich views with pre-computed template data (mutates in place)."""
+    has_database = database_config is not None
+    for view in views:
+        view.signature_lines = _build_signature_lines(view, has_database)
+        view.has_signature = bool(view.signature_lines)
+        view.orm_class, view.has_orm = _resolve_orm_class(
+            view, orm_model_map, orm_pk_map
+        )
+        view.pk_param = view.path_params[0].snake_name if view.path_params else "id"
+
+        # List endpoint filter pre-computation
+        if (
+            view.has_orm
+            and view.method == "get"
+            and view.response_shape == "list"
+            and view.target
+        ):
+            path_where_clauses = []
+            for pp in view.path_params:
+                if pp.field:
+                    path_where_clauses.append(
+                        f"{view.orm_class}.{pp.field} == {pp.snake_name}"
+                    )
+            view.list_path_where = (
+                ", ".join(path_where_clauses) if path_where_clauses else None
+            )
+
+            for qp in view.query_params:
+                if qp.snake_name in ("limit", "offset") and view.pagination:
+                    view.pagination_params.append(qp)
+                elif qp.field and qp.operator:
+                    view.query_filters.append(
+                        PreparedFilter(
+                            param_name=qp.snake_name,
+                            filter_expr=_build_filter_expr(
+                                view.orm_class, qp.field, qp.operator, qp.snake_name
+                            ),
+                        )
+                    )
+
+        # Detail endpoint where clause pre-computation
+        if (
+            view.has_orm
+            and view.method == "get"
+            and view.response_shape != "list"
+            and view.target
+        ):
+            where_clauses = []
+            for pp in view.path_params:
+                if pp.field:
+                    where_clauses.append(
+                        f"{view.orm_class}.{pp.field} == {pp.snake_name}"
+                    )
+                else:
+                    where_clauses.append(
+                        f"{view.orm_class}.{pp.snake_name} == {pp.snake_name}"
+                    )
+            view.detail_where = ", ".join(where_clauses)
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -416,6 +622,30 @@ def prepare_api(input_api: InputAPI) -> PreparedAPI:
             db_port=db_port,
         )
 
+    # Build ORM maps for view enrichment
+    orm_model_map = None
+    orm_pk_map = None
+    if database_config and orm_models:
+        orm_model_map = {m.source_model: m.class_name for m in orm_models}
+        orm_model_map.update(
+            {f"{m.source_model}Response": m.class_name for m in orm_models}
+        )
+        orm_pk_map = {
+            f.name: m.class_name for m in orm_models for f in m.fields if f.primary_key
+        }
+
+    # Enrich views with pre-computed template data
+    _enrich_views(prepared_views, database_config, orm_model_map, orm_pk_map)
+
+    # Compute view import data
+    (
+        view_model_names,
+        view_orm_names,
+        has_path_params,
+        has_query_params,
+        has_no_response,
+    ) = _compute_view_imports(prepared_views, orm_model_map, orm_pk_map)
+
     return PreparedAPI(
         snake_name=camel_to_snake(input_api.name),
         camel_name=str(input_api.name),
@@ -434,4 +664,9 @@ def prepare_api(input_api: InputAPI) -> PreparedAPI:
         orm_models=orm_models,
         database_config=database_config,
         app_port=8001,
+        view_model_names=view_model_names,
+        view_orm_names=view_orm_names,
+        has_path_params=has_path_params,
+        has_query_params=has_query_params,
+        has_no_response=has_no_response,
     )

@@ -1,9 +1,10 @@
 <%doc>
 - Template Parameters:
-- views (list): A list of views to generate
+- views (list): A list of PreparedView instances
 - database_config: TemplateDatabaseConfig | None
-- orm_model_map: dict[str, str] | None - maps response model name to ORM class name
-- orm_pk_map: dict[str, str] | None - maps primary key field name to ORM class name
+- orm_model_map: dict[str, str] (kept for backward compat, logic moved to prepare.py)
+- orm_pk_map: dict[str, str] (kept for backward compat, logic moved to prepare.py)
+- api: PreparedAPI (provides pre-computed import data)
 </%doc>\
 % if database_config:
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,56 +15,27 @@ from database import get_session
 % else:
 from fastapi import APIRouter
 % endif
-<%
-model_names = []
-for view in views:
-    if view.response_model and view.response_model not in model_names:
-        model_names.append(view.response_model)
-    if view.request_model and view.request_model not in model_names:
-        model_names.append(view.request_model)
-has_path_params = any(view.path_params for view in views)
-has_query_params = any(view.query_params for view in views)
-has_no_response = any(not view.response_model for view in views)
-orm_model_names_from_response = {
-    orm_model_map[view.response_model]
-    for view in views
-    if view.response_model and orm_model_map and view.response_model in orm_model_map
-}
-orm_model_names_from_pk = set()
-if orm_pk_map:
-    for view in views:
-        if view.method == "delete" and not view.response_model and view.path_params:
-            for p in view.path_params:
-                if p.snake_name in orm_pk_map:
-                    orm_model_names_from_pk.add(orm_pk_map[p.snake_name])
-orm_model_names_from_target = set()
-if orm_model_map:
-    for view in views:
-        if view.target and view.target in orm_model_map:
-            orm_model_names_from_target.add(orm_model_map[view.target])
-orm_model_names = sorted(orm_model_names_from_response | orm_model_names_from_pk | orm_model_names_from_target)
-%>
-% if has_no_response:
+% if api.has_no_response:
 from starlette.responses import Response
 % endif
-% if model_names:
+% if api.view_model_names:
 from models import (
-% for index, name in enumerate(model_names):
-    ${name}${"," if index < len(model_names) - 1 else ""}
+% for index, name in enumerate(api.view_model_names):
+    ${name}${"," if index < len(api.view_model_names) - 1 else ""}
 % endfor
 )
 % endif
-% if database_config and orm_model_names:
+% if database_config and api.view_orm_names:
 from orm_models import (
-% for index, name in enumerate(orm_model_names):
-    ${name}${"," if index < len(orm_model_names) - 1 else ""}
+% for index, name in enumerate(api.view_orm_names):
+    ${name}${"," if index < len(api.view_orm_names) - 1 else ""}
 % endfor
 )
 % endif
-% if has_path_params:
+% if api.has_path_params:
 import path
 % endif
-% if has_query_params:
+% if api.has_query_params:
 import query
 % endif
 
@@ -72,33 +44,10 @@ api_router = APIRouter()
 % for view in views:
 
 <%
-    signature_lines = []
-    for p_param in (view.path_params or []):
-        signature_lines.append(f"    {p_param.snake_name}: path.{p_param.camel_name},")
-    if view.request_model:
-        signature_lines.append(f"    request: {view.request_model},")
-    for q_param in (view.query_params or []):
-        suffix = " = None" if q_param.optional else ""
-        signature_lines.append(
-            f"    {q_param.snake_name}: query.{q_param.camel_name}{suffix},"
-        )
-    if database_config:
-        signature_lines.append("    session: AsyncSession = Depends(get_session),")
-    has_signature = bool(signature_lines)
-    # Determine if this view's response model has an ORM model
-    has_orm = orm_model_map and view.response_model and view.response_model in orm_model_map
-    orm_class = orm_model_map.get(view.response_model, "") if orm_model_map and view.response_model else ""
-    # For list endpoints with target, resolve ORM class from target instead
-    if not has_orm and view.target and orm_model_map and view.target in orm_model_map:
-        orm_class = orm_model_map[view.target]
-        has_orm = True
-    # For delete without response model, resolve ORM class from path param PK
-    if not has_orm and view.method == "delete" and orm_pk_map and view.path_params:
-        for p in view.path_params:
-            if p.snake_name in orm_pk_map:
-                orm_class = orm_pk_map[p.snake_name]
-                has_orm = True
-                break
+    signature_lines = view.signature_lines
+    has_signature = view.has_signature
+    has_orm = view.has_orm
+    orm_class = view.orm_class
 %>
 @api_router.${view.method}(
     path="${view.path}",
@@ -128,59 +77,16 @@ async def ${view.snake_name}():
 ## Database-backed view body
 % if view.method == "get" and view.response_shape == "list" and view.target:
 ## Filtered list with param inference
-<%
-    # Collect path param where clauses (always applied)
-    path_where_clauses = []
-    for pp in (view.path_params or []):
-        if pp.field:
-            path_where_clauses.append(f"{orm_class}.{pp.field} == {pp.snake_name}")
-
-    # Collect query param filters (applied conditionally)
-    query_filters = []
-    pagination_params = []
-    for qp in (view.query_params or []):
-        if qp.snake_name in ("limit", "offset") and view.pagination:
-            pagination_params.append(qp)
-        elif qp.field and qp.operator:
-            query_filters.append(qp)
-
-    # Build initial select with path param wheres
-    if path_where_clauses:
-        where_str = ", ".join(path_where_clauses)
-    else:
-        where_str = None
-%>\
-% if where_str:
-    stmt = select(${orm_class}).where(${where_str})
+% if view.list_path_where:
+    stmt = select(${orm_class}).where(${view.list_path_where})
 % else:
     stmt = select(${orm_class})
 % endif
-% for qp in query_filters:
-    if ${qp.snake_name} is not None:
-<%
-    op = qp.operator
-    if op == "eq":
-        filter_expr = f"{orm_class}.{qp.field} == {qp.snake_name}"
-    elif op == "gte":
-        filter_expr = f"{orm_class}.{qp.field} >= {qp.snake_name}"
-    elif op == "lte":
-        filter_expr = f"{orm_class}.{qp.field} <= {qp.snake_name}"
-    elif op == "gt":
-        filter_expr = f"{orm_class}.{qp.field} > {qp.snake_name}"
-    elif op == "lt":
-        filter_expr = f"{orm_class}.{qp.field} < {qp.snake_name}"
-    elif op == "like":
-        filter_expr = f'{orm_class}.{qp.field}.like(f"%{{{qp.snake_name}}}%")'
-    elif op == "ilike":
-        filter_expr = f'{orm_class}.{qp.field}.ilike(f"%{{{qp.snake_name}}}%")'
-    elif op == "in":
-        filter_expr = f"{orm_class}.{qp.field}.in_({qp.snake_name})"
-    else:
-        filter_expr = f"{orm_class}.{qp.field} == {qp.snake_name}"
-%>\
-        stmt = stmt.where(${filter_expr})
+% for qf in view.query_filters:
+    if ${qf.param_name} is not None:
+        stmt = stmt.where(${qf.filter_expr})
 % endfor
-% for pp in pagination_params:
+% for pp in view.pagination_params:
 % if "limit" in pp.snake_name:
     if ${pp.snake_name} is not None:
         stmt = stmt.limit(${pp.snake_name})
@@ -196,25 +102,13 @@ async def ${view.snake_name}():
     return result.scalars().all()
 % elif view.method == "get" and view.response_shape != "list" and view.target:
 ## Detail endpoint with field-based path params
-<%
-    where_clauses = []
-    for pp in (view.path_params or []):
-        if pp.field:
-            where_clauses.append(f"{orm_class}.{pp.field} == {pp.snake_name}")
-        else:
-            where_clauses.append(f"{orm_class}.{pp.snake_name} == {pp.snake_name}")
-    where_str = ", ".join(where_clauses)
-%>\
-    result = await session.execute(select(${orm_class}).where(${where_str}))
+    result = await session.execute(select(${orm_class}).where(${view.detail_where}))
     record = result.scalars().first()
     if not record:
         raise HTTPException(status_code=404, detail="${view.response_model} not found")
     return record
 % elif view.method == "get":
-<%
-    pk_param = view.path_params[0].snake_name if view.path_params else "id"
-%>\
-    result = await session.execute(select(${orm_class}).where(${orm_class}.${pk_param} == ${pk_param}))
+    result = await session.execute(select(${orm_class}).where(${orm_class}.${view.pk_param} == ${view.pk_param}))
     record = result.scalars().first()
     if not record:
         raise HTTPException(status_code=404, detail="${view.response_model} not found")
@@ -230,10 +124,7 @@ async def ${view.snake_name}():
     await session.refresh(record)
     return record
 % elif view.method == "put" or view.method == "patch":
-<%
-    pk_param = view.path_params[0].snake_name if view.path_params else "id"
-%>\
-    result = await session.execute(select(${orm_class}).where(${orm_class}.${pk_param} == ${pk_param}))
+    result = await session.execute(select(${orm_class}).where(${orm_class}.${view.pk_param} == ${view.pk_param}))
     record = result.scalars().first()
     if not record:
         raise HTTPException(status_code=404, detail="${view.response_model} not found")
@@ -245,10 +136,7 @@ async def ${view.snake_name}():
     await session.refresh(record)
     return record
 % elif view.method == "delete":
-<%
-    pk_param = view.path_params[0].snake_name if view.path_params else "id"
-%>\
-    result = await session.execute(select(${orm_class}).where(${orm_class}.${pk_param} == ${pk_param}))
+    result = await session.execute(select(${orm_class}).where(${orm_class}.${view.pk_param} == ${view.pk_param}))
     record = result.scalars().first()
     if not record:
         raise HTTPException(status_code=404, detail="Not found")
