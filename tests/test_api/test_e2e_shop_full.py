@@ -3,7 +3,7 @@
 Phases:
  1. Read catalogues (types, constraints, validator templates)
  2. Create namespace
- 3. Create 24 fields with constraints and validators
+ 3. Create 23 fields with constraints and validators
  4. Read and verify fields
  5. Update fields (constraint change + add validator)
  6. Create objects with primary keys, field references, and model validators
@@ -246,7 +246,7 @@ class TestShopApiFullE2E:
     # --- Phase 3: Create fields ---
 
     async def test_phase_03_create_fields(self, client: AsyncClient):
-        """Create all 24 fields with types, constraints, and validators."""
+        """Create all 23 fields with types, constraints, and validators."""
         cls = TestShopApiFullE2E
 
         for field_def in ALL_FIELDS:
@@ -276,18 +276,18 @@ class TestShopApiFullE2E:
             assert len(field["validators"]) == len(validators)
             cls.field_ids[field_def["name"]] = field["id"]
 
-        assert len(cls.field_ids) == 24
+        assert len(cls.field_ids) == 23
 
     # --- Phase 4: Read and verify fields ---
 
     async def test_phase_04_read_fields(self, client: AsyncClient):
-        """Verify all 24 fields via list and individual GET."""
+        """Verify all 23 fields via list and individual GET."""
         cls = TestShopApiFullE2E
 
         resp = await client.get(f"/fields?namespace_id={cls.namespace_id}")
         assert resp.status_code == 200
         fields = resp.json()
-        assert len(fields) == 24
+        assert len(fields) == 23
 
         # Spot-check individual field detail
         resp = await client.get(f"/fields/{cls.field_ids['name']}")
@@ -1030,7 +1030,7 @@ class TestShopApiFullE2E:
     # --- Phase 25: Delete fields ---
 
     async def test_phase_25_delete_fields(self, client: AsyncClient):
-        """Delete all 24 fields and verify list is empty."""
+        """Delete all 23 fields and verify list is empty."""
         cls = TestShopApiFullE2E
 
         for name, field_id in cls.field_ids.items():
