@@ -26,7 +26,11 @@ from api_craft.models.template import (
 )
 from api_craft.orm_builder import transform_orm_models
 from api_craft.placeholders import PlaceholderGenerator
-from api_craft.schema_splitter import _has_appears_flags, _model_needs_split
+from api_craft.schema_splitter import (
+    _has_appears_flags,
+    _model_needs_split,
+    split_model_schemas,
+)
 from api_craft.utils import (
     add_spaces_to_camel_case,
     camel_to_kebab,
@@ -286,67 +290,6 @@ def _prepare_view(
 
 
 # ---------------------------------------------------------------------------
-# Schema splitting (returns InputModel instead of TemplateModel)
-# ---------------------------------------------------------------------------
-
-
-def _split_model_schemas(input_model: InputModel) -> list[InputModel]:
-    """Split an InputModel into Create, Update, and Response InputModels."""
-    from api_craft.models.types import PascalCaseName
-
-    model_validators = list(input_model.model_validators)
-
-    # Create fields: non-PK, appears in request
-    create_fields = [
-        f for f in input_model.fields if f.appears in ("both", "request") and not f.pk
-    ]
-
-    # Update fields: same selection as Create but all optional
-    update_fields = [f.model_copy(update={"optional": True}) for f in create_fields]
-
-    # Response fields: appears in response (PK included)
-    response_fields = list(
-        f for f in input_model.fields if f.appears in ("both", "response")
-    )
-
-    # Add FK ID fields for `references` relationships
-    for rel in input_model.relationships:
-        if rel.cardinality == "references":
-            fk_name = f"{rel.name}_id"
-            existing_names = {str(f.name) for f in response_fields}
-            if fk_name not in existing_names:
-                response_fields.append(
-                    InputField(
-                        type="uuid",
-                        name=fk_name,
-                        optional=False,
-                        description=f"FK reference to {rel.target_model}",
-                    )
-                )
-
-    return [
-        InputModel(
-            name=PascalCaseName(f"{input_model.name}Create"),
-            fields=create_fields,
-            description=input_model.description,
-            model_validators=model_validators,
-        ),
-        InputModel(
-            name=PascalCaseName(f"{input_model.name}Update"),
-            fields=update_fields,
-            description=input_model.description,
-            model_validators=[],
-        ),
-        InputModel(
-            name=PascalCaseName(f"{input_model.name}Response"),
-            fields=response_fields,
-            description=input_model.description,
-            model_validators=[],
-        ),
-    ]
-
-
-# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -364,7 +307,7 @@ def prepare_api(input_api: InputAPI) -> PreparedAPI:
         split_model_names: set[str] = set()
         for model in input_api.objects:
             if _model_needs_split(model):
-                prepared_models.extend(_split_model_schemas(model))
+                prepared_models.extend(split_model_schemas(model))
                 split_model_names.add(str(model.name))
             else:
                 prepared_models.append(model)

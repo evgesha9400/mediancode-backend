@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 pytestmark = pytest.mark.codegen
 
 from api_craft.main import APIGenerator
-from api_craft.transformers import transform_api
+from api_craft.prepare import prepare_api
 from .conftest import SPECS_PATH, load_input
 
 logger = logging.getLogger(__name__)
@@ -99,21 +99,20 @@ class TestShopApiArtifacts:
 
         logger.info("InputAPI dump verified: 2 objects, 9 endpoints, 2 tags")
 
-    def test_template_api_dump(self):
-        """Transform InputAPI and verify TemplateAPI naming conventions."""
+    def test_prepared_api(self):
+        """Prepare InputAPI and verify naming conventions and counts."""
         api_input = load_input("shop_api.yaml")
-        template_api = transform_api(api_input)
-        data = template_api.model_dump()
+        prepared = prepare_api(api_input)
 
-        assert data["snake_name"] == "shop_api"
-        assert data["kebab_name"] == "shop-api"
-        assert data["camel_name"] == "ShopApi"
+        assert prepared.snake_name == "shop_api"
+        assert prepared.kebab_name == "shop-api"
+        assert prepared.camel_name == "ShopApi"
 
         # 2 objects × 3 schemas (Create, Update, Response) = 6
-        assert len(data["models"]) == 6
-        assert len(data["views"]) == 9
+        assert len(prepared.models) == 6
+        assert len(prepared.views) == 9
 
-        logger.info("TemplateAPI dump verified: naming and counts correct")
+        logger.info("PreparedAPI verified: naming and counts correct")
 
     def test_generated_files(self, tmp_path: Path):
         """Generate project and verify all expected files exist."""

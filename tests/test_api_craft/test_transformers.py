@@ -414,7 +414,7 @@ class TestOrmBuilderServerDefaults:
 
 
 from api_craft.models.input import InputAPI, InputEndpoint, InputApiConfig
-from api_craft.transformers import transform_api
+from api_craft.prepare import prepare_api
 
 
 class TestTransformApiWithDatabase:
@@ -437,7 +437,7 @@ class TestTransformApiWithDatabase:
             ],
             config=InputApiConfig(database={"enabled": False}),
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         assert result.orm_models == []
         assert result.database_config is None
 
@@ -462,7 +462,7 @@ class TestTransformApiWithDatabase:
                 database={"enabled": True}, response_placeholders=False
             ),
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         assert len(result.orm_models) == 1
         assert result.orm_models[0].class_name == "ItemRecord"
         assert result.database_config is not None
@@ -489,7 +489,7 @@ class TestTransformApiWithDatabase:
                 database={"enabled": True}, response_placeholders=False
             ),
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         assert "shop_api" in result.database_config.default_url
 
 
@@ -539,6 +539,6 @@ class TestDatabaseValidation:
                 database={"enabled": True}, response_placeholders=False
             ),
         )
-        result = transform_api(api_input)
+        result = prepare_api(api_input)
         assert result.database_config is not None
         assert len(result.orm_models) == 1

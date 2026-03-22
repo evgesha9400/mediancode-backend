@@ -5,7 +5,8 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-from api_craft.models.template import TemplateField, TemplateValidator
+from api_craft.models.input import InputField as TemplateField
+from api_craft.models.input import InputValidator as TemplateValidator
 from api_craft.placeholders import (
     PlaceholderGenerator,
     extract_constraints,

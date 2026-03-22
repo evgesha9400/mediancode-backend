@@ -10,8 +10,8 @@ from api_craft.models.input import (
     InputField,
     InputModel,
 )
+from api_craft.prepare import prepare_api
 from api_craft.schema_splitter import split_model_schemas
-from api_craft.transformers import transform_api
 
 
 def _make_field(name: str, type_: str = "str", **kwargs) -> InputField:
@@ -143,8 +143,8 @@ class TestTransformApiWithAppears:
                 )
             ],
         )
-        template = transform_api(api)
-        model_names = [m.name for m in template.models]
+        prepared = prepare_api(api)
+        model_names = [str(m.name) for m in prepared.models]
         assert "WidgetCreate" in model_names
         assert "WidgetUpdate" in model_names
         assert "WidgetResponse" in model_names
@@ -170,8 +170,8 @@ class TestTransformApiWithAppears:
                 )
             ],
         )
-        template = transform_api(api)
-        view = template.views[0]
+        prepared = prepare_api(api)
+        view = prepared.views[0]
         assert view.response_model == "ItemResponse"
 
     def test_post_request_uses_create_schema(self):
@@ -195,8 +195,8 @@ class TestTransformApiWithAppears:
                 )
             ],
         )
-        template = transform_api(api)
-        view = template.views[0]
+        prepared = prepare_api(api)
+        view = prepared.views[0]
         assert view.request_model == "TaskCreate"
         assert view.response_model == "TaskResponse"
 
@@ -222,8 +222,8 @@ class TestTransformApiWithAppears:
                 )
             ],
         )
-        template = transform_api(api)
-        view = template.views[0]
+        prepared = prepare_api(api)
+        view = prepared.views[0]
         assert view.request_model == "TaskUpdate"
 
     def test_patch_request_uses_update_schema(self):
@@ -248,8 +248,8 @@ class TestTransformApiWithAppears:
                 )
             ],
         )
-        template = transform_api(api)
-        view = template.views[0]
+        prepared = prepare_api(api)
+        view = prepared.views[0]
         assert view.request_model == "TaskUpdate"
 
     def test_no_split_when_no_appears_or_pk(self):
@@ -270,7 +270,7 @@ class TestTransformApiWithAppears:
                 )
             ],
         )
-        template = transform_api(api)
-        model_names = [m.name for m in template.models]
+        prepared = prepare_api(api)
+        model_names = [str(m.name) for m in prepared.models]
         assert "Simple" in model_names
         assert "SimpleCreate" not in model_names

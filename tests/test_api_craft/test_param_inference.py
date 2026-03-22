@@ -763,16 +763,16 @@ class TestBackwardCompatibility:
         assert api is not None
 
 
-from api_craft.models.template import (
-    TemplatePathParam,
-    TemplateQueryParam,
-    TemplateView,
+from api_craft.prepare import (
+    PreparedPathParam,
+    PreparedQueryParam,
+    PreparedView,
 )
 
 
 class TestTemplateModelExtensions:
     def test_template_path_param_has_field(self):
-        param = TemplatePathParam(
+        param = PreparedPathParam(
             snake_name="store_id",
             camel_name="StoreId",
             type="uuid.UUID",
@@ -782,7 +782,7 @@ class TestTemplateModelExtensions:
         assert param.field == "store_id"
 
     def test_template_path_param_field_defaults_none(self):
-        param = TemplatePathParam(
+        param = PreparedPathParam(
             snake_name="item_id",
             camel_name="ItemId",
             type="int",
@@ -791,7 +791,7 @@ class TestTemplateModelExtensions:
         assert param.field is None
 
     def test_template_query_param_has_field_and_operator(self):
-        param = TemplateQueryParam(
+        param = PreparedQueryParam(
             snake_name="min_price",
             camel_name="MinPrice",
             type="float",
@@ -804,7 +804,7 @@ class TestTemplateModelExtensions:
         assert param.operator == "gte"
 
     def test_template_view_has_target(self):
-        view = TemplateView(
+        view = PreparedView(
             snake_name="list_products",
             camel_name="ListProducts",
             path="/products",
@@ -820,7 +820,7 @@ class TestTemplateModelExtensions:
         assert view.target == "Product"
 
     def test_template_view_target_defaults_none(self):
-        view = TemplateView(
+        view = PreparedView(
             snake_name="get_items",
             camel_name="GetItems",
             path="/items",
@@ -834,7 +834,7 @@ class TestTemplateModelExtensions:
         assert view.target is None
 
     def test_template_view_has_pagination(self):
-        view = TemplateView(
+        view = PreparedView(
             snake_name="list_products",
             camel_name="ListProducts",
             path="/products",
@@ -851,7 +851,7 @@ class TestTemplateModelExtensions:
         assert view.pagination is True
 
     def test_template_view_pagination_defaults_false(self):
-        view = TemplateView(
+        view = PreparedView(
             snake_name="get_items",
             camel_name="GetItems",
             path="/items",
@@ -865,7 +865,7 @@ class TestTemplateModelExtensions:
         assert view.pagination is False
 
 
-from api_craft.transformers import transform_api
+from api_craft.prepare import prepare_api
 
 
 class TestTypeDerivation:
@@ -917,7 +917,7 @@ class TestTypeDerivation:
                 InputPathParam(name="store_id", type="uuid.UUID", field="store_id"),
             ],
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         pp = result.views[0].path_params[0]
         assert pp.type == "uuid.UUID"
         assert pp.field == "store_id"
@@ -931,7 +931,7 @@ class TestTypeDerivation:
                 ),
             ],
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         qp = result.views[0].query_params[0]
         assert qp.type == "decimal.Decimal"
         assert qp.field == "price"
@@ -944,7 +944,7 @@ class TestTypeDerivation:
                 InputQueryParam(name="names", type="str", field="name", operator="in"),
             ],
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         qp = result.views[0].query_params[0]
         assert qp.type == "List[str]"
 
@@ -961,7 +961,7 @@ class TestTypeDerivation:
                 ),
             ],
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         qp = result.views[0].query_params[0]
         assert qp.optional is True
 
@@ -999,7 +999,7 @@ class TestTypeDerivation:
             objects=objects,
             config={"response_placeholders": False},
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         qps = result.views[0].query_params
         assert len(qps) == 2
         limit_param = qps[0]
@@ -1022,7 +1022,7 @@ class TestTypeDerivation:
                 ),
             ],
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         qps = result.views[0].query_params
         assert len(qps) == 1
         assert qps[0].snake_name == "min_price"
@@ -1057,7 +1057,7 @@ class TestTypeDerivation:
             objects=objects,
             config={"response_placeholders": False},
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         assert result.views[0].pagination is True
 
     def test_legacy_params_without_field_unchanged(self):
@@ -1067,7 +1067,7 @@ class TestTypeDerivation:
                 InputQueryParam(name="limit", type="int", optional=True),
             ],
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         qp = result.views[0].query_params[0]
         assert qp.type == "int"
         assert qp.field is None
@@ -1081,7 +1081,7 @@ class TestTypeDerivation:
                 ),
             ],
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         assert result.views[0].target == "Product"
 
 
@@ -1115,7 +1115,7 @@ class TestPkAutoInference:
             ],
             config={"response_placeholders": False},
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         pp = result.views[0].path_params[0]
         assert pp.field == "id"
 
@@ -1146,7 +1146,7 @@ class TestPkAutoInference:
             ],
             config={"response_placeholders": False},
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         pp = result.views[0].path_params[0]
         assert pp.field == "id"
 
@@ -1213,7 +1213,7 @@ class TestPkAutoInference:
             ],
             config={"response_placeholders": False},
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         pp = result.views[0].path_params[0]
         assert pp.field == "store_id"
 
@@ -1244,7 +1244,7 @@ class TestPkAutoInference:
             ],
             config={"response_placeholders": False},
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         pp = result.views[0].path_params[0]
         assert pp.field is None
 
@@ -1275,7 +1275,7 @@ class TestPkAutoInference:
             ],
             config={"response_placeholders": False},
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         pp = result.views[0].path_params[0]
         assert pp.field == "id"
         assert pp.type == "uuid.UUID"
@@ -1309,7 +1309,7 @@ class TestPkAutoInference:
             ],
             config={"response_placeholders": False},
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         pp0 = result.views[0].path_params[0]
         pp1 = result.views[0].path_params[1]
         # First param: no auto-inference (not the last)
@@ -1345,7 +1345,7 @@ class TestPkAutoInference:
             ],
             config={"response_placeholders": False},
         )
-        result = transform_api(api)
+        result = prepare_api(api)
         pp = result.views[0].path_params[0]
         # email is a non-PK field on Customer, so no auto-inference
         assert pp.field is None

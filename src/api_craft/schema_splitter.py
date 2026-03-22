@@ -1,52 +1,40 @@
 # src/api_craft/schema_splitter.py
 """Schema splitting: derives Create/Update/Response schemas from InputModel."""
 
-from api_craft.models.input import InputAPI, InputModel
-from api_craft.models.template import TemplateField, TemplateModel
+from api_craft.models.input import InputAPI, InputField, InputModel
+from api_craft.models.types import PascalCaseName
 
 
-def split_model_schemas(input_model: InputModel) -> list[TemplateModel]:
-    """Split an InputModel into Create, Update, and Response TemplateModels.
+def split_model_schemas(input_model: InputModel) -> list[InputModel]:
+    """Split an InputModel into Create, Update, and Response InputModels.
 
     - Create: fields with appears in (both, request), PK excluded
     - Update: same as Create but all fields optional
     - Response: fields with appears in (both, response), PK included
     """
-    from api_craft.transformers import (
-        transform_field,
-        transform_resolved_model_validator,
-    )
-
-    model_validators = [
-        transform_resolved_model_validator(v) for v in input_model.model_validators
-    ]
+    model_validators = list(input_model.model_validators)
 
     # Create fields: non-PK, appears in request
-    create_input_fields = [
+    create_fields = [
         f for f in input_model.fields if f.appears in ("both", "request") and not f.pk
     ]
-    create_fields = [transform_field(f) for f in create_input_fields]
 
     # Update fields: same selection as Create but all optional
-    update_fields = [
-        transform_field(f, force_optional=True) for f in create_input_fields
-    ]
+    update_fields = [f.model_copy(update={"optional": True}) for f in create_fields]
 
     # Response fields: appears in response (PK included)
-    response_input_fields = [
+    response_fields = list(
         f for f in input_model.fields if f.appears in ("both", "response")
-    ]
-    response_fields = [transform_field(f) for f in response_input_fields]
+    )
 
     # Add FK ID fields for `references` relationships
     for rel in input_model.relationships:
         if rel.cardinality == "references":
             fk_name = f"{rel.name}_id"
-            # Avoid duplicating if the field already exists
-            existing_names = {f.name for f in response_fields}
+            existing_names = {str(f.name) for f in response_fields}
             if fk_name not in existing_names:
                 response_fields.append(
-                    TemplateField(
+                    InputField(
                         type="uuid",
                         name=fk_name,
                         optional=False,
@@ -55,20 +43,20 @@ def split_model_schemas(input_model: InputModel) -> list[TemplateModel]:
                 )
 
     return [
-        TemplateModel(
-            name=f"{input_model.name}Create",
+        InputModel(
+            name=PascalCaseName(f"{input_model.name}Create"),
             fields=create_fields,
             description=input_model.description,
             model_validators=model_validators,
         ),
-        TemplateModel(
-            name=f"{input_model.name}Update",
+        InputModel(
+            name=PascalCaseName(f"{input_model.name}Update"),
             fields=update_fields,
             description=input_model.description,
             model_validators=[],
         ),
-        TemplateModel(
-            name=f"{input_model.name}Response",
+        InputModel(
+            name=PascalCaseName(f"{input_model.name}Response"),
             fields=response_fields,
             description=input_model.description,
             model_validators=[],
