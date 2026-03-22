@@ -97,6 +97,12 @@ clean: ## Remove Python caches and test output
 	@rm -rf tests/output/ 2>/dev/null || true
 	@echo "Cleaned"
 
+.PHONY: install-hooks
+install-hooks: ## Install git pre-commit hook (runs formatting + tests before each commit)
+	@cp hooks/pre-commit .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@echo "Pre-commit hook installed."
+
 .PHONY: docker-build
 docker-build: ## Build Docker image locally (prunes old layers)
 	@docker build -t mediancode-backend .
@@ -131,6 +137,7 @@ help: ## Show this help message
 	@echo "  make migration msg=\"...\"  Create new migration file"
 	@echo ""
 	@echo "UTILITIES:"
+	@echo "  make install-hooks   Install git pre-commit hook"
 	@echo "  make clean           Remove Python caches"
 	@echo "  make docker-build    Build Docker image"
 	@echo "  make docker-run      Run Docker image locally"

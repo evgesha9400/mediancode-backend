@@ -23,6 +23,9 @@ cp .env.local.example .env.local
 # First-time setup: start DB + run migrations
 make setup
 
+# Install git hooks (runs formatting + tests before each commit)
+make install-hooks
+
 # Start the backend (in a separate terminal)
 make dev
 ```

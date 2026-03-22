@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -e
+
+echo "Running pre-commit checks..."
+
+# Format check (don't auto-format — just fail if unformatted)
+echo "→ Checking formatting..."
+poetry run black --check src/ tests/
+
+# Unit + codegen tests (always run — no Docker needed)
+echo "→ Running tests..."
+poetry run pytest tests/ -x -q -m "not e2e and not manual"
+
+# E2E tests (only if Docker is running)
+if docker info >/dev/null 2>&1; then
+  echo "→ Docker detected — running E2E tests..."
+  poetry run pytest -m e2e -x -q
+else
+  echo "→ Docker not running — skipping E2E tests (CI will run them)"
+fi
+
+echo "✓ All pre-commit checks passed"
