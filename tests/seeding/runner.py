@@ -218,16 +218,29 @@ async def clean_shop(client: AsyncClient, log=None) -> None:
     resp = await client.get("/namespaces")
     if resp.status_code != 200:
         raise SeedError("catalogue", "namespaces", resp.status_code, resp.text)
-    shop_ns = None
-    for ns in resp.json():
-        if ns["name"] == "Shop":
-            shop_ns = ns
-            break
+    all_namespaces = resp.json()
+    shop_ns = next((ns for ns in all_namespaces if ns["name"] == "Shop"), None)
     if shop_ns is None:
         log("Nothing to clean — 'Shop' namespace not found.")
         return
 
     ns_id = shop_ns["id"]
+
+    # If Shop is the default namespace, promote another one first.
+    # The backend blocks deletion of the default namespace.
+    if shop_ns.get("isDefault"):
+        other = next((ns for ns in all_namespaces if ns["id"] != ns_id), None)
+        if other is None:
+            raise SeedError(
+                "namespace", "Shop", 400,
+                "Cannot delete: Shop is the only namespace and is set as default"
+            )
+        log(f"Shop is the default namespace — promoting '{other['name']}' before deletion...")
+        resp = await client.put(
+            f"/namespaces/{other['id']}", json={"isDefault": True}
+        )
+        if resp.status_code not in (200, 204):
+            raise SeedError("namespace", other["name"], resp.status_code, resp.text)
 
     # Delete endpoints (only those belonging to Shop APIs)
     resp = await client.get(f"/apis?namespace_id={ns_id}")
