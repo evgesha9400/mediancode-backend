@@ -16,9 +16,7 @@ def _resolve_fk_type(
     Falls back to "uuid" if the target model or its PK cannot be found.
     """
     if all_models:
-        target = next(
-            (m for m in all_models if str(m.name) == target_model_name), None
-        )
+        target = next((m for m in all_models if str(m.name) == target_model_name), None)
         if target:
             pk_field = next((f for f in target.fields if f.pk), None)
             if pk_field:
@@ -57,7 +55,9 @@ def split_model_schemas(
     for rel in input_model.relationships:
         if rel.cardinality == "references":
             fk_name = f"{rel.name}_id"
-            fk_type = _resolve_fk_type(fk_name, rel.target_model, input_model, all_models)
+            fk_type = _resolve_fk_type(
+                fk_name, rel.target_model, input_model, all_models
+            )
 
             # Add to Create (required)
             existing_create = {str(f.name) for f in create_fields}
