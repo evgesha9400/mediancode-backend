@@ -62,22 +62,29 @@ async def _read_catalogues(client: AsyncClient) -> dict[str, dict[str, str]]:
     return catalogues
 
 
-async def seed_shop(client: AsyncClient) -> SeedResult:
+async def seed_shop(client: AsyncClient, log=None) -> SeedResult:
     """Create the full Shop API structure via API calls.
 
     The client must be pre-configured with base_url and auth headers
     (or ASGI transport with dependency overrides for tests).
+
+    :param log: Optional callable for progress output (e.g. print). Silent by default.
     """
+    if log is None:
+        log = lambda *_: None
+
     result = SeedResult()
     cat = await _read_catalogues(client)
 
     # 1. Namespace
+    log("Creating namespace 'Shop'...")
     resp = await client.post("/namespaces", json={"name": "Shop", "isDefault": True})
     ns = _check(resp, "namespace", "Shop")
     result.namespace_id = ns["id"]
 
     # 2. Fields
     for field_def in ALL_FIELDS:
+        log(f"  Creating field '{field_def['name']}' ({field_def['type']})...")
         payload = {
             "namespaceId": result.namespace_id,
             "name": field_def["name"],
@@ -97,6 +104,7 @@ async def seed_shop(client: AsyncClient) -> SeedResult:
 
     # 3. Objects
     for obj_def in OBJECTS:
+        log(f"Creating object '{obj_def['name']}'...")
         obj_fields = []
         for fref in obj_def["fields"]:
             field_payload: dict = {
@@ -137,6 +145,10 @@ async def seed_shop(client: AsyncClient) -> SeedResult:
         result.object_ids[obj_def["name"]] = obj["id"]
 
     # 4. Relationship (API auto-creates bidirectional inverse)
+    log(
+        f"Creating relationship '{RELATIONSHIP['name']}' "
+        f"({RELATIONSHIP['source_object']} → {RELATIONSHIP['target_object']})..."
+    )
     source_id = result.object_ids[RELATIONSHIP["source_object"]]
     resp = await client.post(
         f"/objects/{source_id}/relationships",
@@ -152,6 +164,7 @@ async def seed_shop(client: AsyncClient) -> SeedResult:
         result.relationship_ids.append(rel["inverseId"])
 
     # 5. API
+    log(f"Creating API '{API['title']}'...")
     resp = await client.post(
         "/apis",
         json={
@@ -166,6 +179,7 @@ async def seed_shop(client: AsyncClient) -> SeedResult:
 
     # 6. Endpoints
     for ep_def in ENDPOINTS:
+        log(f"  Creating endpoint {ep_def['method']} {ep_def['path']}...")
         path_params = [
             {"name": pp["name"], "fieldId": result.field_ids[pp["field"]]}
             for pp in ep_def["path_params"]
@@ -189,12 +203,17 @@ async def seed_shop(client: AsyncClient) -> SeedResult:
     return result
 
 
-async def clean_shop(client: AsyncClient) -> None:
+async def clean_shop(client: AsyncClient, log=None) -> None:
     """Delete the Shop namespace and all its contents.
 
     Deletes in reverse dependency order:
     endpoints -> APIs -> objects (cascade deletes relationships) -> fields -> namespace.
+
+    :param log: Optional callable for progress output (e.g. print). Silent by default.
     """
+    if log is None:
+        log = lambda *_: None
+
     # Find Shop namespace
     resp = await client.get("/namespaces")
     if resp.status_code != 200:
@@ -205,32 +224,37 @@ async def clean_shop(client: AsyncClient) -> None:
             shop_ns = ns
             break
     if shop_ns is None:
-        return  # Nothing to clean
+        log("Nothing to clean — 'Shop' namespace not found.")
+        return
 
     ns_id = shop_ns["id"]
 
     # Delete endpoints (only those belonging to Shop APIs)
     resp = await client.get(f"/apis?namespace_id={ns_id}")
-    api_ids = set()
+    shop_apis = []
     if resp.status_code == 200:
-        api_ids = {api["id"] for api in resp.json()}
+        shop_apis = resp.json()
+    api_ids = {api["id"] for api in shop_apis}
 
     resp = await client.get("/endpoints")
     if resp.status_code == 200:
         for ep in resp.json():
             if ep.get("apiId") in api_ids:
+                log(f"  Deleting endpoint {ep.get('method', '')} {ep.get('path', ep['id'])}...")
                 resp = await client.delete(f"/endpoints/{ep['id']}")
                 resp.raise_for_status()
 
     # Delete APIs
-    for api_id in api_ids:
-        resp = await client.delete(f"/apis/{api_id}")
+    for api in shop_apis:
+        log(f"Deleting API '{api.get('title', api['id'])}'...")
+        resp = await client.delete(f"/apis/{api['id']}")
         resp.raise_for_status()
 
     # Delete objects (cascade deletes relationships)
     resp = await client.get(f"/objects?namespace_id={ns_id}")
     if resp.status_code == 200:
         for obj in resp.json():
+            log(f"Deleting object '{obj.get('name', obj['id'])}'...")
             resp = await client.delete(f"/objects/{obj['id']}")
             resp.raise_for_status()
 
@@ -238,9 +262,11 @@ async def clean_shop(client: AsyncClient) -> None:
     resp = await client.get(f"/fields?namespace_id={ns_id}")
     if resp.status_code == 200:
         for f in resp.json():
+            log(f"  Deleting field '{f.get('name', f['id'])}'...")
             resp = await client.delete(f"/fields/{f['id']}")
             resp.raise_for_status()
 
     # Delete namespace
+    log("Deleting namespace 'Shop'...")
     resp = await client.delete(f"/namespaces/{ns_id}")
     resp.raise_for_status()

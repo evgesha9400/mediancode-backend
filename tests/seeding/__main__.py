@@ -46,9 +46,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="replace",
         help="Seeding mode (default: replace)",
     )
-    parser.add_argument(
-        "--verbose", action="store_true", help="Print detailed progress"
-    )
     return parser.parse_args(argv)
 
 
@@ -85,15 +82,13 @@ async def main(argv: list[str] | None = None) -> None:
             )
             sys.exit(1)
 
-        if args.verbose:
-            print(f"Minting Clerk JWT for {args.user_email}...")
+        print(f"Minting Clerk JWT for {args.user_email}...")
         try:
             token = await mint_clerk_jwt(args.user_email, clerk_key)
         except ClerkAuthError as e:
             print(f"Auth error: {e}", file=sys.stderr)
             sys.exit(1)
-        if args.verbose:
-            print("JWT acquired.")
+        print("JWT acquired.")
 
     from seeding.runner import SeedError, clean_shop, seed_shop
 
@@ -104,20 +99,14 @@ async def main(argv: list[str] | None = None) -> None:
     ) as client:
         try:
             if args.mode == "delete":
-                if args.verbose:
-                    print("Deleting Shop data...")
-                await clean_shop(client)
-                print("Shop data deleted.")
+                await clean_shop(client, log=print)
+                print("Done.")
 
             elif args.mode == "replace":
-                if args.verbose:
-                    print("Cleaning existing Shop data...")
-                await clean_shop(client)
-                if args.verbose:
-                    print("Seeding Shop API...")
-                result = await seed_shop(client)
+                await clean_shop(client, log=print)
+                result = await seed_shop(client, log=print)
                 print(
-                    f"Shop API seeded. Namespace: {result.namespace_id}, "
+                    f"Done. Namespace: {result.namespace_id}, "
                     f"API: {result.api_id}, "
                     f"{len(result.field_ids)} fields, "
                     f"{len(result.object_ids)} objects, "
