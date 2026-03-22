@@ -219,23 +219,28 @@ async def clean_shop(client: AsyncClient) -> None:
     if resp.status_code == 200:
         for ep in resp.json():
             if ep.get("apiId") in api_ids:
-                await client.delete(f"/endpoints/{ep['id']}")
+                resp = await client.delete(f"/endpoints/{ep['id']}")
+                resp.raise_for_status()
 
     # Delete APIs
     for api_id in api_ids:
-        await client.delete(f"/apis/{api_id}")
+        resp = await client.delete(f"/apis/{api_id}")
+        resp.raise_for_status()
 
     # Delete objects (cascade deletes relationships)
     resp = await client.get(f"/objects?namespace_id={ns_id}")
     if resp.status_code == 200:
         for obj in resp.json():
-            await client.delete(f"/objects/{obj['id']}")
+            resp = await client.delete(f"/objects/{obj['id']}")
+            resp.raise_for_status()
 
     # Delete fields
     resp = await client.get(f"/fields?namespace_id={ns_id}")
     if resp.status_code == 200:
         for f in resp.json():
-            await client.delete(f"/fields/{f['id']}")
+            resp = await client.delete(f"/fields/{f['id']}")
+            resp.raise_for_status()
 
     # Delete namespace
-    await client.delete(f"/namespaces/{ns_id}")
+    resp = await client.delete(f"/namespaces/{ns_id}")
+    resp.raise_for_status()
