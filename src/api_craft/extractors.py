@@ -1,12 +1,8 @@
 import re
 
-from api_craft.models.template import (
-    TemplateAPI,
-    TemplateModel,
-    TemplateORMModel,
-    TemplatePathParam,
-    TemplateQueryParam,
-)
+from api_craft.models.input import InputModel
+from api_craft.models.template import TemplateORMModel
+from api_craft.prepare import PreparedAPI, PreparedPathParam, PreparedQueryParam
 
 # Mapping of module.Type patterns to their import statements
 MODULE_TYPE_IMPORTS = {
@@ -92,7 +88,7 @@ def collect_imports(types: list[str]) -> set[str]:
     return imports
 
 
-def collect_model_imports(models: list[TemplateModel]) -> set[str]:
+def collect_model_imports(models: list[InputModel]) -> set[str]:
     """Collect all required imports for the generated models.
 
     :param models: Collection of template-ready models.
@@ -105,7 +101,7 @@ def collect_model_imports(models: list[TemplateModel]) -> set[str]:
     return collect_imports(types)
 
 
-def collect_path_params_imports(path_params: list[TemplatePathParam]) -> set[str]:
+def collect_path_params_imports(path_params: list[PreparedPathParam]) -> set[str]:
     """Collect all required imports for path parameters.
 
     :param path_params: Collection of path parameters.
@@ -115,7 +111,7 @@ def collect_path_params_imports(path_params: list[TemplatePathParam]) -> set[str
     return collect_imports(types)
 
 
-def collect_query_params_imports(query_params: list[TemplateQueryParam]) -> set[str]:
+def collect_query_params_imports(query_params: list[PreparedQueryParam]) -> set[str]:
     """Collect all required imports for query parameters.
 
     :param query_params: Collection of query parameters.
@@ -125,8 +121,8 @@ def collect_query_params_imports(query_params: list[TemplateQueryParam]) -> set[
     return collect_imports(types)
 
 
-def extract_path_parameters(template_api: TemplateAPI) -> list[TemplatePathParam]:
-    """Extracts and returns a list of unique TemplatePathParams from the views of the TemplateAPI instance."""
+def extract_path_parameters(template_api: PreparedAPI) -> list[PreparedPathParam]:
+    """Extracts and returns a list of unique path params from the PreparedAPI instance."""
     path_param_names = set()
     path_params = []
     for view in template_api.views:
@@ -137,8 +133,8 @@ def extract_path_parameters(template_api: TemplateAPI) -> list[TemplatePathParam
     return path_params
 
 
-def extract_query_parameters(template_api: TemplateAPI) -> list[TemplateQueryParam]:
-    """Extracts and returns a list of unique TemplateQueryParams from the views of the TemplateAPI instance."""
+def extract_query_parameters(template_api: PreparedAPI) -> list[PreparedQueryParam]:
+    """Extracts and returns a list of unique query params from the PreparedAPI instance."""
     query_param_names = set()
     query_params = []
     for view in template_api.views:
@@ -164,7 +160,7 @@ def collect_extra_dependencies(types: list[str]) -> list[str]:
     return sorted(deps)
 
 
-def collect_model_extra_dependencies(models: list[TemplateModel]) -> list[str]:
+def collect_model_extra_dependencies(models: list[InputModel]) -> list[str]:
     """Collect extra pip dependencies required by model field types.
 
     :param models: Collection of template-ready models.

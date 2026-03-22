@@ -26,8 +26,7 @@ from api_craft.extractors import (
     extract_query_parameters,
 )
 from api_craft.models.input import InputAPI
-from api_craft.models.template import TemplateAPI
-from api_craft.transformers import transform_api
+from api_craft.prepare import PreparedAPI, prepare_api
 from api_craft.utils import camel_to_kebab, create_dir, write_file
 
 # Configure logging
@@ -114,20 +113,20 @@ class APIGenerator:
             logger.error(f"Failed to load templates: {str(e)}")
             raise
 
-    def transform_api(self, api: InputAPI) -> TemplateAPI:
-        """Transform input API into template format.
+    def transform_api(self, api: InputAPI) -> PreparedAPI:
+        """Prepare input API for template rendering.
 
-        :param api: Input API model to transform.
-        :returns: Transformed :class:`api_craft.models.template.TemplateAPI`.
-        :raises ValueError: If transformation fails.
+        :param api: Input API model to prepare.
+        :returns: Prepared API ready for template rendering.
+        :raises ValueError: If preparation fails.
         """
         try:
-            return transform_api(api)
+            return prepare_api(api)
         except Exception as e:
             logger.error(f"Failed to transform API: {str(e)}")
             raise ValueError("API transformation failed") from e
 
-    def extract_components(self, template_api: TemplateAPI) -> dict[str, Any]:
+    def extract_components(self, template_api: PreparedAPI) -> dict[str, Any]:
         """Extract all components from the template API.
 
         :param template_api: Transformed template API.
@@ -148,7 +147,7 @@ class APIGenerator:
             raise ValueError("Component extraction failed") from e
 
     def render_components(
-        self, components: dict[str, Any], template_api: TemplateAPI
+        self, components: dict[str, Any], template_api: PreparedAPI
     ) -> dict[str, str]:
         """Render all components using templates.
 
