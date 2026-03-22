@@ -125,7 +125,7 @@ class TestSeedRunner:
 
         result = await seed_shop(client)
         assert result.namespace_id
-        assert len(result.field_ids) == 23
+        assert len(result.field_ids) == len(ALL_FIELDS)
 
         await clean_shop(client)
 

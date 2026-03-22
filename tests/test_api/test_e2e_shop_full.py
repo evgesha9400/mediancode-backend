@@ -45,6 +45,7 @@ from api.models.database import (
     UserModel,
 )
 from api.seeding.shop_data import (
+    ALL_FIELDS,
     CUSTOMER_FIELDS,
     CUSTOMER_OPTIONAL,
     PRODUCT_FIELDS,
@@ -276,7 +277,7 @@ class TestShopApiFullE2E:
             assert len(field["validators"]) == len(validators)
             cls.field_ids[field_def["name"]] = field["id"]
 
-        assert len(cls.field_ids) == 23
+        assert len(cls.field_ids) == len(ALL_FIELDS)
 
     # --- Phase 4: Read and verify fields ---
 
@@ -287,7 +288,7 @@ class TestShopApiFullE2E:
         resp = await client.get(f"/fields?namespace_id={cls.namespace_id}")
         assert resp.status_code == 200
         fields = resp.json()
-        assert len(fields) == 23
+        assert len(fields) == len(ALL_FIELDS)
 
         # Spot-check individual field detail
         resp = await client.get(f"/fields/{cls.field_ids['name']}")

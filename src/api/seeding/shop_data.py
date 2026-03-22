@@ -108,6 +108,12 @@ PRODUCT_FIELDS = [
 
 CUSTOMER_FIELDS = [
     {
+        "name": "id",
+        "type": "int",
+        "constraints": [],
+        "validators": [],
+    },
+    {
         "name": "customer_name",
         "type": "str",
         "constraints": [("min_length", "1"), ("max_length", "100")],
@@ -271,7 +277,9 @@ PRODUCT_OBJECT = {
             "field_name": "tracking_id",
             "nullable": False,
             "is_pk": True,
-            "exposure": "read_write",
+            "exposure": "read_only",
+            "default_kind": "generated",
+            "default_value": "uuid4",
         },
     ],
     "validators": [
@@ -315,6 +323,14 @@ CUSTOMER_OBJECT = {
     "description": "Shop customer",
     "fields": [
         {
+            "field_name": "id",
+            "nullable": False,
+            "is_pk": True,
+            "exposure": "read_only",
+            "default_kind": "generated",
+            "default_value": "auto_increment",
+        },
+        {
             "field_name": "customer_name",
             "nullable": False,
             "is_pk": False,
@@ -323,7 +339,7 @@ CUSTOMER_OBJECT = {
         {
             "field_name": "email",
             "nullable": False,
-            "is_pk": True,
+            "is_pk": False,
             "exposure": "read_write",
         },
         {

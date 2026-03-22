@@ -11,11 +11,13 @@ from sqlalchemy.orm import selectinload
 from api.models.database import (
     ApiEndpoint,
     AppliedModelValidatorModel,
+    FieldModel,
     ModelValidatorTemplateModel,
     Namespace,
     ObjectDefinition,
     ObjectFieldAssociation,
     ObjectRelationship,
+    TypeModel,
 )
 from api.schemas.object import (
     ModelValidatorInput,
@@ -24,6 +26,7 @@ from api.schemas.object import (
     ObjectUpdate,
 )
 from api.services.base import BaseService
+from api_craft.models.validation_catalog import ALLOWED_PK_TYPES
 
 
 class ObjectService(BaseService[ObjectDefinition]):
@@ -108,6 +111,7 @@ class ObjectService(BaseService[ObjectDefinition]):
         self.db.add(obj)
         await self.db.flush()
 
+        await self._validate_pk_field_types(data.fields)
         await self._set_field_associations(obj, data.fields)
 
         if data.validators:
@@ -130,6 +134,7 @@ class ObjectService(BaseService[ObjectDefinition]):
         if data.description is not None:
             obj.description = data.description
         if data.fields is not None:
+            await self._validate_pk_field_types(data.fields)
             await self._set_field_associations(obj, data.fields)
 
         if data.validators is not None:
@@ -166,6 +171,31 @@ class ObjectService(BaseService[ObjectDefinition]):
 
         await self.db.delete(obj)
         await self.db.flush()
+
+    async def _validate_pk_field_types(
+        self, fields: list[ObjectFieldReferenceSchema]
+    ) -> None:
+        """Validate that PK fields use only supported types (int or uuid).
+
+        :param fields: List of field references to validate.
+        :raises HTTPException: If a PK field uses an unsupported type.
+        """
+        pk_field_ids = [f.field_id for f in fields if f.is_pk]
+        if not pk_field_ids:
+            return
+
+        result = await self.db.execute(
+            select(FieldModel.id, TypeModel.name)
+            .join(TypeModel, FieldModel.type_id == TypeModel.id)
+            .where(FieldModel.id.in_(pk_field_ids))
+        )
+        for field_id, type_name in result.all():
+            base_type = type_name.split(".")[0] if "." in type_name else type_name
+            if base_type not in ALLOWED_PK_TYPES:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Field type '{type_name}' is not supported as a primary key. Only 'int' and 'uuid' types are allowed.",
+                )
 
     async def _set_field_associations(
         self,
