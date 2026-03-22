@@ -232,21 +232,16 @@ async def clean_shop(client: AsyncClient, log=None) -> None:
 
     ns_id = shop_ns["id"]
 
-    # If Shop is the default namespace, promote another one first.
-    # The backend blocks deletion of the default namespace.
-    if shop_ns.get("isDefault"):
-        other = next((ns for ns in all_namespaces if ns["id"] != ns_id), None)
-        if other is None:
-            raise SeedError(
-                "namespace", "Shop", 400,
-                "Cannot delete: Shop is the only namespace and is set as default"
-            )
-        log(f"Shop is the default namespace — promoting '{other['name']}' before deletion...")
-        resp = await client.put(
-            f"/namespaces/{other['id']}", json={"isDefault": True}
-        )
-        if resp.status_code not in (200, 204):
-            raise SeedError("namespace", other["name"], resp.status_code, resp.text)
+    # Always promote Global as default before deletion.
+    # The backend blocks deletion of the default namespace, so we ensure
+    # Global (always present) is default regardless of the current state.
+    global_ns = next((ns for ns in all_namespaces if ns["name"] == "Global"), None)
+    if global_ns is None:
+        raise SeedError("namespace", "Global", 404, "Global namespace not found")
+    log("Setting 'Global' as default namespace...")
+    resp = await client.put(f"/namespaces/{global_ns['id']}", json={"isDefault": True})
+    if resp.status_code not in (200, 204):
+        raise SeedError("namespace", "Global", resp.status_code, resp.text)
 
     # Delete endpoints (only those belonging to Shop APIs)
     resp = await client.get(f"/apis?namespace_id={ns_id}")
