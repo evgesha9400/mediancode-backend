@@ -17,7 +17,8 @@ import re
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from api_craft.models.template import TemplateField, TemplateValidator
+    from api_craft.models.input import InputField as TemplateField
+    from api_craft.models.input import InputValidator as TemplateValidator
 
 
 def parse_type(type_str: str) -> tuple[str, list[str]]:
