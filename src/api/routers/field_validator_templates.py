@@ -1,26 +1,16 @@
+# src/api/routers/field_validator_templates.py
 """Router for Field Validator Template endpoints (read-only)."""
 
 from fastapi import APIRouter
 
 from api.deps import DbSession, ProvisionedUser
+from api.models.database import FieldValidatorTemplateModel
 from api.schemas.field_validator_template import FieldValidatorTemplateResponse
-from api.services.field_validator_template import (
-    FieldValidatorTemplateService,
-    get_field_validator_template_service,
-)
+from api.services.catalog import CatalogService
 
 router = APIRouter(
     prefix="/field-validator-templates", tags=["Field Validator Templates"]
 )
-
-
-def get_service(db: DbSession) -> FieldValidatorTemplateService:
-    """Get field validator template service instance.
-
-    :param db: Database session.
-    :returns: FieldValidatorTemplateService instance.
-    """
-    return get_field_validator_template_service(db)
 
 
 @router.get(
@@ -39,6 +29,6 @@ async def list_field_validator_templates(
     :param db: Database session.
     :returns: List of field validator template responses.
     """
-    service = get_service(db)
+    service = CatalogService(db, FieldValidatorTemplateModel)
     templates = await service.list_all()
     return [FieldValidatorTemplateResponse.model_validate(t) for t in templates]

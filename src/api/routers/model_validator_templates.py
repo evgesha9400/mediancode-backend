@@ -1,26 +1,16 @@
+# src/api/routers/model_validator_templates.py
 """Router for Model Validator Template endpoints (read-only)."""
 
 from fastapi import APIRouter
 
 from api.deps import DbSession, ProvisionedUser
+from api.models.database import ModelValidatorTemplateModel
 from api.schemas.model_validator_template import ModelValidatorTemplateResponse
-from api.services.model_validator_template import (
-    ModelValidatorTemplateService,
-    get_model_validator_template_service,
-)
+from api.services.catalog import CatalogService
 
 router = APIRouter(
     prefix="/model-validator-templates", tags=["Model Validator Templates"]
 )
-
-
-def get_service(db: DbSession) -> ModelValidatorTemplateService:
-    """Get model validator template service instance.
-
-    :param db: Database session.
-    :returns: ModelValidatorTemplateService instance.
-    """
-    return get_model_validator_template_service(db)
 
 
 @router.get(
@@ -39,6 +29,6 @@ async def list_model_validator_templates(
     :param db: Database session.
     :returns: List of model validator template responses.
     """
-    service = get_service(db)
+    service = CatalogService(db, ModelValidatorTemplateModel)
     templates = await service.list_all()
     return [ModelValidatorTemplateResponse.model_validate(t) for t in templates]
