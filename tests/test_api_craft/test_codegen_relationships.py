@@ -126,7 +126,7 @@ class TestReferencesRelationship:
         response_names = [f.name for f in response.fields]
         assert "author_id" in response_names
 
-    def test_references_fk_id_not_in_create_schema(self):
+    def test_references_fk_id_in_create_schema(self):
         model = InputModel(
             name="Post",
             fields=[
@@ -144,7 +144,50 @@ class TestReferencesRelationship:
         schemas = split_model_schemas(model)
         create = schemas[0]  # Create schema
         create_names = [f.name for f in create.fields]
-        assert "author_id" not in create_names
+        assert "author_id" in create_names
+
+    def test_references_fk_id_in_update_schema(self):
+        model = InputModel(
+            name="Post",
+            fields=[
+                InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                InputField(name="title", type="str"),
+            ],
+            relationships=[
+                InputRelationship(
+                    name="author",
+                    target_model="User",
+                    cardinality="references",
+                )
+            ],
+        )
+        schemas = split_model_schemas(model)
+        update = schemas[1]  # Update schema
+        update_names = [f.name for f in update.fields]
+        assert "author_id" in update_names
+        # FK should be nullable in Update (partial update)
+        fk_field = next(f for f in update.fields if str(f.name) == "author_id")
+        assert fk_field.nullable is True
+
+    def test_references_fk_required_in_create(self):
+        model = InputModel(
+            name="Post",
+            fields=[
+                InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                InputField(name="title", type="str"),
+            ],
+            relationships=[
+                InputRelationship(
+                    name="author",
+                    target_model="User",
+                    cardinality="references",
+                )
+            ],
+        )
+        schemas = split_model_schemas(model)
+        create = schemas[0]
+        fk_field = next(f for f in create.fields if str(f.name) == "author_id")
+        assert fk_field.nullable is False
 
 
 class TestHasManyRelationship:
