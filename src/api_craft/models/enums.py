@@ -15,10 +15,13 @@ ResponseShape = Literal["object", "list"]
 Container = Literal["List"]
 ValidatorMode = Literal["before", "after"]
 OnDeleteAction = Literal["cascade", "restrict", "set_null"]
-FieldAppearance = Literal["both", "request", "response"]
+FieldExposure = Literal["read_write", "write_only", "read_only"]
+FieldAppearance = FieldExposure  # deprecated alias, remove after full migration
 Cardinality = Literal["has_one", "has_many", "references", "many_to_many"]
 FilterOperator = Literal["eq", "gte", "lte", "gt", "lt", "like", "ilike", "in"]
-ServerDefault = Literal["uuid4", "now", "now_on_update", "auto_increment", "literal"]
+GeneratedStrategy = Literal["uuid4", "now", "now_on_update", "auto_increment"]
+ServerDefault = GeneratedStrategy  # deprecated alias, remove after full migration
+DefaultKind = Literal["literal", "generated"]
 
 
 def check_constraint_sql(column: str, literal_type: type) -> str:
