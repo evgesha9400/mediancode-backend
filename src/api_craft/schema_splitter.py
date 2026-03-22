@@ -33,11 +33,38 @@ def split_model_schemas(input_model: InputModel) -> list[InputModel]:
     for rel in input_model.relationships:
         if rel.cardinality == "references":
             fk_name = f"{rel.name}_id"
-            existing_names = {str(f.name) for f in response_fields}
-            if fk_name not in existing_names:
+            fk_type = "uuid"
+
+            # Add to Create (required)
+            existing_create = {str(f.name) for f in create_fields}
+            if fk_name not in existing_create:
+                create_fields.append(
+                    InputField(
+                        type=fk_type,
+                        name=fk_name,
+                        nullable=False,
+                        description=f"FK reference to {rel.target_model}",
+                    )
+                )
+
+            # Add to Update (nullable — optional on partial update)
+            existing_update = {str(f.name) for f in update_fields}
+            if fk_name not in existing_update:
+                update_fields.append(
+                    InputField(
+                        type=fk_type,
+                        name=fk_name,
+                        nullable=True,
+                        description=f"FK reference to {rel.target_model}",
+                    )
+                )
+
+            # Add to Response
+            existing_response = {str(f.name) for f in response_fields}
+            if fk_name not in existing_response:
                 response_fields.append(
                     InputField(
-                        type="uuid",
+                        type=fk_type,
                         name=fk_name,
                         nullable=False,
                         description=f"FK reference to {rel.target_model}",
