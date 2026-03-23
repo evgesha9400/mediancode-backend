@@ -7,7 +7,13 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models.database import ObjectDefinition, ObjectRelationship
+from api.models.database import (
+    FieldModel,
+    ObjectDefinition,
+    ObjectFieldAssociation,
+    ObjectRelationship,
+)
+from sqlalchemy.orm import selectinload
 from api.schemas.relationship import ObjectRelationshipCreate
 
 INVERSE_MAP: dict[str, str] = {
@@ -47,14 +53,32 @@ class RelationshipService:
         :returns: The user-created relationship.
         :raises HTTPException: If source or target object not found.
         """
-        source = await self.db.get(ObjectDefinition, source_object_id)
+        result = await self.db.execute(
+            select(ObjectDefinition)
+            .where(ObjectDefinition.id == source_object_id)
+            .options(
+                selectinload(ObjectDefinition.field_associations).selectinload(
+                    ObjectFieldAssociation.field
+                )
+            )
+        )
+        source = result.scalars().first()
         if not source:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Source object '{source_object_id}' not found",
             )
 
-        target = await self.db.get(ObjectDefinition, data.target_object_id)
+        result = await self.db.execute(
+            select(ObjectDefinition)
+            .where(ObjectDefinition.id == data.target_object_id)
+            .options(
+                selectinload(ObjectDefinition.field_associations).selectinload(
+                    ObjectFieldAssociation.field
+                )
+            )
+        )
+        target = result.scalars().first()
         if not target:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -72,6 +96,12 @@ class RelationshipService:
         self.db.add(rel)
         await self.db.flush()
 
+        # Create FK field if this is a references relationship
+        if data.cardinality == "references":
+            fk_field_id = await self._create_fk_field(source, target, data.name)
+            rel.fk_field_id = fk_field_id
+            await self.db.flush()
+
         # Create the auto-inverse
         inverse_cardinality = INVERSE_MAP[data.cardinality]
         inverse_name = _infer_inverse_name(source.name, inverse_cardinality)
@@ -86,6 +116,12 @@ class RelationshipService:
         )
         self.db.add(inverse)
         await self.db.flush()
+
+        # Create FK field for inverse if it is a references relationship
+        if inverse_cardinality == "references":
+            fk_field_id = await self._create_fk_field(target, source, inverse_name)
+            inverse.fk_field_id = fk_field_id
+            await self.db.flush()
 
         # Link the user's relationship to its inverse
         rel.inverse_id = inverse.id
@@ -106,10 +142,39 @@ class RelationshipService:
                 detail=f"Relationship '{relationship_id}' not found",
             )
 
+        # Delete FK field if this relationship owns one
+        if rel.fk_field_id:
+            fk_field = await self.db.get(FieldModel, rel.fk_field_id)
+            if fk_field:
+                # Delete associations first, then the field
+                assocs = await self.db.execute(
+                    select(ObjectFieldAssociation).where(
+                        ObjectFieldAssociation.field_id == fk_field.id
+                    )
+                )
+                for assoc in assocs.scalars().all():
+                    await self.db.delete(assoc)
+                await self.db.delete(fk_field)
+                await self.db.flush()
+
         # Delete the inverse first if it exists
         if rel.inverse_id:
             inverse = await self.db.get(ObjectRelationship, rel.inverse_id)
             if inverse:
+                # Clean up inverse's FK field
+                if inverse.fk_field_id:
+                    fk_field = await self.db.get(FieldModel, inverse.fk_field_id)
+                    if fk_field:
+                        assocs = await self.db.execute(
+                            select(ObjectFieldAssociation).where(
+                                ObjectFieldAssociation.field_id == fk_field.id
+                            )
+                        )
+                        for assoc in assocs.scalars().all():
+                            await self.db.delete(assoc)
+                        await self.db.delete(fk_field)
+                        await self.db.flush()
+
                 # Clear the inverse's back-reference to avoid FK constraint
                 inverse.inverse_id = None
                 await self.db.flush()
@@ -125,6 +190,58 @@ class RelationshipService:
         :returns: The relationship if found, None otherwise.
         """
         return await self.db.get(ObjectRelationship, relationship_id)
+
+    async def _create_fk_field(
+        self,
+        source_object: ObjectDefinition,
+        target_object: ObjectDefinition,
+        relationship_name: str,
+    ) -> UUID:
+        """Create a FK field and association for a references relationship.
+
+        :param source_object: The object that owns the FK column.
+        :param target_object: The referenced object (FK points to its PK).
+        :param relationship_name: Used to derive FK field name ({name}_id).
+        :returns: The created field's ID.
+        """
+        # Find target PK field
+        pk_assoc = next(
+            (a for a in target_object.field_associations if a.role == "pk"),
+            None,
+        )
+        if not pk_assoc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Target object '{target_object.name}' has no PK field",
+            )
+        pk_field = pk_assoc.field
+
+        # Create FK field with same type as target PK
+        fk_field = FieldModel(
+            namespace_id=source_object.namespace_id,
+            user_id=source_object.user_id,
+            name=f"{relationship_name}_id",
+            type_id=pk_field.type_id,
+            description=f"FK reference to {target_object.name}",
+        )
+        self.db.add(fk_field)
+        await self.db.flush()
+
+        # Create association linking FK field to source object
+        max_pos = max(
+            (a.position for a in source_object.field_associations), default=-1
+        )
+        assoc = ObjectFieldAssociation(
+            object_id=source_object.id,
+            field_id=fk_field.id,
+            role="fk",
+            nullable=False,
+            position=max_pos + 1,
+        )
+        self.db.add(assoc)
+        await self.db.flush()
+
+        return fk_field.id
 
 
 def get_relationship_service(db: AsyncSession) -> RelationshipService:

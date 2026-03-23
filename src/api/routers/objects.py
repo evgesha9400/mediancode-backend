@@ -64,6 +64,7 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
             cardinality=r.cardinality,
             is_inferred=r.is_inferred,
             inverse_id=r.inverse_id,
+            fk_field_id=r.fk_field_id,
         )
         for r in sorted(obj.relationships, key=lambda x: x.position)
     ]
@@ -276,6 +277,7 @@ async def create_relationship(
         cardinality=rel.cardinality,
         is_inferred=rel.is_inferred,
         inverse_id=rel.inverse_id,
+        fk_field_id=rel.fk_field_id,
     )
 
 
