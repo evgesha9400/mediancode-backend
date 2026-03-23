@@ -62,8 +62,6 @@ class RelationshipMutationResponse(BaseModel):
     created_fields: list["FieldResponse"] = Field(
         default_factory=list, alias="createdFields"
     )
-    deleted_field_ids: list[UUID] = Field(
-        default_factory=list, alias="deletedFieldIds"
-    )
+    deleted_field_ids: list[UUID] = Field(default_factory=list, alias="deletedFieldIds")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

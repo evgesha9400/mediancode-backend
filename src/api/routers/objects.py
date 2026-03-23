@@ -378,9 +378,7 @@ async def delete_relationship(
 
     # Re-fetch both objects with fresh data
     source_obj = await obj_service.get_by_id_for_user(object_id, user.id)
-    target_obj = await obj_service.get_by_id_for_user(
-        str(target_object_id), user.id
-    )
+    target_obj = await obj_service.get_by_id_for_user(str(target_object_id), user.id)
 
     updated_objects = []
     if source_obj:

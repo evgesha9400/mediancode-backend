@@ -22,9 +22,7 @@ def _find_rel_on_object(body: dict, object_id: str, **match) -> dict:
     for r in obj["relationships"]:
         if all(r.get(k) == v for k, v in match.items()):
             return r
-    raise AssertionError(
-        f"No relationship matching {match} on object {object_id}"
-    )
+    raise AssertionError(f"No relationship matching {match} on object {object_id}")
 
 
 class TestRelationshipFkAutoCreation:
@@ -130,18 +128,14 @@ class TestRelationshipFkAutoCreation:
         assert fk_field["name"] == "customer_id"
 
         # Source object in updatedObjects should have the FK field
-        source = next(
-            o for o in body["updatedObjects"] if o["id"] == cls.order_obj_id
-        )
+        source = next(o for o in body["updatedObjects"] if o["id"] == cls.order_obj_id)
         fk_fields = [f for f in source["fields"] if f["role"] == "fk"]
         assert len(fk_fields) == 1
         assert fk_fields[0]["fieldId"] == fk_field["id"]
 
         # Relationship should reference the FK field
         refs_rel = next(
-            r
-            for r in source["relationships"]
-            if r["cardinality"] == "references"
+            r for r in source["relationships"] if r["cardinality"] == "references"
         )
         assert refs_rel["fkFieldId"] == fk_field["id"]
 
@@ -283,12 +277,8 @@ class TestRelationshipFkAutoCreation:
         assert body["createdFields"] == []
 
         # Both objects in updatedObjects should have no FK on the m2m rels
-        source = next(
-            o for o in body["updatedObjects"] if o["id"] == cls.order_obj_id
-        )
-        m2m_rel = next(
-            r for r in source["relationships"] if r["name"] == "items"
-        )
+        source = next(o for o in body["updatedObjects"] if o["id"] == cls.order_obj_id)
+        m2m_rel = next(r for r in source["relationships"] if r["name"] == "items")
         assert m2m_rel["fkFieldId"] is None
 
         target = next(
@@ -343,9 +333,7 @@ class TestRelationshipFkAutoCreation:
         assert len(body["updatedObjects"]) == 2
 
         # FK field should be gone from the source object
-        source = next(
-            o for o in body["updatedObjects"] if o["id"] == cls.order_obj_id
-        )
+        source = next(o for o in body["updatedObjects"] if o["id"] == cls.order_obj_id)
         fk_fields = [f for f in source["fields"] if f["role"] == "fk"]
         assert len(fk_fields) == 0
 

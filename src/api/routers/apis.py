@@ -17,6 +17,7 @@ from api.schemas.api import ApiCreate, ApiResponse, ApiUpdate, GenerateOptions
 from api.services.api import ApiService, get_api_service
 from api.services.user import UserService
 from api.settings import get_settings
+from api_craft.utils import camel_to_kebab
 
 router = APIRouter(prefix="/apis", tags=["APIs"])
 
@@ -250,6 +251,6 @@ async def generate_api_code(
         io.BytesIO(zip_buffer.getvalue()),
         media_type="application/zip",
         headers={
-            "Content-Disposition": f'attachment; filename="{api.title.lower().replace(" ", "-")}-api.zip"'
+            "Content-Disposition": f'attachment; filename="{camel_to_kebab(api.title)}-api.zip"'
         },
     )

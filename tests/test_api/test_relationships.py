@@ -113,20 +113,14 @@ class TestObjectRelationships:
         assert len(body["updatedObjects"]) == 2
 
         # Find the source (User) in updated objects
-        source = next(
-            o for o in body["updatedObjects"] if o["id"] == cls.user_obj_id
-        )
-        user_rel = next(
-            r for r in source["relationships"] if r["name"] == "posts"
-        )
+        source = next(o for o in body["updatedObjects"] if o["id"] == cls.user_obj_id)
+        user_rel = next(r for r in source["relationships"] if r["name"] == "posts")
         assert user_rel["cardinality"] == "has_many"
         assert user_rel["isInferred"] is False
         assert user_rel["inverseId"] is not None
 
         # Find the target (Post) — should have inverse
-        target = next(
-            o for o in body["updatedObjects"] if o["id"] == cls.post_obj_id
-        )
+        target = next(o for o in body["updatedObjects"] if o["id"] == cls.post_obj_id)
         assert len(target["relationships"]) == 1
         inverse = target["relationships"][0]
         assert inverse["name"] == "user"
@@ -152,9 +146,7 @@ class TestObjectRelationships:
         assert body["createdFields"] == []
 
         # Verify inverse on Tag
-        tag = next(
-            o for o in body["updatedObjects"] if o["id"] == cls.tag_obj_id
-        )
+        tag = next(o for o in body["updatedObjects"] if o["id"] == cls.tag_obj_id)
         m2m_rels = [
             r for r in tag["relationships"] if r["cardinality"] == "many_to_many"
         ]
@@ -185,9 +177,7 @@ class TestObjectRelationships:
         rel_id = rel["id"]
 
         # Delete it
-        resp = await client.delete(
-            f"/objects/{cls.user_obj_id}/relationships/{rel_id}"
-        )
+        resp = await client.delete(f"/objects/{cls.user_obj_id}/relationships/{rel_id}")
         assert resp.status_code == 200
         body = resp.json()
 
@@ -198,14 +188,10 @@ class TestObjectRelationships:
         assert len(body["updatedObjects"]) == 2
 
         # Both objects should have the relationship removed
-        source = next(
-            o for o in body["updatedObjects"] if o["id"] == cls.user_obj_id
-        )
+        source = next(o for o in body["updatedObjects"] if o["id"] == cls.user_obj_id)
         assert len(source["relationships"]) == 0
 
-        target = next(
-            o for o in body["updatedObjects"] if o["id"] == cls.post_obj_id
-        )
+        target = next(o for o in body["updatedObjects"] if o["id"] == cls.post_obj_id)
         refs_rels = [
             r for r in target["relationships"] if r["cardinality"] == "references"
         ]

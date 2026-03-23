@@ -544,12 +544,8 @@ class TestShopApiFullE2E:
         assert resp.status_code == 201
         body = resp.json()
         assert "updatedObjects" in body
-        source = next(
-            o for o in body["updatedObjects"] if o["id"] == cls.customer_id
-        )
-        rel = next(
-            r for r in source["relationships"] if r["name"] == "products"
-        )
+        source = next(o for o in body["updatedObjects"] if o["id"] == cls.customer_id)
+        rel = next(r for r in source["relationships"] if r["name"] == "products")
         assert rel["cardinality"] == "has_many"
         assert rel["isInferred"] is False
         assert rel.get("inverseId") is not None
