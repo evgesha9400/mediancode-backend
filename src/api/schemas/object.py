@@ -15,7 +15,7 @@ class ObjectFieldReferenceSchema(BaseModel):
 
     :ivar field_id: Reference to Field.id.
     :ivar role: Structural role of the field (pk, writable, etc.).
-    :ivar nullable: Whether this field is nullable in the object.
+    :ivar optional: Whether this field is optional in the object.
     :ivar default_value: Optional literal default value (only for writable roles).
     """
 
@@ -25,7 +25,7 @@ class ObjectFieldReferenceSchema(BaseModel):
         ..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"]
     )
     role: FieldRole = Field(default="writable")
-    nullable: bool = Field(default=False)
+    optional: bool = Field(default=False, validation_alias="nullable")
     default_value: str | None = Field(default=None, alias="defaultValue")
 
 

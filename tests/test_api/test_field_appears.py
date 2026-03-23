@@ -63,17 +63,17 @@ class TestFieldRole:
                 "fields": [
                     {
                         "fieldId": cls.field_ids["email"],
-                        "nullable": False,
+                        "optional": False,
                         "role": "writable",
                     },
                     {
                         "fieldId": cls.field_ids["password"],
-                        "nullable": False,
+                        "optional": False,
                         "role": "write_only",
                     },
                     {
                         "fieldId": cls.field_ids["created_at"],
-                        "nullable": False,
+                        "optional": False,
                         "role": "read_only",
                     },
                 ],
@@ -113,7 +113,7 @@ class TestFieldRole:
                 "fields": [
                     {
                         "fieldId": cls.field_ids["email"],
-                        "nullable": False,
+                        "optional": False,
                     },
                 ],
             },

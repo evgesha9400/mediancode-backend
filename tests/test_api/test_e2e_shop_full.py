@@ -121,7 +121,7 @@ FIELD_CREATION_OVERRIDES = {
     },
 }
 
-# Phase 6 creates Product with min_order_quantity nullable; Phase 8 makes it required.
+# Phase 6 creates Product with min_order_quantity optional; Phase 8 makes it required.
 PRODUCT_NULLABLE_INITIAL = PRODUCT_NULLABLE | {"min_order_quantity"}
 
 
@@ -369,7 +369,7 @@ class TestShopApiFullE2E:
         product_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
-                "nullable": f["name"] in PRODUCT_NULLABLE_INITIAL,
+                "optional": f["name"] in PRODUCT_NULLABLE_INITIAL,
                 "role": product_roles.get(f["name"], "writable"),
             }
             for f in PRODUCT_FIELDS
@@ -430,7 +430,7 @@ class TestShopApiFullE2E:
         customer_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
-                "nullable": f["name"] in CUSTOMER_NULLABLE,
+                "optional": f["name"] in CUSTOMER_NULLABLE,
                 "role": customer_roles.get(f["name"], "writable"),
             }
             for f in CUSTOMER_FIELDS
@@ -499,12 +499,12 @@ class TestShopApiFullE2E:
         product = resp.json()
         updated_fields = []
         for f in product["fields"]:
-            nullable = f["nullable"]
+            optional = f["optional"]
             if f["fieldId"] == cls.field_ids["min_order_quantity"]:
-                nullable = False
+                optional = False
             entry = {
                 "fieldId": f["fieldId"],
-                "nullable": nullable,
+                "optional": optional,
                 "role": f.get("role", "writable"),
             }
             if f.get("defaultValue"):
@@ -526,7 +526,7 @@ class TestShopApiFullE2E:
             for f in product["fields"]
             if f["fieldId"] == cls.field_ids["min_order_quantity"]
         )
-        assert moq["nullable"] is False
+        assert moq["optional"] is False
 
     # --- Phase 8b: Create relationship ---
 

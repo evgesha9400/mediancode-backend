@@ -41,7 +41,7 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
         ObjectFieldReferenceSchema(
             field_id=fa.field_id,
             role=fa.role,
-            nullable=fa.nullable,
+            optional=fa.nullable,
             default_value=fa.default_value,
         )
         for fa in sorted(obj.field_associations, key=lambda x: x.position)

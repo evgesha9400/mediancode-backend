@@ -431,7 +431,7 @@ class TestShopApiE2E:
         product_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
-                "nullable": f["name"] in PRODUCT_NULLABLE,
+                "optional": f["name"] in PRODUCT_NULLABLE,
                 "role": "pk" if f["name"] in product_pk else "writable",
             }
             for f in PRODUCT_FIELDS
@@ -489,7 +489,7 @@ class TestShopApiE2E:
         customer_fields = [
             {
                 "fieldId": cls.field_ids[f["name"]],
-                "nullable": f["name"] in CUSTOMER_NULLABLE,
+                "optional": f["name"] in CUSTOMER_NULLABLE,
                 "role": "pk" if f["name"] in customer_pk else "writable",
             }
             for f in CUSTOMER_FIELDS
@@ -558,13 +558,13 @@ class TestShopApiE2E:
         product = resp.json()
         updated_fields = []
         for f in product["fields"]:
-            nullable = f["nullable"]
+            optional = f["optional"]
             if f["fieldId"] == cls.field_ids["min_order_quantity"]:
-                nullable = False
+                optional = False
             updated_fields.append(
                 {
                     "fieldId": f["fieldId"],
-                    "nullable": nullable,
+                    "optional": optional,
                     "role": f.get("role", "writable"),
                 }
             )
@@ -584,7 +584,7 @@ class TestShopApiE2E:
             for f in product["fields"]
             if f["fieldId"] == cls.field_ids["min_order_quantity"]
         )
-        assert moq["nullable"] is False
+        assert moq["optional"] is False
 
     # --- Phase 9: Create API ---
 

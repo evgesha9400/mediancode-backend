@@ -107,8 +107,8 @@ class TestDefaultPersistence:
         cls.object_id = body["id"]
         assert len(body["fields"]) == 1
         assert body["fields"][0]["role"] == "created_timestamp"
-        # Generated roles normalize nullable to false and default_value to null
-        assert body["fields"][0]["nullable"] is False
+        # Generated roles normalize optional to false and default_value to null
+        assert body["fields"][0]["optional"] is False
         assert body["fields"][0]["defaultValue"] is None
 
     async def test_update_object_with_literal_default(self, client: AsyncClient):
@@ -135,7 +135,7 @@ class TestDefaultPersistence:
                 "fields": [
                     {
                         "fieldId": int_field_id,
-                        "nullable": False,
+                        "optional": False,
                         "role": "read_only",
                         "defaultValue": "0",
                     }

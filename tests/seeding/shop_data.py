@@ -183,72 +183,72 @@ PRODUCT_OBJECT = {
     "fields": [
         {
             "field_name": "name",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
             "field_name": "sku",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
             "field_name": "price",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
             "field_name": "sale_price",
-            "nullable": True,
+            "optional": True,
             "role": "writable",
         },
         {
             "field_name": "sale_end_date",
-            "nullable": True,
+            "optional": True,
             "role": "writable",
         },
         {
             "field_name": "weight",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
             "field_name": "quantity",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
             "field_name": "min_order_quantity",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
             "field_name": "max_order_quantity",
-            "nullable": True,
+            "optional": True,
             "role": "writable",
         },
         {
             "field_name": "discount_percent",
-            "nullable": True,
+            "optional": True,
             "role": "writable",
         },
         {
             "field_name": "discount_amount",
-            "nullable": True,
+            "optional": True,
             "role": "writable",
         },
         {
             "field_name": "in_stock",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
             "field_name": "product_url",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
             "field_name": "release_date",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
@@ -306,32 +306,32 @@ CUSTOMER_OBJECT = {
         },
         {
             "field_name": "customer_name",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
             "field_name": "email",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
             "field_name": "phone",
-            "nullable": True,
+            "optional": True,
             "role": "writable",
         },
         {
             "field_name": "date_of_birth",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
             "field_name": "last_login_time",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {
             "field_name": "is_active",
-            "nullable": False,
+            "optional": False,
             "role": "writable",
         },
         {

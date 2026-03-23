@@ -211,7 +211,7 @@ class TestShopApiErrors:
                 "fields": [
                     {
                         "fieldId": cls.title_field_id,
-                        "nullable": False,
+                        "optional": False,
                         "role": "writable",
                     }
                 ],
@@ -438,7 +438,7 @@ class TestShopApiErrors:
             json={
                 "namespaceId": FAKE_NAMESPACE_ID,
                 "name": "Phantom",
-                "fields": [{"fieldId": cls.title_field_id, "nullable": False}],
+                "fields": [{"fieldId": cls.title_field_id, "optional": False}],
             },
         )
         assert resp.status_code == 400
@@ -451,7 +451,7 @@ class TestShopApiErrors:
                 json={
                     "namespaceId": cls.blog_namespace_id,
                     "name": "Phantom",
-                    "fields": [{"fieldId": FAKE_FIELD_ID, "nullable": False}],
+                    "fields": [{"fieldId": FAKE_FIELD_ID, "optional": False}],
                 },
             )
             status = resp.status_code
@@ -466,7 +466,7 @@ class TestShopApiErrors:
                 json={
                     "namespaceId": cls.blog_namespace_id,
                     "name": "Phantom",
-                    "fields": [{"fieldId": cls.title_field_id, "nullable": False}],
+                    "fields": [{"fieldId": cls.title_field_id, "optional": False}],
                     "validators": [
                         {
                             "templateId": FAKE_MV_TEMPLATE_ID,

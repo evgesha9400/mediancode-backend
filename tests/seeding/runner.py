@@ -117,8 +117,8 @@ async def seed_shop(client: AsyncClient, log=None) -> SeedResult:
                 "fieldId": result.field_ids[fref["field_name"]],
                 "role": fref["role"],
             }
-            if "nullable" in fref:
-                field_payload["nullable"] = fref["nullable"]
+            if "optional" in fref:
+                field_payload["optional"] = fref["optional"]
             if fref.get("default_value") is not None:
                 field_payload["defaultValue"] = fref["default_value"]
             obj_fields.append(field_payload)

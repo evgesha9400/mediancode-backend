@@ -37,7 +37,7 @@ class ObjectService(BaseService[ObjectDefinition]):
 
     model_class = ObjectDefinition
 
-    # Roles whose nullable and default_value are structurally forced
+    # Roles whose optional and default_value are structurally forced
     _GENERATED_ROLES = {
         "pk",
         "created_timestamp",
@@ -253,7 +253,7 @@ class ObjectService(BaseService[ObjectDefinition]):
         """Set field associations for an object, replacing existing ones.
 
         For generated roles (pk, created_timestamp, updated_timestamp,
-        generated_uuid), nullable and default_value are silently normalized.
+        generated_uuid), optional and default_value are silently normalized.
 
         :param obj: The object to update field associations for.
         :param fields: List of field reference schemas.
@@ -266,8 +266,8 @@ class ObjectService(BaseService[ObjectDefinition]):
             await self.db.delete(assoc)
 
         for position, field_ref in enumerate(fields):
-            # Normalize: generated roles ignore nullable and default_value
-            nullable = field_ref.nullable
+            # Normalize: generated roles ignore optional and default_value
+            nullable = field_ref.optional
             default_value = field_ref.default_value
             if field_ref.role in self._GENERATED_ROLES:
                 nullable = False
