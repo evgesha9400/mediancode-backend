@@ -187,6 +187,7 @@ async def _fetch_fields(
 
 _ROLE_TO_EXPOSURE: dict[str, str] = {
     "pk": "read_only",
+    "fk": "read_write",
     "writable": "read_write",
     "write_only": "write_only",
     "read_only": "read_only",
