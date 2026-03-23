@@ -538,6 +538,11 @@ class ObjectRelationship(Base):
         nullable=True,
     )
     position: Mapped[int] = mapped_column(default=0, nullable=False)
+    fk_field_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("fields.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     __table_args__ = (
         CheckConstraint(

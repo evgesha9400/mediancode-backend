@@ -376,6 +376,7 @@ def upgrade() -> None:
         ),
         sa.Column("inverse_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("position", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("fk_field_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.ForeignKeyConstraint(
             ["source_object_id"], ["objects.id"], ondelete="CASCADE"
         ),
@@ -385,6 +386,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["inverse_id"], ["object_relationships.id"], ondelete="SET NULL"
         ),
+        sa.ForeignKeyConstraint(["fk_field_id"], ["fields.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
             check_constraint_sql("cardinality", Cardinality),
