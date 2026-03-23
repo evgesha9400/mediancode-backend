@@ -182,6 +182,10 @@ PRODUCT_OBJECT = {
     "description": "Shop product",
     "fields": [
         {
+            "field_name": "tracking_id",
+            "role": "pk",
+        },
+        {
             "field_name": "name",
             "optional": False,
             "role": "writable",
@@ -254,10 +258,6 @@ PRODUCT_OBJECT = {
         {
             "field_name": "created_at",
             "role": "created_timestamp",
-        },
-        {
-            "field_name": "tracking_id",
-            "role": "pk",
         },
     ],
     "validators": [
@@ -435,20 +435,20 @@ ENDPOINTS = [
     },
     {
         "method": "GET",
-        "path": "/customers/{email}",
-        "description": "Get customer by email",
+        "path": "/customers/{id}",
+        "description": "Get customer by ID",
         "tag": "Customers",
         "object": "Customer",
-        "path_params": [{"name": "email", "field": "email"}],
+        "path_params": [{"name": "id", "field": "id"}],
         "response_shape": "object",
     },
     {
         "method": "PATCH",
-        "path": "/customers/{email}",
-        "description": "Update a customer by email",
+        "path": "/customers/{id}",
+        "description": "Update a customer by ID",
         "tag": "Customers",
         "object": "Customer",
-        "path_params": [{"name": "email", "field": "email"}],
+        "path_params": [{"name": "id", "field": "id"}],
         "response_shape": "object",
     },
 ]

@@ -124,7 +124,7 @@ async def ${view.snake_name}():
     await session.refresh(record)
     return record
 % elif view.method == "put" or view.method == "patch":
-    result = await session.execute(select(${orm_class}).where(${orm_class}.${view.pk_param} == ${view.pk_param}))
+    result = await session.execute(select(${orm_class}).where(${view.detail_where}))
     record = result.scalars().first()
     if not record:
         raise HTTPException(status_code=404, detail="${view.response_model} not found")
@@ -136,7 +136,7 @@ async def ${view.snake_name}():
     await session.refresh(record)
     return record
 % elif view.method == "delete":
-    result = await session.execute(select(${orm_class}).where(${orm_class}.${view.pk_param} == ${view.pk_param}))
+    result = await session.execute(select(${orm_class}).where(${view.detail_where}))
     record = result.scalars().first()
     if not record:
         raise HTTPException(status_code=404, detail="Not found")

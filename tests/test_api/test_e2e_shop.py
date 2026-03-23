@@ -719,13 +719,13 @@ class TestShopApiE2E:
             {
                 "apiId": cls.api_id,
                 "method": "PATCH",
-                "path": "/customers/{email}",
-                "description": "Update a customer by email",
+                "path": "/customers/{customer_id}",
+                "description": "Update a customer by ID",
                 "tagName": "Customers",
                 "pathParams": [
                     {
-                        "name": "email",
-                        "fieldId": cls.field_ids["email"],
+                        "name": "customer_id",
+                        "fieldId": cls.field_ids["customer_id"],
                     }
                 ],
                 "objectId": cls.customer_id,

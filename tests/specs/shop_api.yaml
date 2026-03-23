@@ -245,29 +245,29 @@ endpoints:
     response_shape: object
 
   - name: GetCustomer
-    path: /customers/{email}
+    path: /customers/{id}
     method: GET
     response: Customer
     tag: Customers
-    description: Get customer by email
+    description: Get customer by ID
     use_envelope: false
     response_shape: object
     path_params:
-      - name: email
-        type: EmailStr
+      - name: id
+        type: int
 
   - name: UpdateCustomer
-    path: /customers/{email}
+    path: /customers/{id}
     method: PATCH
     request: Customer
     response: Customer
     tag: Customers
-    description: Update a customer by email
+    description: Update a customer by ID
     use_envelope: false
     response_shape: object
     path_params:
-      - name: email
-        type: EmailStr
+      - name: id
+        type: int
 
 config:
   healthcheck: /healthcheck

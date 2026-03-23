@@ -584,13 +584,8 @@ def _enrich_views(
                         )
                     )
 
-        # Detail endpoint where clause pre-computation
-        if (
-            view.has_orm
-            and view.method == "get"
-            and view.response_shape != "list"
-            and view.target
-        ):
+        # Detail endpoint where clause pre-computation (GET detail, PUT, PATCH, DELETE)
+        if view.has_orm and view.path_params and view.response_shape != "list":
             where_clauses = []
             for pp in view.path_params:
                 if pp.field:

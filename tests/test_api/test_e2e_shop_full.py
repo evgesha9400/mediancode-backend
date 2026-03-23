@@ -693,13 +693,13 @@ class TestShopApiFullE2E:
             {
                 "apiId": cls.api_id,
                 "method": "GET",
-                "path": "/customers/{email}",
-                "description": "Get customer by email",
+                "path": "/customers/{id}",
+                "description": "Get customer by ID",
                 "tagName": "Customers",
                 "pathParams": [
                     {
-                        "name": "email",
-                        "fieldId": cls.field_ids["email"],
+                        "name": "id",
+                        "fieldId": cls.field_ids["id"],
                     }
                 ],
                 "objectId": cls.customer_id,
@@ -709,13 +709,13 @@ class TestShopApiFullE2E:
             {
                 "apiId": cls.api_id,
                 "method": "PATCH",
-                "path": "/customers/{email}",
-                "description": "Update a customer by email",
+                "path": "/customers/{id}",
+                "description": "Update a customer by ID",
                 "tagName": "Customers",
                 "pathParams": [
                     {
-                        "name": "email",
-                        "fieldId": cls.field_ids["email"],
+                        "name": "id",
+                        "fieldId": cls.field_ids["id"],
                     }
                 ],
                 "objectId": cls.customer_id,

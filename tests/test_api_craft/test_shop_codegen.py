@@ -251,12 +251,12 @@ class TestShopApiEndpoints:
         assert_valid_response(response)
 
     def test_get_customer_not_found(self, shop_api_client: TestClient):
-        log_test("GET /customers/{email} - not found")
-        response = shop_api_client.get("/customers/test@example.com")
+        log_test("GET /customers/{id} - not found")
+        response = shop_api_client.get("/customers/999")
         assert response.status_code == 404
 
     def test_update_customer_not_found(self, shop_api_client: TestClient):
-        log_test("PATCH /customers/{email} - not found")
+        log_test("PATCH /customers/{id} - not found")
         payload = {
             "customer_id": 1,
             "customer_name": "Jane Doe",
@@ -266,7 +266,7 @@ class TestShopApiEndpoints:
             "is_active": True,
             "registered_at": "2026-01-01T00:00:00",
         }
-        response = shop_api_client.patch("/customers/test@example.com", json=payload)
+        response = shop_api_client.patch("/customers/999", json=payload)
         assert response.status_code == 404
 
 

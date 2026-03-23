@@ -232,23 +232,23 @@ class TestCrudRoundTrip:
         assert len(data) >= 1
 
     def test_phase_09_get_customer(self, generated_shop_api):
-        email = TestCrudRoundTrip.customer_email
-        r = httpx.get(f"{generated_shop_api}/customers/{email}")
+        customer_id = TestCrudRoundTrip.customer_id
+        r = httpx.get(f"{generated_shop_api}/customers/{customer_id}")
         assert r.status_code == 200
         data = r.json()
         assert data["customer_name"] == "John Doe"
 
     def test_phase_10_update_customer(self, generated_shop_api):
-        email = TestCrudRoundTrip.customer_email
+        customer_id = TestCrudRoundTrip.customer_id
         r = httpx.patch(
-            f"{generated_shop_api}/customers/{email}",
+            f"{generated_shop_api}/customers/{customer_id}",
             json=valid_customer(customer_name="Jane Smith", phone="9876543210"),
         )
         assert r.status_code == 200, f"Update customer failed: {r.status_code} {r.text}"
 
     def test_phase_11_get_updated_customer(self, generated_shop_api):
-        email = TestCrudRoundTrip.customer_email
-        r = httpx.get(f"{generated_shop_api}/customers/{email}")
+        customer_id = TestCrudRoundTrip.customer_id
+        r = httpx.get(f"{generated_shop_api}/customers/{customer_id}")
         assert r.status_code == 200
         data = r.json()
         assert data["customer_name"] == "Jane Smith"
