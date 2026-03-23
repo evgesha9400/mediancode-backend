@@ -469,7 +469,7 @@ class ObjectFieldAssociation(Base):
     __tablename__ = "fields_on_objects"
     __table_args__ = (
         CheckConstraint(
-            "role IN ('pk', 'writable', 'write_only', 'read_only', "
+            "role IN ('pk', 'fk', 'writable', 'write_only', 'read_only', "
             "'created_timestamp', 'updated_timestamp', 'generated_uuid')",
             name="ck_fields_on_objects_role",
         ),

@@ -48,11 +48,12 @@ class TestEnumCheckConsistency:
         assert sql.startswith(f"{column} IN (")
 
     def test_field_role_check_contains_all_values(self):
-        """FieldRole CHECK must contain all seven role values."""
+        """FieldRole CHECK must contain all eight role values."""
         sql = check_constraint_sql("role", FieldRole)
         assert "role IN (" in sql
         for value in (
             "pk",
+            "fk",
             "writable",
             "write_only",
             "read_only",

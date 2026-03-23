@@ -337,7 +337,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["object_id"], ["objects.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.CheckConstraint(
-            "role IN ('pk', 'writable', 'write_only', 'read_only', "
+            "role IN ('pk', 'fk', 'writable', 'write_only', 'read_only', "
             "'created_timestamp', 'updated_timestamp', 'generated_uuid')",
             name="ck_fields_on_objects_role",
         ),
