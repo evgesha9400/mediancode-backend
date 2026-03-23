@@ -33,6 +33,7 @@ class ObjectRelationshipResponse(BaseModel):
     :ivar cardinality: Relationship type.
     :ivar is_inferred: Whether this is an auto-created inverse.
     :ivar inverse_id: Reference to the inverse relationship.
+    :ivar fk_field_id: Reference to the auto-created FK field.
     """
 
     id: UUID
@@ -42,5 +43,6 @@ class ObjectRelationshipResponse(BaseModel):
     cardinality: Cardinality
     is_inferred: bool = Field(default=False, alias="isInferred")
     inverse_id: UUID | None = Field(default=None, alias="inverseId")
+    fk_field_id: UUID | None = Field(default=None, alias="fkFieldId")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
