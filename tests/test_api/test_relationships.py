@@ -92,7 +92,7 @@ class TestObjectRelationships:
                 cls.tag_obj_id = obj_id
 
     async def test_create_has_many_relationship(self, client: AsyncClient):
-        """has_many creates inverse 'references' relationship."""
+        """has_many creates inverse 'references' and returns graph mutation."""
         cls = TestObjectRelationships
 
         resp = await client.post(
@@ -104,24 +104,37 @@ class TestObjectRelationships:
             },
         )
         assert resp.status_code == 201, f"Failed: {resp.text}"
-        rel = resp.json()
-        assert rel["name"] == "posts"
-        assert rel["cardinality"] == "has_many"
-        assert rel["isInferred"] is False
-        assert rel["inverseId"] is not None
+        body = resp.json()
 
-        # Verify inverse on target object
-        resp = await client.get(f"/objects/{cls.post_obj_id}")
-        assert resp.status_code == 200
-        post = resp.json()
-        assert len(post["relationships"]) == 1
-        inverse = post["relationships"][0]
+        # Response is a RelationshipMutationResponse
+        assert "updatedObjects" in body
+        assert "createdFields" in body
+        assert "deletedFieldIds" in body
+        assert len(body["updatedObjects"]) == 2
+
+        # Find the source (User) in updated objects
+        source = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.user_obj_id
+        )
+        user_rel = next(
+            r for r in source["relationships"] if r["name"] == "posts"
+        )
+        assert user_rel["cardinality"] == "has_many"
+        assert user_rel["isInferred"] is False
+        assert user_rel["inverseId"] is not None
+
+        # Find the target (Post) — should have inverse
+        target = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.post_obj_id
+        )
+        assert len(target["relationships"]) == 1
+        inverse = target["relationships"][0]
         assert inverse["name"] == "user"
         assert inverse["cardinality"] == "references"
         assert inverse["isInferred"] is True
 
     async def test_create_many_to_many_relationship(self, client: AsyncClient):
-        """many_to_many creates inverse many_to_many relationship."""
+        """many_to_many creates inverse many_to_many and returns graph mutation."""
         cls = TestObjectRelationships
 
         resp = await client.post(
@@ -133,13 +146,15 @@ class TestObjectRelationships:
             },
         )
         assert resp.status_code == 201, f"Failed: {resp.text}"
-        rel = resp.json()
-        assert rel["cardinality"] == "many_to_many"
+        body = resp.json()
 
-        # Verify inverse
-        resp = await client.get(f"/objects/{cls.tag_obj_id}")
-        assert resp.status_code == 200
-        tag = resp.json()
+        assert len(body["updatedObjects"]) == 2
+        assert body["createdFields"] == []
+
+        # Verify inverse on Tag
+        tag = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.tag_obj_id
+        )
         m2m_rels = [
             r for r in tag["relationships"] if r["cardinality"] == "many_to_many"
         ]
@@ -157,8 +172,10 @@ class TestObjectRelationships:
         assert len(user["relationships"]) == 1
         assert user["relationships"][0]["name"] == "posts"
 
-    async def test_delete_relationship_cascades_inverse(self, client: AsyncClient):
-        """Deleting a relationship also deletes its inverse."""
+    async def test_delete_relationship_returns_graph_mutation(
+        self, client: AsyncClient
+    ):
+        """Deleting a relationship returns graph mutation with updated objects."""
         cls = TestObjectRelationships
 
         # Get the User->Post relationship
@@ -168,14 +185,29 @@ class TestObjectRelationships:
         rel_id = rel["id"]
 
         # Delete it
-        resp = await client.delete(f"/objects/{cls.user_obj_id}/relationships/{rel_id}")
-        assert resp.status_code == 204
+        resp = await client.delete(
+            f"/objects/{cls.user_obj_id}/relationships/{rel_id}"
+        )
+        assert resp.status_code == 200
+        body = resp.json()
 
-        # Verify inverse is also gone from Post
-        resp = await client.get(f"/objects/{cls.post_obj_id}")
-        post = resp.json()
+        # Response is a RelationshipMutationResponse
+        assert "updatedObjects" in body
+        assert "createdFields" in body
+        assert "deletedFieldIds" in body
+        assert len(body["updatedObjects"]) == 2
+
+        # Both objects should have the relationship removed
+        source = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.user_obj_id
+        )
+        assert len(source["relationships"]) == 0
+
+        target = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.post_obj_id
+        )
         refs_rels = [
-            r for r in post["relationships"] if r["cardinality"] == "references"
+            r for r in target["relationships"] if r["cardinality"] == "references"
         ]
         assert len(refs_rels) == 0
 

@@ -10,6 +10,23 @@ pytestmark = [
 ]
 
 
+def _find_rel_on_object(body: dict, object_id: str, **match) -> dict:
+    """Find a relationship on a specific object in a mutation response.
+
+    :param body: RelationshipMutationResponse JSON.
+    :param object_id: The object ID to search within.
+    :param match: Key-value pairs to match on the relationship.
+    :returns: The matching relationship dict.
+    """
+    obj = next(o for o in body["updatedObjects"] if o["id"] == object_id)
+    for r in obj["relationships"]:
+        if all(r.get(k) == v for k, v in match.items()):
+            return r
+    raise AssertionError(
+        f"No relationship matching {match} on object {object_id}"
+    )
+
+
 class TestRelationshipFkAutoCreation:
     """Tests for automatic FK field creation/deletion on relationships."""
 
@@ -93,7 +110,7 @@ class TestRelationshipFkAutoCreation:
                 cls.category_obj_id = obj_id
 
     async def test_references_creates_fk_field(self, client: AsyncClient):
-        """Creating a references relationship auto-creates a {name}_id field."""
+        """Creating a references relationship returns FK field in createdFields."""
         cls = TestRelationshipFkAutoCreation
 
         resp = await client.post(
@@ -105,16 +122,28 @@ class TestRelationshipFkAutoCreation:
             },
         )
         assert resp.status_code == 201, f"Failed: {resp.text}"
-        rel = resp.json()
-        assert rel["fkFieldId"] is not None
+        body = resp.json()
 
-        # Verify FK field appears on the source object
-        resp = await client.get(f"/objects/{cls.order_obj_id}")
-        assert resp.status_code == 200
-        order = resp.json()
-        fk_fields = [f for f in order["fields"] if f["role"] == "fk"]
+        # FK field should appear in createdFields
+        assert len(body["createdFields"]) >= 1
+        fk_field = body["createdFields"][0]
+        assert fk_field["name"] == "customer_id"
+
+        # Source object in updatedObjects should have the FK field
+        source = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.order_obj_id
+        )
+        fk_fields = [f for f in source["fields"] if f["role"] == "fk"]
         assert len(fk_fields) == 1
-        assert fk_fields[0]["fieldId"] == rel["fkFieldId"]
+        assert fk_fields[0]["fieldId"] == fk_field["id"]
+
+        # Relationship should reference the FK field
+        refs_rel = next(
+            r
+            for r in source["relationships"]
+            if r["cardinality"] == "references"
+        )
+        assert refs_rel["fkFieldId"] == fk_field["id"]
 
     async def test_references_fk_type_matches_target_pk(self, client: AsyncClient):
         """The FK field's type matches the target object's PK field type."""
@@ -158,7 +187,7 @@ class TestRelationshipFkAutoCreation:
         assert refs_rel["fkFieldId"] == fk_assoc["fieldId"]
 
     async def test_has_many_creates_fk_on_inverse(self, client: AsyncClient):
-        """Creating a has_many relationship auto-creates FK on the target via inverse."""
+        """has_many returns inverse FK field in createdFields."""
         cls = TestRelationshipFkAutoCreation
 
         resp = await client.post(
@@ -170,26 +199,38 @@ class TestRelationshipFkAutoCreation:
             },
         )
         assert resp.status_code == 201, f"Failed: {resp.text}"
-        rel = resp.json()
-        # has_many itself does not own an FK
-        assert rel["fkFieldId"] is None
+        body = resp.json()
+
+        # has_many itself does not own an FK, but the inverse does
+        source = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.customer_obj_id
+        )
+        has_many_rel = next(
+            r for r in source["relationships"] if r["name"] == "products"
+        )
+        assert has_many_rel["fkFieldId"] is None
 
         # The inverse (references on Product) should have an FK field
-        resp = await client.get(f"/objects/{cls.product_obj_id}")
-        assert resp.status_code == 200
-        product = resp.json()
+        target = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.product_obj_id
+        )
         inverse = next(
-            r for r in product["relationships"] if r["cardinality"] == "references"
+            r for r in target["relationships"] if r["cardinality"] == "references"
         )
         assert inverse["fkFieldId"] is not None
 
+        # FK field should be in createdFields
+        assert len(body["createdFields"]) >= 1
+        fk_ids = [f["id"] for f in body["createdFields"]]
+        assert inverse["fkFieldId"] in fk_ids
+
         # FK field should exist on Product
-        fk_fields = [f for f in product["fields"] if f["role"] == "fk"]
-        assert len(fk_fields) == 1
-        assert fk_fields[0]["fieldId"] == inverse["fkFieldId"]
+        fk_fields = [f for f in target["fields"] if f["role"] == "fk"]
+        assert len(fk_fields) >= 1
+        assert any(f["fieldId"] == inverse["fkFieldId"] for f in fk_fields)
 
     async def test_has_one_creates_fk_on_inverse(self, client: AsyncClient):
-        """Creating a has_one relationship auto-creates FK on the target via inverse."""
+        """has_one returns inverse FK field in createdFields."""
         cls = TestRelationshipFkAutoCreation
 
         resp = await client.post(
@@ -201,24 +242,31 @@ class TestRelationshipFkAutoCreation:
             },
         )
         assert resp.status_code == 201, f"Failed: {resp.text}"
-        rel = resp.json()
+        body = resp.json()
+
         # has_one itself does not own an FK
-        assert rel["fkFieldId"] is None
+        source = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.category_obj_id
+        )
+        has_one_rel = next(
+            r for r in source["relationships"] if r["name"] == "featured_product"
+        )
+        assert has_one_rel["fkFieldId"] is None
 
         # The inverse (references on Product) should have an FK field
-        resp = await client.get(f"/objects/{cls.product_obj_id}")
-        assert resp.status_code == 200
-        product = resp.json()
+        target = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.product_obj_id
+        )
         inverse = next(
             r
-            for r in product["relationships"]
+            for r in target["relationships"]
             if r["cardinality"] == "references"
             and r["targetObjectId"] == cls.category_obj_id
         )
         assert inverse["fkFieldId"] is not None
 
     async def test_many_to_many_no_fk(self, client: AsyncClient):
-        """Creating a many_to_many relationship does NOT create FK fields."""
+        """many_to_many returns no createdFields."""
         cls = TestRelationshipFkAutoCreation
 
         resp = await client.post(
@@ -230,17 +278,25 @@ class TestRelationshipFkAutoCreation:
             },
         )
         assert resp.status_code == 201, f"Failed: {resp.text}"
-        rel = resp.json()
-        assert rel["fkFieldId"] is None
+        body = resp.json()
 
-        # Inverse should also have no FK
-        inverse_id = rel["inverseId"]
-        resp = await client.get(f"/objects/{cls.product_obj_id}")
-        assert resp.status_code == 200
-        product = resp.json()
+        assert body["createdFields"] == []
+
+        # Both objects in updatedObjects should have no FK on the m2m rels
+        source = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.order_obj_id
+        )
+        m2m_rel = next(
+            r for r in source["relationships"] if r["name"] == "items"
+        )
+        assert m2m_rel["fkFieldId"] is None
+
+        target = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.product_obj_id
+        )
         m2m_inverse = next(
             r
-            for r in product["relationships"]
+            for r in target["relationships"]
             if r["cardinality"] == "many_to_many"
             and r["targetObjectId"] == cls.order_obj_id
         )
@@ -256,8 +312,10 @@ class TestRelationshipFkAutoCreation:
         fk_assoc = next(f for f in order["fields"] if f["role"] == "fk")
         assert fk_assoc["optional"] is False
 
-    async def test_delete_relationship_deletes_fk_field(self, client: AsyncClient):
-        """Deleting a relationship with fkFieldId removes the FK field."""
+    async def test_delete_relationship_returns_deleted_fk_ids(
+        self, client: AsyncClient
+    ):
+        """Deleting a relationship returns FK field IDs in deletedFieldIds."""
         cls = TestRelationshipFkAutoCreation
 
         # Get the Order->Customer references relationship
@@ -275,21 +333,30 @@ class TestRelationshipFkAutoCreation:
         resp = await client.delete(
             f"/objects/{cls.order_obj_id}/relationships/{rel_id}"
         )
-        assert resp.status_code == 204
-
-        # FK field should be gone from the object
-        resp = await client.get(f"/objects/{cls.order_obj_id}")
         assert resp.status_code == 200
-        order = resp.json()
-        fk_fields = [f for f in order["fields"] if f["role"] == "fk"]
+        body = resp.json()
+
+        # FK field ID should be in deletedFieldIds
+        assert fk_field_id in body["deletedFieldIds"]
+
+        # Both objects should be in updatedObjects
+        assert len(body["updatedObjects"]) == 2
+
+        # FK field should be gone from the source object
+        source = next(
+            o for o in body["updatedObjects"] if o["id"] == cls.order_obj_id
+        )
+        fk_fields = [f for f in source["fields"] if f["role"] == "fk"]
         assert len(fk_fields) == 0
 
         # FK field entity should be deleted
         resp = await client.get(f"/fields/{fk_field_id}")
         assert resp.status_code == 404
 
-    async def test_delete_relationship_deletes_inverse_fk(self, client: AsyncClient):
-        """Deleting a has_many relationship also cleans up the inverse's FK field."""
+    async def test_delete_relationship_returns_inverse_fk_ids(
+        self, client: AsyncClient
+    ):
+        """Deleting a has_many returns inverse FK field ID in deletedFieldIds."""
         cls = TestRelationshipFkAutoCreation
 
         # Get the Customer->Product has_many relationship
@@ -318,7 +385,11 @@ class TestRelationshipFkAutoCreation:
         resp = await client.delete(
             f"/objects/{cls.customer_obj_id}/relationships/{rel_id}"
         )
-        assert resp.status_code == 204
+        assert resp.status_code == 200
+        body = resp.json()
+
+        # Inverse FK field ID should be in deletedFieldIds
+        assert inverse_fk_field_id in body["deletedFieldIds"]
 
         # Inverse FK field should be gone
         resp = await client.get(f"/fields/{inverse_fk_field_id}")
