@@ -16,7 +16,7 @@ from api.schemas.relationship import (
     ObjectRelationshipResponse,
     RelationshipMutationResponse,
 )
-from api.models.database import FieldModel, ObjectRelationship
+from api.models.database import FieldModel, ObjectDefinition, ObjectRelationship
 from api.schemas.field import FieldResponse
 from api.services.object import ObjectService, get_object_service
 from api.services.relationship import RelationshipService, get_relationship_service
@@ -293,13 +293,19 @@ async def create_relationship(
         )
 
     rel_service = get_relationship_service(db)
+    source_id = str(obj.id)
+    target_id = str(data.target_object_id)
     rel = await rel_service.create_relationship(obj.id, data)
 
+    # Expire cached relationship collections so selectinload re-runs
+    db.expire(obj, ["relationships", "field_associations"])
+    target_ref = await db.get(ObjectDefinition, data.target_object_id)
+    if target_ref:
+        db.expire(target_ref, ["relationships", "field_associations"])
+
     # Re-fetch both objects with fresh field/relationship data
-    source_obj = await obj_service.get_by_id_for_user(str(obj.id), user.id)
-    target_obj = await obj_service.get_by_id_for_user(
-        str(data.target_object_id), user.id
-    )
+    source_obj = await obj_service.get_by_id_for_user(source_id, user.id)
+    target_obj = await obj_service.get_by_id_for_user(target_id, user.id)
 
     updated_objects = []
     if source_obj:
@@ -375,6 +381,12 @@ async def delete_relationship(
             deleted_field_ids.append(inverse.fk_field_id)
 
     await rel_service.delete_relationship(relationship_id)
+
+    # Expire cached relationship collections so selectinload re-runs
+    db.expire(obj, ["relationships", "field_associations"])
+    target_ref = await db.get(ObjectDefinition, target_object_id)
+    if target_ref:
+        db.expire(target_ref, ["relationships", "field_associations"])
 
     # Re-fetch both objects with fresh data
     source_obj = await obj_service.get_by_id_for_user(object_id, user.id)

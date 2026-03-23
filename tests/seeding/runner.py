@@ -155,7 +155,15 @@ async def seed_shop(client: AsyncClient, log=None) -> SeedResult:
             "cardinality": RELATIONSHIP["cardinality"],
         },
     )
-    rel = _check(resp, "relationship", RELATIONSHIP["name"])
+    body = _check(resp, "relationship", RELATIONSHIP["name"])
+    # Response is RelationshipMutationResponse with updatedObjects.
+    # Find the source object and extract the user-created relationship.
+    source_obj = next(o for o in body["updatedObjects"] if o["id"] == str(source_id))
+    rel = next(
+        r
+        for r in source_obj["relationships"]
+        if r["name"] == RELATIONSHIP["name"] and not r["isInferred"]
+    )
     result.relationship_ids.append(rel["id"])
     if rel.get("inverseId"):
         result.relationship_ids.append(rel["inverseId"])

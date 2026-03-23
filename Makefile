@@ -49,8 +49,8 @@ db-reset: ## Reset database: delete all data, restart, re-migrate
 	@echo "Database reset complete"
 
 .PHONY: test
-test: ## Run tests
-	@$(POETRY) run pytest tests/ -v -m "not e2e and not manual"
+test: ## Run tests (mirrors CI — all markers, DB tests skipped if no PostgreSQL)
+	@$(POETRY) run pytest tests/ -v
 
 .PHONY: test-e2e
 test-e2e: ## Run end-to-end tests (requires Docker)

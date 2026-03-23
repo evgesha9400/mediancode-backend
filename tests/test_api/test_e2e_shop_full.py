@@ -809,7 +809,7 @@ class TestShopApiFullE2E:
         assert resp.status_code == 200, f"Generate failed: {resp.text}"
         assert "application/zip" in resp.headers.get("content-type", "")
         assert "content-disposition" in resp.headers
-        assert "shopapi" in resp.headers["content-disposition"].lower()
+        assert "shop-api" in resp.headers["content-disposition"].lower()
         assert len(resp.content) > 0
         cls.zip_bytes = resp.content
 

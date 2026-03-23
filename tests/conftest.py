@@ -167,3 +167,28 @@ async def test_namespace(db_session: AsyncSession, test_user: UserModel) -> Name
     # Cleanup
     await db_session.execute(delete(Namespace).where(Namespace.id == namespace.id))
     await db_session.commit()
+
+
+# --- Loud warning when DB-dependent tests are skipped ---
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    """Warn loudly when DB-dependent tests were skipped.
+
+    Prevents silent skipping from hiding broken tests — subagents and
+    developers will see a prominent banner in the test output.
+    """
+    skipped = terminalreporter.stats.get("skipped", [])
+    db_skipped = [
+        s
+        for s in skipped
+        if "postgresql" in str(s.longrepr).lower()
+        or "database" in str(s.longrepr).lower()
+    ]
+    if db_skipped:
+        terminalreporter.write_sep(
+            "!",
+            f"WARNING: {len(db_skipped)} tests SKIPPED because PostgreSQL "
+            f"is not running. Run 'make db' first for full coverage.",
+            yellow=True,
+        )
