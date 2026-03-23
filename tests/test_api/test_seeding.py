@@ -76,9 +76,10 @@ class TestSeedRunner:
         assert len(result.relationship_ids) >= 1
 
         # Verify via API reads
+        # Auto-created FK fields add to the total (1 per references inverse)
         resp = await client.get(f"/fields?namespace_id={result.namespace_id}")
         assert resp.status_code == 200
-        assert len(resp.json()) == len(ALL_FIELDS)
+        assert len(resp.json()) >= len(ALL_FIELDS)
 
         resp = await client.get(f"/objects?namespace_id={result.namespace_id}")
         assert resp.status_code == 200

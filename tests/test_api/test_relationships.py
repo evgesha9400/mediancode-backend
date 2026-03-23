@@ -18,16 +18,19 @@ class TestObjectRelationships:
     user_obj_id: str = ""
     post_obj_id: str = ""
     tag_obj_id: str = ""
-    type_id: str = ""
+    str_type_id: str = ""
+    int_type_id: str = ""
 
     async def test_setup(self, client: AsyncClient):
         """Create namespace, fields, and objects for relationship testing."""
         cls = TestObjectRelationships
 
-        # Get str type
+        # Get types
         resp = await client.get("/types")
         assert resp.status_code == 200
-        cls.type_id = next(t["id"] for t in resp.json() if t["name"] == "str")
+        types = resp.json()
+        cls.str_type_id = next(t["id"] for t in types if t["name"] == "str")
+        cls.int_type_id = next(t["id"] for t in types if t["name"] == "int")
 
         # Namespace
         resp = await client.post(
@@ -36,31 +39,47 @@ class TestObjectRelationships:
         assert resp.status_code == 201
         cls.namespace_id = resp.json()["id"]
 
-        # Fields
+        # Data fields (str type)
         for name in ("username", "title", "tag_name"):
             resp = await client.post(
                 "/fields",
                 json={
                     "namespaceId": cls.namespace_id,
                     "name": name,
-                    "typeId": cls.type_id,
+                    "typeId": cls.str_type_id,
                 },
             )
             assert resp.status_code == 201
             cls.field_ids[name] = resp.json()["id"]
 
-        # Objects
-        for obj_name, field_name in [
-            ("User", "username"),
-            ("Post", "title"),
-            ("Tag", "tag_name"),
+        # PK fields (int type — PK requires int or uuid)
+        for name in ("user_id", "post_id", "tag_id"):
+            resp = await client.post(
+                "/fields",
+                json={
+                    "namespaceId": cls.namespace_id,
+                    "name": name,
+                    "typeId": cls.int_type_id,
+                },
+            )
+            assert resp.status_code == 201
+            cls.field_ids[name] = resp.json()["id"]
+
+        # Objects with PK fields
+        for obj_name, pk_field, data_field in [
+            ("User", "user_id", "username"),
+            ("Post", "post_id", "title"),
+            ("Tag", "tag_id", "tag_name"),
         ]:
             resp = await client.post(
                 "/objects",
                 json={
                     "namespaceId": cls.namespace_id,
                     "name": obj_name,
-                    "fields": [{"fieldId": cls.field_ids[field_name]}],
+                    "fields": [
+                        {"fieldId": cls.field_ids[pk_field], "role": "pk"},
+                        {"fieldId": cls.field_ids[data_field]},
+                    ],
                 },
             )
             assert resp.status_code == 201

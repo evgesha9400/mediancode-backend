@@ -1003,6 +1003,18 @@ class TestShopApiFullE2E:
         assert resp.status_code == 200
         assert len(resp.json()) == 0
 
+    # --- Phase 23b: Delete relationships (cleans up auto-created FK fields) ---
+
+    async def test_phase_23b_delete_relationships(self, client: AsyncClient):
+        """Delete relationships so FK field cleanup runs before object deletion."""
+        cls = TestShopApiFullE2E
+
+        if cls.relationship_id:
+            resp = await client.delete(
+                f"/objects/{cls.customer_id}/relationships/{cls.relationship_id}"
+            )
+            assert resp.status_code == 204
+
     # --- Phase 24: Delete objects ---
 
     async def test_phase_24_delete_objects(self, client: AsyncClient):
