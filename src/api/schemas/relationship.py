@@ -46,3 +46,24 @@ class ObjectRelationshipResponse(BaseModel):
     fk_field_id: UUID | None = Field(default=None, alias="fkFieldId")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class RelationshipMutationResponse(BaseModel):
+    """Response for relationship create/delete -- includes all side effects.
+
+    :ivar updated_objects: All objects whose fields or relationships changed.
+    :ivar created_fields: Newly auto-created FK field entities.
+    :ivar deleted_field_ids: IDs of FK fields that were deleted.
+    """
+
+    updated_objects: list["ObjectResponse"] = Field(
+        default_factory=list, alias="updatedObjects"
+    )
+    created_fields: list["FieldResponse"] = Field(
+        default_factory=list, alias="createdFields"
+    )
+    deleted_field_ids: list[UUID] = Field(
+        default_factory=list, alias="deletedFieldIds"
+    )
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
