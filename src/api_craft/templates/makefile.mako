@@ -15,6 +15,7 @@ PROJECT_NAME=${api.snake_name}
 APP_PORT ?= ${api.app_port}
 % if api.database_config:
 DB_PORT ?= ${api.database_config.db_port}
+DATABASE_URL := postgresql+asyncpg://postgres:postgres@localhost:$(DB_PORT)/$(PROJECT_NAME)
 % endif
 
 install:
