@@ -6,13 +6,13 @@ test_seeding.py.
 """
 
 import io
+from pathlib import Path
 import shutil
 import tempfile
 import zipfile
-from pathlib import Path
 
-import pytest
 from httpx import AsyncClient
+import pytest
 
 from support.shop_contract import (
     ALL_FIELDS,
@@ -247,9 +247,9 @@ class TestShopLifecycle:
         with zipfile.ZipFile(io.BytesIO(cls.zip_bytes)) as zf:
             names = zf.namelist()
 
-            assert not any(
-                "__pycache__" in n for n in names
-            ), f"Found __pycache__: {[n for n in names if '__pycache__' in n]}"
+            assert not any("__pycache__" in n for n in names), (
+                f"Found __pycache__: {[n for n in names if '__pycache__' in n]}"
+            )
 
             required_files = [
                 "src/models.py",

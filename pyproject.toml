@@ -21,7 +21,6 @@ dependencies = [
     "python-multipart (>=0.0.20,<1.0.0)",
     "jinja2 (>=3.1.0,<4.0.0)",
     "pyyaml (>=6.0.0,<7.0.0)",
-    "black (>=25.9.0,<26.0.0)",
     'slowapi (>=0.1.9,<1.0.0) ; python_version < "4.0"',
     "orjson (>=3.11.7,<4.0.0)",
     "email-validator (>=2.3.0,<3.0.0)"
@@ -32,7 +31,8 @@ dev = [
     "pytest (>=8.0.0,<9.0.0)",
     "pytest-asyncio (>=0.24.0,<1.0.0)",
     "aiosqlite (>=0.22.1,<0.23.0)",
-    "greenlet (>=3.0.0,<4.0.0)"
+    "greenlet (>=3.0.0,<4.0.0)",
+    "ruff (>=0.15.0,<1.0.0)"
 ]
 
 
@@ -61,3 +61,14 @@ markers = [
     "codegen: code generation pipeline tests (input, transform, static project, in-process runtime)",
     "e2e: end-to-end tests that generate and run full API projects via Docker Compose",
 ]
+
+[tool.ruff]
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["api", "api_craft"]
+force-sort-within-sections = true

@@ -24,8 +24,7 @@ class SeedError(Exception):
         self.status_code = status_code
         self.detail = detail
         super().__init__(
-            f"Failed to create {entity_type} '{name}': "
-            f"HTTP {status_code} — {detail}"
+            f"Failed to create {entity_type} '{name}': HTTP {status_code} — {detail}"
         )
 
 

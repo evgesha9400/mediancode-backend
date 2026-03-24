@@ -9,13 +9,13 @@ importing a generated project with an in-memory SQLite backend.
 from __future__ import annotations
 
 import importlib.util
+from pathlib import Path
 import sys
 import types
 import uuid
-from pathlib import Path
 
-import yaml
 from fastapi.testclient import TestClient
+import yaml
 
 from api_craft.main import APIGenerator
 from api_craft.models.input import InputAPI
@@ -158,9 +158,7 @@ def load_app(src_path: Path):
             sys.modules.pop(mod_name, None)
 
 
-def generate_and_client(
-    spec_filename: str, tmp_path: Path
-) -> TestClient:
+def generate_and_client(spec_filename: str, tmp_path: Path) -> TestClient:
     """Generate a project from a YAML spec and return a live TestClient.
 
     :param spec_filename: YAML file name under ``tests/specs/``.

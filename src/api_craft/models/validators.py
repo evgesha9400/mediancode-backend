@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Iterable
+import re
 from typing import TYPE_CHECKING
 
 from api_craft.models.validation_catalog import (

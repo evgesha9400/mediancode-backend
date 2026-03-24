@@ -12,7 +12,9 @@ by :func:`seed_shop`.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field as dataclass_field
+from dataclasses import dataclass
+from dataclasses import field as dataclass_field
+
 from httpx import AsyncClient
 
 # ---------------------------------------------------------------------------
@@ -388,8 +390,7 @@ class SeedError(Exception):
         self.status_code = status_code
         self.detail = detail
         super().__init__(
-            f"Failed to create {entity_type} '{name}': "
-            f"HTTP {status_code} — {detail}"
+            f"Failed to create {entity_type} '{name}': HTTP {status_code} — {detail}"
         )
 
 

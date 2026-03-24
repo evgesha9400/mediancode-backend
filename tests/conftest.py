@@ -86,7 +86,8 @@ async def client(request):
 
     The calling module **must** define ``TEST_CLERK_ID`` at module scope.
     """
-    from httpx import ASGITransport, AsyncClient as _AsyncClient
+    from httpx import ASGITransport
+    from httpx import AsyncClient as _AsyncClient
 
     from support.api_client import cleanup_user_data, clear_auth, override_auth
 

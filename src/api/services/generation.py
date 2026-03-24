@@ -20,8 +20,8 @@ from api.models.database import (
     ObjectDefinition,
     ObjectRelationship,
 )
-from api_craft.main import APIGenerator
 from api.schemas.api import GenerateOptions
+from api_craft.main import APIGenerator
 from api_craft.models.input import (
     FieldDefaultGenerated,
     FieldDefaultLiteral,

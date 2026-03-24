@@ -8,10 +8,10 @@ handling.  Uses ``httpx`` against a real containerised service (not TestClient).
 Migrated from ``test_api_craft/test_e2e_generated.py``.
 """
 
+from pathlib import Path
 import subprocess
 import time
 import uuid
-from pathlib import Path
 
 import httpx
 import pytest
@@ -244,9 +244,7 @@ class TestCrudRoundTrip:
             f"{generated_shop_api}/customers/{customer_id}",
             json=valid_customer(customer_name="Jane Smith", phone="9876543210"),
         )
-        assert r.status_code == 200, (
-            f"Update customer failed: {r.status_code} {r.text}"
-        )
+        assert r.status_code == 200, f"Update customer failed: {r.status_code} {r.text}"
 
     def test_phase_11_get_updated_customer(self, generated_shop_api):
         customer_id = TestCrudRoundTrip.customer_id
@@ -272,104 +270,74 @@ class TestConstraintViolations:
         assert self._post_product(generated_shop_api, name="").status_code == 422
 
     def test_name_max_length(self, generated_shop_api):
-        assert (
-            self._post_product(generated_shop_api, name="A" * 151).status_code == 422
-        )
+        assert self._post_product(generated_shop_api, name="A" * 151).status_code == 422
 
     def test_sku_pattern(self, generated_shop_api):
-        assert (
-            self._post_product(generated_shop_api, sku="test-01").status_code == 422
-        )
+        assert self._post_product(generated_shop_api, sku="test-01").status_code == 422
 
     def test_price_gt_zero(self, generated_shop_api):
         assert self._post_product(generated_shop_api, price=0).status_code == 422
 
     def test_sale_price_ge_zero(self, generated_shop_api):
-        assert (
-            self._post_product(generated_shop_api, sale_price=-1).status_code == 422
-        )
+        assert self._post_product(generated_shop_api, sale_price=-1).status_code == 422
 
     def test_weight_ge_zero(self, generated_shop_api):
         r = self._post_product(generated_shop_api, weight=-0.1)
         assert r.status_code == 200
 
     def test_weight_lt_1000(self, generated_shop_api):
-        assert (
-            self._post_product(generated_shop_api, weight=1000).status_code == 422
-        )
+        assert self._post_product(generated_shop_api, weight=1000).status_code == 422
 
     def test_quantity_ge_zero(self, generated_shop_api):
-        assert (
-            self._post_product(generated_shop_api, quantity=-1).status_code == 422
-        )
+        assert self._post_product(generated_shop_api, quantity=-1).status_code == 422
 
     def test_min_order_ge_one(self, generated_shop_api):
         assert (
-            self._post_product(
-                generated_shop_api, min_order_quantity=0
-            ).status_code
+            self._post_product(generated_shop_api, min_order_quantity=0).status_code
             == 422
         )
 
     def test_max_order_le_1000(self, generated_shop_api):
         assert (
-            self._post_product(
-                generated_shop_api, max_order_quantity=1001
-            ).status_code
+            self._post_product(generated_shop_api, max_order_quantity=1001).status_code
             == 422
         )
 
     def test_discount_percent_ge_zero(self, generated_shop_api):
         assert (
-            self._post_product(
-                generated_shop_api, discount_percent=-5
-            ).status_code
+            self._post_product(generated_shop_api, discount_percent=-5).status_code
             == 422
         )
 
     def test_discount_percent_le_100(self, generated_shop_api):
         assert (
-            self._post_product(
-                generated_shop_api, discount_percent=105
-            ).status_code
+            self._post_product(generated_shop_api, discount_percent=105).status_code
             == 422
         )
 
     def test_discount_percent_multiple_of_5(self, generated_shop_api):
         assert (
-            self._post_product(
-                generated_shop_api, discount_percent=3
-            ).status_code
+            self._post_product(generated_shop_api, discount_percent=3).status_code
             == 422
         )
 
     def test_discount_amount_ge_zero(self, generated_shop_api):
         assert (
-            self._post_product(
-                generated_shop_api, discount_amount=-1
-            ).status_code
+            self._post_product(generated_shop_api, discount_amount=-1).status_code
             == 422
         )
 
     def test_customer_name_min_length(self, generated_shop_api):
         assert (
-            self._post_customer(
-                generated_shop_api, customer_name=""
-            ).status_code
-            == 422
+            self._post_customer(generated_shop_api, customer_name="").status_code == 422
         )
 
     def test_phone_min_length(self, generated_shop_api):
-        assert (
-            self._post_customer(generated_shop_api, phone="123").status_code == 422
-        )
+        assert self._post_customer(generated_shop_api, phone="123").status_code == 422
 
     def test_phone_max_length(self, generated_shop_api):
         assert (
-            self._post_customer(
-                generated_shop_api, phone="1" * 16
-            ).status_code
-            == 422
+            self._post_customer(generated_shop_api, phone="1" * 16).status_code == 422
         )
 
 
@@ -494,18 +462,14 @@ class TestDatetimeTimezones:
             f"{generated_shop_api}/products",
             json=valid_product(created_at="2026-06-01T17:30:00+05:30"),
         )
-        assert r.status_code == 200, (
-            f"Positive offset failed: {r.status_code} {r.text}"
-        )
+        assert r.status_code == 200, f"Positive offset failed: {r.status_code} {r.text}"
 
     def test_product_datetime_negative_offset(self, generated_shop_api):
         r = httpx.post(
             f"{generated_shop_api}/products",
             json=valid_product(created_at="2026-06-01T07:00:00-05:00"),
         )
-        assert r.status_code == 200, (
-            f"Negative offset failed: {r.status_code} {r.text}"
-        )
+        assert r.status_code == 200, f"Negative offset failed: {r.status_code} {r.text}"
 
     def test_customer_datetime_utc_offset(self, generated_shop_api):
         r = httpx.post(
@@ -542,7 +506,9 @@ def make_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return project_dir
 
 
-def _run_make(target: str, project_dir: Path, timeout: int = 180) -> subprocess.CompletedProcess:
+def _run_make(
+    target: str, project_dir: Path, timeout: int = 180
+) -> subprocess.CompletedProcess:
     """Run a make target in the generated project directory."""
     return subprocess.run(
         ["make", target],
@@ -592,9 +558,7 @@ class TestMakeTargets:
         try:
             _run_make("install", make_project, timeout=180)
         except subprocess.CalledProcessError as e:
-            pytest.fail(
-                f"make install failed:\nstdout: {e.stdout}\nstderr: {e.stderr}"
-            )
+            pytest.fail(f"make install failed:\nstdout: {e.stdout}\nstderr: {e.stderr}")
 
     def test_make_run_local_starts_api(self, make_project: Path):
         """make run-local brings up the DB and API; openapi.json is reachable."""
@@ -625,9 +589,7 @@ class TestMakeTargets:
         try:
             _run_make("cleanup", make_project, timeout=60)
         except subprocess.CalledProcessError as e:
-            pytest.fail(
-                f"make cleanup failed:\nstdout: {e.stdout}\nstderr: {e.stderr}"
-            )
+            pytest.fail(f"make cleanup failed:\nstdout: {e.stdout}\nstderr: {e.stderr}")
 
         # Compose stack should be fully down after cleanup.
         ps_result = subprocess.run(

@@ -4,6 +4,8 @@
 from fastapi import APIRouter, HTTPException, status
 
 from api.deps import DbSession, ProvisionedUser
+from api.models.database import FieldModel, ObjectDefinition, ObjectRelationship
+from api.schemas.field import FieldResponse
 from api.schemas.object import (
     ModelValidatorResponse,
     ObjectCreate,
@@ -16,8 +18,6 @@ from api.schemas.relationship import (
     ObjectRelationshipResponse,
     RelationshipMutationResponse,
 )
-from api.models.database import FieldModel, ObjectDefinition, ObjectRelationship
-from api.schemas.field import FieldResponse
 from api.services.object import ObjectService, get_object_service
 from api.services.relationship import RelationshipService, get_relationship_service
 

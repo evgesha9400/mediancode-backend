@@ -12,8 +12,8 @@ Merges the HTTP-behavior tests that previously lived in
 
 import logging
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 from api_craft.main import APIGenerator
 from support.generated_app import load_app, load_input
@@ -390,9 +390,7 @@ class TestShopApiEndpoints:
         assert isinstance(data, list)
 
     def test_get_product_not_found(self, shop_api_client: TestClient):
-        response = shop_api_client.get(
-            "/products/00000000-0000-0000-0000-000000000001"
-        )
+        response = shop_api_client.get("/products/00000000-0000-0000-0000-000000000001")
         assert response.status_code == 404
 
     def test_create_product_valid(self, shop_api_client: TestClient):
@@ -476,9 +474,7 @@ class TestProductConstraints:
 
     def test_name_empty_rejected(self, shop_api_client: TestClient):
         """Empty name (min_length=1) is rejected."""
-        response = shop_api_client.post(
-            "/products", json=self._valid_product(name="")
-        )
+        response = shop_api_client.post("/products", json=self._valid_product(name=""))
         assert_validation_error(response, expected_field="name")
 
     def test_name_too_long_rejected(self, shop_api_client: TestClient):
@@ -497,9 +493,7 @@ class TestProductConstraints:
 
     def test_price_zero_rejected(self, shop_api_client: TestClient):
         """Price of 0 (gt=0) is rejected."""
-        response = shop_api_client.post(
-            "/products", json=self._valid_product(price=0)
-        )
+        response = shop_api_client.post("/products", json=self._valid_product(price=0))
         assert_validation_error(response, expected_field="price")
 
     def test_price_negative_rejected(self, shop_api_client: TestClient):
@@ -646,9 +640,7 @@ class TestProductModelValidators:
         )
         assert_validation_error(response)
 
-    def test_sale_fields_all_or_none_rejects_partial(
-        self, shop_api_client: TestClient
-    ):
+    def test_sale_fields_all_or_none_rejects_partial(self, shop_api_client: TestClient):
         """Providing sale_price without sale_end_date is rejected."""
         response = shop_api_client.post(
             "/products",

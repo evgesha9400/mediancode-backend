@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from api.models.database import (
     FieldModel,
@@ -13,7 +14,6 @@ from api.models.database import (
     ObjectFieldAssociation,
     ObjectRelationship,
 )
-from sqlalchemy.orm import selectinload
 from api.schemas.relationship import ObjectRelationshipCreate
 
 INVERSE_MAP: dict[str, str] = {

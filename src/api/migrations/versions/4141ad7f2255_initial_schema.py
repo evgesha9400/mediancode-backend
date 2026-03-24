@@ -9,8 +9,8 @@ Create Date: 2026-02-05 00:21:53.575168
 from collections.abc import Sequence
 from uuid import UUID
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 from api_craft.models.enums import (

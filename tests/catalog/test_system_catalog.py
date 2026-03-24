@@ -1,8 +1,8 @@
 # tests/catalog/test_system_catalog.py
 """Integration tests: live HTTP catalog endpoints vs seed migration constants."""
 
-import pytest
 from httpx import AsyncClient
+import pytest
 
 from support.catalog_contract import (
     CONSTRAINTS_DATA,

@@ -8,8 +8,8 @@ Create Date: 2026-02-09 12:00:00.000000
 from collections.abc import Sequence
 from uuid import UUID
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.

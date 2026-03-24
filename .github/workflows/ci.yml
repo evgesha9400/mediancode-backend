@@ -37,8 +37,11 @@ jobs:
       - name: Install Dependencies
         run: poetry install --no-interaction --no-ansi
 
-      - name: Check Formatting (Black)
-        run: poetry run black --check src/ tests/
+      - name: Check Formatting (Ruff)
+        run: poetry run ruff format --check src/ tests/
+
+      - name: Check Linting (Ruff)
+        run: poetry run ruff check src/ tests/
 
   test:
     name: Test

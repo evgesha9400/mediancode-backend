@@ -4,9 +4,9 @@
 from functools import lru_cache
 from typing import Annotated
 
-import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+import jwt
 from jwt import PyJWKClient, PyJWKClientError
 
 from api.settings import Settings, get_settings

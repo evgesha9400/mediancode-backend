@@ -8,8 +8,8 @@ interface genuinely diverges from the input interface.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
+import re
 from typing import Any
 
 from api_craft.models.enums import ResponseShape
@@ -38,7 +38,6 @@ from api_craft.utils import (
     remove_duplicates,
     snake_to_camel,
 )
-
 
 # ---------------------------------------------------------------------------
 # Prepared dataclasses — only for types where Template diverges from Input

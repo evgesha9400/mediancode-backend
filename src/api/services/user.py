@@ -1,8 +1,8 @@
 # src/api/services/user.py
 """Service for user management, provisioning, and generation tracking."""
 
-import logging
 from datetime import datetime, timezone
+import logging
 from uuid import UUID
 
 import httpx

@@ -9,9 +9,9 @@ Merges legacy tests from:
 
 import io
 import os
+from pathlib import Path
 import tempfile
 import zipfile
-from pathlib import Path
 
 import pytest
 
@@ -623,9 +623,7 @@ def test_field_validator_body_indentation(tmp_path):
     api = InputAPI(
         name="IndentTest",
         endpoints=[
-            InputEndpoint(
-                name="GetItems", path="/items", method="GET", response="Item"
-            )
+            InputEndpoint(name="GetItems", path="/items", method="GET", response="Item")
         ],
         objects=[
             InputModel(

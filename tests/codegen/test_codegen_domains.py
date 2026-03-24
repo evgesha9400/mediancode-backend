@@ -10,15 +10,22 @@ Merges legacy tests from:
 import inspect
 import io
 import os
-import tempfile
-import zipfile
 from pathlib import Path
+import tempfile
 from typing import get_args
 from unittest.mock import MagicMock
+import zipfile
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
+from api.schemas.api import GenerateOptions
+from api.services.generation import (
+    _build_endpoint_name,
+    _build_field_type,
+    _convert_to_input_api,
+    generate_api_zip,
+)
 from api_craft.extractors import collect_association_tables
 from api_craft.main import APIGenerator
 from api_craft.models.enums import FilterOperator
@@ -41,13 +48,6 @@ from api_craft.prepare import (
     prepare_api,
 )
 from api_craft.schema_splitter import split_model_schemas
-from api.schemas.api import GenerateOptions
-from api.services.generation import (
-    _build_endpoint_name,
-    _build_field_type,
-    _convert_to_input_api,
-    generate_api_zip,
-)
 from support.generated_app import load_app, load_input
 
 
@@ -222,9 +222,9 @@ class TestGenerateApiZipSignature:
         sig = inspect.signature(generate_api_zip)
         assert "options" in sig.parameters
         param = sig.parameters["options"]
-        assert (
-            param.default is not inspect.Parameter.empty
-        ), "options must have a default value"
+        assert param.default is not inspect.Parameter.empty, (
+            "options must have a default value"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1585,14 +1585,42 @@ class TestFilterCodeGeneration:
                         ),
                     ],
                     query_params=[
-                        InputQueryParam(name="min_price", type="float", field="price", operator="gte"),
-                        InputQueryParam(name="max_price", type="float", field="price", operator="lte"),
-                        InputQueryParam(name="price_above", type="float", field="price", operator="gt"),
-                        InputQueryParam(name="price_below", type="float", field="price", operator="lt"),
-                        InputQueryParam(name="search", type="str", field="name", operator="ilike"),
-                        InputQueryParam(name="name_like", type="str", field="name", operator="like"),
-                        InputQueryParam(name="category", type="str", field="category", operator="eq"),
-                        InputQueryParam(name="tags", type="str", field="category", operator="in"),
+                        InputQueryParam(
+                            name="min_price",
+                            type="float",
+                            field="price",
+                            operator="gte",
+                        ),
+                        InputQueryParam(
+                            name="max_price",
+                            type="float",
+                            field="price",
+                            operator="lte",
+                        ),
+                        InputQueryParam(
+                            name="price_above",
+                            type="float",
+                            field="price",
+                            operator="gt",
+                        ),
+                        InputQueryParam(
+                            name="price_below",
+                            type="float",
+                            field="price",
+                            operator="lt",
+                        ),
+                        InputQueryParam(
+                            name="search", type="str", field="name", operator="ilike"
+                        ),
+                        InputQueryParam(
+                            name="name_like", type="str", field="name", operator="like"
+                        ),
+                        InputQueryParam(
+                            name="category", type="str", field="category", operator="eq"
+                        ),
+                        InputQueryParam(
+                            name="tags", type="str", field="category", operator="in"
+                        ),
                     ],
                 ),
             ],
@@ -1604,7 +1632,9 @@ class TestFilterCodeGeneration:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True, exposure="read_only"),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="store_id", type="uuid.UUID"),
                         InputField(name="price", type="decimal.Decimal"),
                         InputField(name="name", type="str"),
@@ -1685,10 +1715,17 @@ class TestFilterCodeGeneration:
                     target="Product",
                     pagination=True,
                     path_params=[
-                        InputPathParam(name="store_id", type="uuid.UUID", field="store_id"),
+                        InputPathParam(
+                            name="store_id", type="uuid.UUID", field="store_id"
+                        ),
                     ],
                     query_params=[
-                        InputQueryParam(name="min_price", type="float", field="price", operator="gte"),
+                        InputQueryParam(
+                            name="min_price",
+                            type="float",
+                            field="price",
+                            operator="gte",
+                        ),
                     ],
                 ),
             ],
@@ -1700,7 +1737,9 @@ class TestFilterCodeGeneration:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True, exposure="read_only"),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="store_id", type="uuid.UUID"),
                         InputField(name="price", type="decimal.Decimal"),
                         InputField(name="name", type="str"),
@@ -1771,7 +1810,9 @@ class TestDetailEndpointFilterCodeGen:
                     response="Product",
                     response_shape="object",
                     path_params=[
-                        InputPathParam(name="tracking_id", type="uuid", field="tracking_id"),
+                        InputPathParam(
+                            name="tracking_id", type="uuid", field="tracking_id"
+                        ),
                     ],
                 ),
             ],
@@ -1779,7 +1820,12 @@ class TestDetailEndpointFilterCodeGen:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="tracking_id", type="uuid", pk=True, exposure="read_only"),
+                        InputField(
+                            name="tracking_id",
+                            type="uuid",
+                            pk=True,
+                            exposure="read_only",
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),
@@ -1812,7 +1858,9 @@ class TestDetailEndpointFilterCodeGen:
                 InputModel(
                     name="Product",
                     fields=[
-                        InputField(name="id", type="int", pk=True, exposure="read_only"),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="store_id", type="int"),
                         InputField(name="name", type="str"),
                     ],
@@ -1837,9 +1885,27 @@ class TestDetailEndpointFilterCodeGen:
 class TestReferencesRelationship:
     def test_references_adds_fk_field_to_orm(self):
         models = [
-            _make_model("Post", [{"name": "id", "type": "uuid", "pk": True}, {"name": "title", "type": "str"}],
-                        relationships=[{"name": "author", "target_model": "User", "cardinality": "references"}]),
-            _make_model("User", [{"name": "id", "type": "uuid", "pk": True}, {"name": "name", "type": "str"}]),
+            _make_model(
+                "Post",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "author",
+                        "target_model": "User",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "User",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+            ),
         ]
         result = transform_orm_models(models)
         post_model = next(m for m in result if m.source_model == "Post")
@@ -1851,9 +1917,27 @@ class TestReferencesRelationship:
 
     def test_references_creates_relationship(self):
         models = [
-            _make_model("Post", [{"name": "id", "type": "uuid", "pk": True}, {"name": "title", "type": "str"}],
-                        relationships=[{"name": "author", "target_model": "User", "cardinality": "references"}]),
-            _make_model("User", [{"name": "id", "type": "uuid", "pk": True}, {"name": "name", "type": "str"}]),
+            _make_model(
+                "Post",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "author",
+                        "target_model": "User",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "User",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+            ),
         ]
         result = transform_orm_models(models)
         post_model = next(m for m in result if m.source_model == "Post")
@@ -1871,7 +1955,11 @@ class TestReferencesRelationship:
                 InputField(name="id", type="uuid", pk=True, exposure="read_only"),
                 InputField(name="title", type="str"),
             ],
-            relationships=[InputRelationship(name="author", target_model="User", cardinality="references")],
+            relationships=[
+                InputRelationship(
+                    name="author", target_model="User", cardinality="references"
+                )
+            ],
         )
         schemas = split_model_schemas(model)
         response_names = [f.name for f in schemas[2].fields]
@@ -1884,7 +1972,11 @@ class TestReferencesRelationship:
                 InputField(name="id", type="uuid", pk=True, exposure="read_only"),
                 InputField(name="title", type="str"),
             ],
-            relationships=[InputRelationship(name="author", target_model="User", cardinality="references")],
+            relationships=[
+                InputRelationship(
+                    name="author", target_model="User", cardinality="references"
+                )
+            ],
         )
         schemas = split_model_schemas(model)
         create_names = [f.name for f in schemas[0].fields]
@@ -1897,7 +1989,11 @@ class TestReferencesRelationship:
                 InputField(name="id", type="uuid", pk=True, exposure="read_only"),
                 InputField(name="title", type="str"),
             ],
-            relationships=[InputRelationship(name="author", target_model="User", cardinality="references")],
+            relationships=[
+                InputRelationship(
+                    name="author", target_model="User", cardinality="references"
+                )
+            ],
         )
         schemas = split_model_schemas(model)
         update_names = [f.name for f in schemas[1].fields]
@@ -1912,7 +2008,11 @@ class TestReferencesRelationship:
                 InputField(name="id", type="uuid", pk=True, exposure="read_only"),
                 InputField(name="title", type="str"),
             ],
-            relationships=[InputRelationship(name="author", target_model="User", cardinality="references")],
+            relationships=[
+                InputRelationship(
+                    name="author", target_model="User", cardinality="references"
+                )
+            ],
         )
         schemas = split_model_schemas(model)
         fk_field = next(f for f in schemas[0].fields if str(f.name) == "author_id")
@@ -1923,9 +2023,23 @@ class TestReferencesRelationship:
 class TestHasManyRelationship:
     def test_has_many_no_fk_on_source(self):
         models = [
-            _make_model("User", [{"name": "id", "type": "uuid", "pk": True}, {"name": "name", "type": "str"}],
-                        relationships=[{"name": "posts", "target_model": "Post", "cardinality": "has_many"}]),
-            _make_model("Post", [{"name": "id", "type": "uuid", "pk": True}, {"name": "title", "type": "str"}]),
+            _make_model(
+                "User",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+                relationships=[
+                    {"name": "posts", "target_model": "Post", "cardinality": "has_many"}
+                ],
+            ),
+            _make_model(
+                "Post",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+            ),
         ]
         result = transform_orm_models(models)
         user_model = next(m for m in result if m.source_model == "User")
@@ -1934,9 +2048,23 @@ class TestHasManyRelationship:
 
     def test_has_many_creates_relationship(self):
         models = [
-            _make_model("User", [{"name": "id", "type": "uuid", "pk": True}, {"name": "name", "type": "str"}],
-                        relationships=[{"name": "posts", "target_model": "Post", "cardinality": "has_many"}]),
-            _make_model("Post", [{"name": "id", "type": "uuid", "pk": True}, {"name": "title", "type": "str"}]),
+            _make_model(
+                "User",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+                relationships=[
+                    {"name": "posts", "target_model": "Post", "cardinality": "has_many"}
+                ],
+            ),
+            _make_model(
+                "Post",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+            ),
         ]
         result = transform_orm_models(models)
         user_model = next(m for m in result if m.source_model == "User")
@@ -1952,9 +2080,27 @@ class TestHasManyRelationship:
 class TestHasOneRelationship:
     def test_has_one_no_fk_on_source(self):
         models = [
-            _make_model("User", [{"name": "id", "type": "uuid", "pk": True}, {"name": "name", "type": "str"}],
-                        relationships=[{"name": "profile", "target_model": "Profile", "cardinality": "has_one"}]),
-            _make_model("Profile", [{"name": "id", "type": "uuid", "pk": True}, {"name": "bio", "type": "str"}]),
+            _make_model(
+                "User",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "profile",
+                        "target_model": "Profile",
+                        "cardinality": "has_one",
+                    }
+                ],
+            ),
+            _make_model(
+                "Profile",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "bio", "type": "str"},
+                ],
+            ),
         ]
         result = transform_orm_models(models)
         user_model = next(m for m in result if m.source_model == "User")
@@ -1963,9 +2109,27 @@ class TestHasOneRelationship:
 
     def test_has_one_creates_relationship(self):
         models = [
-            _make_model("User", [{"name": "id", "type": "uuid", "pk": True}, {"name": "name", "type": "str"}],
-                        relationships=[{"name": "profile", "target_model": "Profile", "cardinality": "has_one"}]),
-            _make_model("Profile", [{"name": "id", "type": "uuid", "pk": True}, {"name": "bio", "type": "str"}]),
+            _make_model(
+                "User",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "profile",
+                        "target_model": "Profile",
+                        "cardinality": "has_one",
+                    }
+                ],
+            ),
+            _make_model(
+                "Profile",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "bio", "type": "str"},
+                ],
+            ),
         ]
         result = transform_orm_models(models)
         user_model = next(m for m in result if m.source_model == "User")
@@ -1980,9 +2144,27 @@ class TestHasOneRelationship:
 class TestManyToManyRelationship:
     def test_many_to_many_creates_association_table(self):
         models = [
-            _make_model("Student", [{"name": "id", "type": "uuid", "pk": True}, {"name": "name", "type": "str"}],
-                        relationships=[{"name": "courses", "target_model": "Course", "cardinality": "many_to_many"}]),
-            _make_model("Course", [{"name": "id", "type": "uuid", "pk": True}, {"name": "title", "type": "str"}]),
+            _make_model(
+                "Student",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "courses",
+                        "target_model": "Course",
+                        "cardinality": "many_to_many",
+                    }
+                ],
+            ),
+            _make_model(
+                "Course",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+            ),
         ]
         result = transform_orm_models(models)
         student_model = next(m for m in result if m.source_model == "Student")
@@ -1995,9 +2177,27 @@ class TestManyToManyRelationship:
 
     def test_many_to_many_no_fk_on_source(self):
         models = [
-            _make_model("Student", [{"name": "id", "type": "uuid", "pk": True}, {"name": "name", "type": "str"}],
-                        relationships=[{"name": "courses", "target_model": "Course", "cardinality": "many_to_many"}]),
-            _make_model("Course", [{"name": "id", "type": "uuid", "pk": True}, {"name": "title", "type": "str"}]),
+            _make_model(
+                "Student",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "courses",
+                        "target_model": "Course",
+                        "cardinality": "many_to_many",
+                    }
+                ],
+            ),
+            _make_model(
+                "Course",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+            ),
         ]
         result = transform_orm_models(models)
         student_model = next(m for m in result if m.source_model == "Student")
@@ -2009,9 +2209,27 @@ class TestManyToManyRelationship:
 class TestCollectAssociationTables:
     def test_returns_association_table_for_many_to_many(self):
         models = [
-            _make_model("Student", [{"name": "id", "type": "uuid", "pk": True}, {"name": "name", "type": "str"}],
-                        relationships=[{"name": "courses", "target_model": "Course", "cardinality": "many_to_many"}]),
-            _make_model("Course", [{"name": "id", "type": "uuid", "pk": True}, {"name": "title", "type": "str"}]),
+            _make_model(
+                "Student",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "courses",
+                        "target_model": "Course",
+                        "cardinality": "many_to_many",
+                    }
+                ],
+            ),
+            _make_model(
+                "Course",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+            ),
         ]
         orm_models = transform_orm_models(models)
         tables = collect_association_tables(orm_models)
@@ -2021,9 +2239,27 @@ class TestCollectAssociationTables:
 
     def test_no_association_tables_without_many_to_many(self):
         models = [
-            _make_model("Post", [{"name": "id", "type": "uuid", "pk": True}, {"name": "title", "type": "str"}],
-                        relationships=[{"name": "author", "target_model": "User", "cardinality": "references"}]),
-            _make_model("User", [{"name": "id", "type": "uuid", "pk": True}, {"name": "name", "type": "str"}]),
+            _make_model(
+                "Post",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "author",
+                        "target_model": "User",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "User",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+            ),
         ]
         orm_models = transform_orm_models(models)
         tables = collect_association_tables(orm_models)
@@ -2040,35 +2276,63 @@ class TestRelationshipCodeGeneration:
                 InputModel(
                     name="User",
                     fields=[
-                        InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                        InputField(
+                            name="id", type="uuid", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
-                    relationships=[InputRelationship(name="posts", target_model="Post", cardinality="has_many")],
+                    relationships=[
+                        InputRelationship(
+                            name="posts", target_model="Post", cardinality="has_many"
+                        )
+                    ],
                 ),
                 InputModel(
                     name="Post",
                     fields=[
-                        InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                        InputField(
+                            name="id", type="uuid", pk=True, exposure="read_only"
+                        ),
                         InputField(name="title", type="str"),
                     ],
                     relationships=[
-                        InputRelationship(name="author", target_model="User", cardinality="references"),
-                        InputRelationship(name="tags", target_model="Tag", cardinality="many_to_many"),
+                        InputRelationship(
+                            name="author", target_model="User", cardinality="references"
+                        ),
+                        InputRelationship(
+                            name="tags", target_model="Tag", cardinality="many_to_many"
+                        ),
                     ],
                 ),
                 InputModel(
                     name="Tag",
                     fields=[
-                        InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                        InputField(
+                            name="id", type="uuid", pk=True, exposure="read_only"
+                        ),
                         InputField(name="label", type="str"),
                     ],
                 ),
             ],
             endpoints=[
-                InputEndpoint(name="GetPosts", path="/posts", method="GET", response="Post", response_shape="list"),
-                InputEndpoint(name="GetUsers", path="/users", method="GET", response="User", response_shape="list"),
+                InputEndpoint(
+                    name="GetPosts",
+                    path="/posts",
+                    method="GET",
+                    response="Post",
+                    response_shape="list",
+                ),
+                InputEndpoint(
+                    name="GetUsers",
+                    path="/users",
+                    method="GET",
+                    response="User",
+                    response_shape="list",
+                ),
             ],
-            config=InputApiConfig(response_placeholders=False, database=InputDatabaseConfig(enabled=True)),
+            config=InputApiConfig(
+                response_placeholders=False, database=InputDatabaseConfig(enabled=True)
+            ),
         )
         tmp_path = tmp_path_factory.mktemp("blog_api")
         APIGenerator().generate(api_input, path=str(tmp_path))
@@ -2079,7 +2343,9 @@ class TestRelationshipCodeGeneration:
         compile(content, "orm_models.py", "exec")
 
     def test_migration_compiles(self, rel_project: Path):
-        content = (rel_project / "migrations" / "versions" / "0001_initial.py").read_text()
+        content = (
+            rel_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
         compile(content, "0001_initial.py", "exec")
 
     def test_orm_has_relationship_import(self, rel_project: Path):
@@ -2114,11 +2380,15 @@ class TestRelationshipCodeGeneration:
         assert "secondary=" in content
 
     def test_migration_has_fk_constraint(self, rel_project: Path):
-        content = (rel_project / "migrations" / "versions" / "0001_initial.py").read_text()
+        content = (
+            rel_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
         assert "ForeignKey" in content
 
     def test_migration_has_association_table(self, rel_project: Path):
-        content = (rel_project / "migrations" / "versions" / "0001_initial.py").read_text()
+        content = (
+            rel_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
         assert "posts_tags" in content or "tags_posts" in content
 
     def test_response_schema_has_fk_id(self, rel_project: Path):
@@ -2128,7 +2398,9 @@ class TestRelationshipCodeGeneration:
     def test_migration_table_order(self, rel_project: Path):
         import re
 
-        content = (rel_project / "migrations" / "versions" / "0001_initial.py").read_text()
+        content = (
+            rel_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
         upgrade_section = content.split("def upgrade")[1].split("def downgrade")[0]
         created = re.findall(r'op\.create_table\(\s*"(\w+)"', upgrade_section)
         posts_idx = created.index("posts")
@@ -2160,9 +2432,27 @@ class TestRelationshipCodeGeneration:
 class TestMigrationTableOrdering:
     def test_references_target_created_before_source(self):
         models = [
-            _make_model("Post", [{"name": "id", "type": "uuid", "pk": True}, {"name": "title", "type": "str"}],
-                        relationships=[{"name": "author", "target_model": "User", "cardinality": "references"}]),
-            _make_model("User", [{"name": "id", "type": "uuid", "pk": True}, {"name": "name", "type": "str"}]),
+            _make_model(
+                "Post",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "author",
+                        "target_model": "User",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "User",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+            ),
         ]
         result = transform_orm_models(models)
         table_names = [m.table_name for m in result]
@@ -2170,11 +2460,33 @@ class TestMigrationTableOrdering:
 
     def test_chain_dependencies_ordered(self):
         models = [
-            _make_model("A", [{"name": "id", "type": "uuid", "pk": True}, {"name": "val", "type": "str"}],
-                        relationships=[{"name": "b_ref", "target_model": "B", "cardinality": "references"}]),
-            _make_model("B", [{"name": "id", "type": "uuid", "pk": True}, {"name": "val", "type": "str"}],
-                        relationships=[{"name": "c_ref", "target_model": "C", "cardinality": "references"}]),
-            _make_model("C", [{"name": "id", "type": "uuid", "pk": True}, {"name": "val", "type": "str"}]),
+            _make_model(
+                "A",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "val", "type": "str"},
+                ],
+                relationships=[
+                    {"name": "b_ref", "target_model": "B", "cardinality": "references"}
+                ],
+            ),
+            _make_model(
+                "B",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "val", "type": "str"},
+                ],
+                relationships=[
+                    {"name": "c_ref", "target_model": "C", "cardinality": "references"}
+                ],
+            ),
+            _make_model(
+                "C",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "val", "type": "str"},
+                ],
+            ),
         ]
         result = transform_orm_models(models)
         table_names = [m.table_name for m in result]
@@ -2193,9 +2505,27 @@ class TestMigrationTableOrdering:
 
     def test_many_to_many_no_entity_ordering_constraint(self):
         models = [
-            _make_model("Student", [{"name": "id", "type": "uuid", "pk": True}, {"name": "name", "type": "str"}],
-                        relationships=[{"name": "courses", "target_model": "Course", "cardinality": "many_to_many"}]),
-            _make_model("Course", [{"name": "id", "type": "uuid", "pk": True}, {"name": "title", "type": "str"}]),
+            _make_model(
+                "Student",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "courses",
+                        "target_model": "Course",
+                        "cardinality": "many_to_many",
+                    }
+                ],
+            ),
+            _make_model(
+                "Course",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+            ),
         ]
         result = transform_orm_models(models)
         table_names = [m.table_name for m in result]
@@ -2206,9 +2536,27 @@ class TestMigrationTableOrdering:
 class TestFkTypeDerivedFromTargetPk:
     def test_fk_type_matches_int_pk(self):
         models = [
-            _make_model("Comment", [{"name": "id", "type": "uuid", "pk": True}, {"name": "body", "type": "str"}],
-                        relationships=[{"name": "article", "target_model": "Article", "cardinality": "references"}]),
-            _make_model("Article", [{"name": "id", "type": "int", "pk": True}, {"name": "title", "type": "str"}]),
+            _make_model(
+                "Comment",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "body", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "article",
+                        "target_model": "Article",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "Article",
+                [
+                    {"name": "id", "type": "int", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+            ),
         ]
         schemas = split_model_schemas(models[0], all_models=models)
         response = schemas[2]
@@ -2222,7 +2570,11 @@ class TestFkTypeDerivedFromTargetPk:
                 InputField(name="id", type="uuid", pk=True, exposure="read_only"),
                 InputField(name="title", type="str"),
             ],
-            relationships=[InputRelationship(name="author", target_model="User", cardinality="references")],
+            relationships=[
+                InputRelationship(
+                    name="author", target_model="User", cardinality="references"
+                )
+            ],
         )
         schemas = split_model_schemas(model)
         response = schemas[2]
@@ -2231,9 +2583,27 @@ class TestFkTypeDerivedFromTargetPk:
 
     def test_fk_type_in_create_matches_target_pk(self):
         models = [
-            _make_model("Comment", [{"name": "id", "type": "uuid", "pk": True}, {"name": "body", "type": "str"}],
-                        relationships=[{"name": "article", "target_model": "Article", "cardinality": "references"}]),
-            _make_model("Article", [{"name": "id", "type": "int", "pk": True}, {"name": "title", "type": "str"}]),
+            _make_model(
+                "Comment",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "body", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "article",
+                        "target_model": "Article",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "Article",
+                [
+                    {"name": "id", "type": "int", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+            ),
         ]
         schemas = split_model_schemas(models[0], all_models=models)
         create = schemas[0]
@@ -2247,7 +2617,10 @@ class TestNoRelationshipsBackwardCompat:
         models = [
             _make_model(
                 "Item",
-                [{"name": "id", "type": "int", "pk": True}, {"name": "name", "type": "str"}],
+                [
+                    {"name": "id", "type": "int", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
             ),
         ]
         result = transform_orm_models(models)
@@ -2260,15 +2633,25 @@ class TestNoRelationshipsBackwardCompat:
                 InputModel(
                     name="Item",
                     fields=[
-                        InputField(name="id", type="int", pk=True, exposure="read_only"),
+                        InputField(
+                            name="id", type="int", pk=True, exposure="read_only"
+                        ),
                         InputField(name="name", type="str"),
                     ],
                 ),
             ],
             endpoints=[
-                InputEndpoint(name="GetItems", path="/items", method="GET", response="Item", response_shape="list"),
+                InputEndpoint(
+                    name="GetItems",
+                    path="/items",
+                    method="GET",
+                    response="Item",
+                    response_shape="list",
+                ),
             ],
-            config=InputApiConfig(response_placeholders=False, database=InputDatabaseConfig(enabled=True)),
+            config=InputApiConfig(
+                response_placeholders=False, database=InputDatabaseConfig(enabled=True)
+            ),
         )
         APIGenerator().generate(api_input, path=str(tmp_path))
         content = (tmp_path / "simple-api" / "src" / "orm_models.py").read_text()

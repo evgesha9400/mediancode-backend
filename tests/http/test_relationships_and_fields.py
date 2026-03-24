@@ -5,8 +5,8 @@ Merged coverage from legacy test_relationships.py, test_relationship_fk.py,
 test_field_appears.py, test_object_server_default.py.
 """
 
-import pytest
 from httpx import AsyncClient
+import pytest
 
 pytestmark = [
     pytest.mark.integration,
@@ -615,7 +615,9 @@ class TestFieldRolesAndDefaults:
                     "typeId": cls.type_ids[type_name],
                 },
             )
-            assert resp.status_code == 201, f"Failed to create field {name}: {resp.text}"
+            assert resp.status_code == 201, (
+                f"Failed to create field {name}: {resp.text}"
+            )
             cls.field_ids[name] = resp.json()["id"]
 
     async def test_create_object_with_roles(self, client: AsyncClient):

@@ -13,6 +13,7 @@ from typing import get_args
 
 import pytest
 
+from api.schemas.api import GenerateOptions
 from api_craft.extractors import collect_database_dependencies, collect_orm_imports
 from api_craft.models.enums import (
     Cardinality,
@@ -49,7 +50,10 @@ from api_craft.models.validation_catalog import (
     SERVER_DEFAULT_VALID_TYPES,
     SNAKE_CASE_PATTERN,
 )
-from api_craft.models.validators import validate_snake_case_name, validate_type_annotation
+from api_craft.models.validators import (
+    validate_snake_case_name,
+    validate_type_annotation,
+)
 from api_craft.orm_builder import transform_orm_models
 from api_craft.placeholders import (
     PlaceholderGenerator,
@@ -66,7 +70,6 @@ from api_craft.placeholders import (
 from api_craft.prepare import prepare_api
 from api_craft.schema_splitter import split_model_schemas
 from api_craft.utils import camel_to_snake, snake_to_plural
-from api.schemas.api import GenerateOptions
 from support.generated_app import load_input
 
 TemplateField = InputField
@@ -1120,17 +1123,17 @@ class TestNamePatterns:
 class TestServerDefaultCoverage:
     def test_all_generated_strategies_have_valid_types(self):
         for sd in get_args(GeneratedStrategy):
-            assert (
-                sd in SERVER_DEFAULT_VALID_TYPES
-            ), f"GeneratedStrategy '{sd}' missing from SERVER_DEFAULT_VALID_TYPES"
+            assert sd in SERVER_DEFAULT_VALID_TYPES, (
+                f"GeneratedStrategy '{sd}' missing from SERVER_DEFAULT_VALID_TYPES"
+            )
 
 
 class TestOperatorCoverage:
     def test_all_operators_have_valid_types(self):
         for op in get_args(FilterOperator):
-            assert (
-                op in OPERATOR_VALID_TYPES
-            ), f"FilterOperator '{op}' missing from OPERATOR_VALID_TYPES"
+            assert op in OPERATOR_VALID_TYPES, (
+                f"FilterOperator '{op}' missing from OPERATOR_VALID_TYPES"
+            )
 
 
 class TestPkTypes:
@@ -1822,9 +1825,9 @@ class TestSplitModelSchemas:
         schemas = split_model_schemas(model)
         update_schema = schemas[1]
         for field in update_schema.fields:
-            assert (
-                field.nullable is True
-            ), f"Update field '{field.name}' should be nullable"
+            assert field.nullable is True, (
+                f"Update field '{field.name}' should be nullable"
+            )
 
     def test_read_write_appears_in_all_schemas(self):
         model = InputModel(
@@ -2444,9 +2447,9 @@ class TestEnumCheckConsistency:
         sql = check_constraint_sql(column, literal_type)
         values = get_args(literal_type)
         for val in values:
-            assert (
-                f"'{val}'" in sql
-            ), f"Value '{val}' missing from CHECK SQL for {table}.{column}"
+            assert f"'{val}'" in sql, (
+                f"Value '{val}' missing from CHECK SQL for {table}.{column}"
+            )
         assert sql.startswith(f"{column} IN (")
 
     def test_field_role_check_contains_all_values(self):

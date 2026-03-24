@@ -4,8 +4,8 @@
 Merged coverage from legacy test_e2e_shop_errors.py, test_name_validation.py.
 """
 
-import pytest
 from httpx import AsyncClient
+import pytest
 
 pytestmark = [
     pytest.mark.integration,

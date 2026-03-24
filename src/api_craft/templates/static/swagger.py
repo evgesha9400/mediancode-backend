@@ -1,8 +1,7 @@
 import json
 
-import yaml
-
 from main import app
+import yaml
 
 SWAGGER_PATH = "swagger.yaml"
 

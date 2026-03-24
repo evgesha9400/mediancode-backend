@@ -10,10 +10,10 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from api.database import Base
-from api.settings import get_settings
 
 # Import all models so they're registered with Base.metadata
 from api.models import database as models  # noqa: F401
+from api.settings import get_settings
 
 config = context.config
 

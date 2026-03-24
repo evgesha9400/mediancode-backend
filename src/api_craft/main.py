@@ -7,9 +7,9 @@ fully scaffolded FastAPI project using Mako templates.
 import logging
 import os
 from pathlib import Path
+import subprocess
 from typing import Any
 
-import black
 from mako.exceptions import TopLevelLookupException
 from mako.lookup import TemplateLookup
 from mako.template import Template
@@ -35,19 +35,26 @@ logger = logging.getLogger(__name__)
 
 
 def format_python_files(directory: Path) -> None:
-    """Format all Python files in a directory using Black.
+    """Format all Python files in a directory using Ruff.
 
     :param directory: Path to the directory containing Python files.
     """
-    mode = black.Mode(line_length=120)
-    for py_file in directory.rglob("*.py"):
-        try:
-            content = py_file.read_text()
-            formatted = black.format_str(content, mode=mode)
-            py_file.write_text(formatted)
-            logger.debug(f"Formatted {py_file}")
-        except black.InvalidInput as e:
-            logger.warning(f"Could not format {py_file}: {e}")
+    try:
+        subprocess.run(
+            ["ruff", "format", str(directory)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            ["ruff", "check", "--fix", str(directory)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        logger.debug(f"Formatted {directory}")
+    except subprocess.CalledProcessError as e:
+        logger.warning(f"Could not format {directory}: {e.stderr}")
 
 
 class APIGenerator:
