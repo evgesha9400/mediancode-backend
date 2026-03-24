@@ -1,4 +1,5 @@
 # src/api_craft/prepare.py
+# src/api_craft/prepare.py
 """Prepare InputAPI for template rendering.
 
 Replaces the transform layer (transformers.py) by passing Input models
@@ -347,16 +348,14 @@ def _prepare_path_params(
 
 def _prepare_view(
     endpoint: InputEndpoint,
-    placeholder_generator: PlaceholderGenerator,
-    generate_placeholders: bool = False,
     objects_by_name: dict[str, InputModel] | None = None,
 ) -> PreparedView:
     response_name = endpoint.response
-    if response_name and response_name not in placeholder_generator.models:
+    if response_name and objects_by_name and response_name not in objects_by_name:
         raise ValueError(f"Response object '{response_name}' is not declared")
 
     request_name = endpoint.request
-    if request_name and request_name not in placeholder_generator.models:
+    if request_name and objects_by_name and request_name not in objects_by_name:
         raise ValueError(f"Request object '{request_name}' is not declared")
 
     camel_name = remove_duplicates(endpoint.name)
@@ -365,10 +364,6 @@ def _prepare_view(
             f"Endpoint name '{endpoint.name}' resolved to an empty identifier"
         )
     snake_name = camel_to_snake(camel_name)
-
-    response_placeholders = None
-    if generate_placeholders and response_name:
-        response_placeholders = placeholder_generator.generate_for_model(response_name)
 
     # Resolve target object fields for type derivation
     target_fields: dict[str, InputField] | None = None
@@ -411,7 +406,7 @@ def _prepare_view(
         method=endpoint.method.lower(),
         response_model=response_name,
         request_model=request_name,
-        response_placeholders=response_placeholders,
+        response_placeholders=None,
         query_params=query_params,
         path_params=_prepare_path_params(path_params_input, target_fields),
         tag=endpoint.tag,
@@ -428,7 +423,7 @@ def _prepare_view(
 # ---------------------------------------------------------------------------
 
 
-def _build_signature_lines(view: PreparedView, has_database: bool) -> list[str]:
+def _build_signature_lines(view: PreparedView, inject_session: bool) -> list[str]:
     """Build the function signature lines for a view."""
     lines = []
     for p_param in view.path_params:
@@ -438,9 +433,35 @@ def _build_signature_lines(view: PreparedView, has_database: bool) -> list[str]:
     for q_param in view.query_params:
         suffix = " = None" if q_param.optional else ""
         lines.append(f"    {q_param.snake_name}: query.{q_param.camel_name}{suffix},")
-    if has_database:
+    if inject_session:
         lines.append("    session: AsyncSession = Depends(get_session),")
     return lines
+
+
+def _resolve_orm_name(
+    response_model: str | None,
+    target: str | None,
+    method: str,
+    path_param_names: list[str],
+    orm_model_map: dict[str, str] | None,
+    orm_pk_map: dict[str, str] | None,
+) -> tuple[str, bool]:
+    """Resolve the ORM class name for endpoint-like data."""
+    if not orm_model_map:
+        return "", False
+
+    if response_model and response_model in orm_model_map:
+        return orm_model_map[response_model], True
+
+    if target and target in orm_model_map:
+        return orm_model_map[target], True
+
+    if method == "delete" and orm_pk_map:
+        for path_param_name in path_param_names:
+            if path_param_name in orm_pk_map:
+                return orm_pk_map[path_param_name], True
+
+    return "", False
 
 
 def _resolve_orm_class(
@@ -449,24 +470,31 @@ def _resolve_orm_class(
     orm_pk_map: dict[str, str] | None,
 ) -> tuple[str, bool]:
     """Resolve the ORM class name for a view. Returns (orm_class, has_orm)."""
-    if not orm_model_map:
-        return "", False
+    return _resolve_orm_name(
+        view.response_model,
+        view.target,
+        view.method,
+        [p.snake_name for p in view.path_params],
+        orm_model_map,
+        orm_pk_map,
+    )
 
-    # Try response model first
-    if view.response_model and view.response_model in orm_model_map:
-        return orm_model_map[view.response_model], True
 
-    # Try target for list endpoints
-    if view.target and view.target in orm_model_map:
-        return orm_model_map[view.target], True
-
-    # For delete without response model, resolve from path param PK
-    if view.method == "delete" and orm_pk_map and view.path_params:
-        for p in view.path_params:
-            if p.snake_name in orm_pk_map:
-                return orm_pk_map[p.snake_name], True
-
-    return "", False
+def _endpoint_has_orm(
+    endpoint: InputEndpoint,
+    orm_model_map: dict[str, str] | None,
+    orm_pk_map: dict[str, str] | None,
+) -> bool:
+    """Return whether an endpoint will use an ORM-backed view body."""
+    _, has_orm = _resolve_orm_name(
+        endpoint.response,
+        endpoint.target,
+        endpoint.method.lower(),
+        [str(p.name) for p in endpoint.path_params or []],
+        orm_model_map,
+        orm_pk_map,
+    )
+    return has_orm
 
 
 def _compute_view_imports(
@@ -546,11 +574,13 @@ def _enrich_views(
     """Enrich views with pre-computed template data (mutates in place)."""
     has_database = database_config is not None
     for view in views:
-        view.signature_lines = _build_signature_lines(view, has_database)
-        view.has_signature = bool(view.signature_lines)
         view.orm_class, view.has_orm = _resolve_orm_class(
             view, orm_model_map, orm_pk_map
         )
+        view.signature_lines = _build_signature_lines(
+            view, has_database and view.has_orm
+        )
+        view.has_signature = bool(view.signature_lines)
         view.pk_param = view.path_params[0].snake_name if view.path_params else "id"
 
         # List endpoint filter pre-computation
@@ -689,30 +719,6 @@ def prepare_api(input_api: InputAPI) -> PreparedAPI:
             validator_fields[key] = referenced
     placeholder_generator = PlaceholderGenerator(field_map, validator_fields)
 
-    # Build objects lookup for type derivation
-    objects_by_name = {str(obj.name): obj for obj in input_api.objects}
-
-    # Prepare views, remapping model names to derived schemas
-    prepared_views = []
-    for endpoint in input_api.endpoints:
-        view = _prepare_view(
-            endpoint,
-            placeholder_generator,
-            generate_placeholders=input_api.config.response_placeholders,
-            objects_by_name=objects_by_name,
-        )
-        if use_split:
-            if view.request_model and view.request_model in split_model_names:
-                base_name = view.request_model
-                if endpoint.method in ("PUT", "PATCH"):
-                    view.request_model = f"{base_name}Update"
-                else:
-                    view.request_model = f"{base_name}Create"
-            if view.response_model and view.response_model in split_model_names:
-                base_name = view.response_model
-                view.response_model = f"{base_name}Response"
-        prepared_views.append(view)
-
     orm_models: list[TemplateORMModel] = []
     database_config = None
     if input_api.config.database.enabled:
@@ -736,6 +742,33 @@ def prepare_api(input_api: InputAPI) -> PreparedAPI:
         orm_pk_map = {
             f.name: m.class_name for m in orm_models for f in m.fields if f.primary_key
         }
+
+    # Build objects lookup for type derivation
+    objects_by_name = {str(obj.name): obj for obj in input_api.objects}
+
+    # Prepare views, remapping model names to derived schemas
+    prepared_views = []
+    for endpoint in input_api.endpoints:
+        view = _prepare_view(endpoint, objects_by_name=objects_by_name)
+        if use_split:
+            if view.request_model and view.request_model in split_model_names:
+                base_name = view.request_model
+                if endpoint.method in ("PUT", "PATCH"):
+                    view.request_model = f"{base_name}Update"
+                else:
+                    view.request_model = f"{base_name}Create"
+            if view.response_model and view.response_model in split_model_names:
+                base_name = view.response_model
+                view.response_model = f"{base_name}Response"
+        if (
+            input_api.config.response_placeholders
+            and endpoint.response
+            and not _endpoint_has_orm(endpoint, orm_model_map, orm_pk_map)
+        ):
+            view.response_placeholders = placeholder_generator.generate_for_model(
+                endpoint.response
+            )
+        prepared_views.append(view)
 
     # Enrich views with pre-computed template data
     _enrich_views(prepared_views, database_config, orm_model_map, orm_pk_map)

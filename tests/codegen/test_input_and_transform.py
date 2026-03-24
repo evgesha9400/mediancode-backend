@@ -1,4 +1,5 @@
 # tests/codegen/test_input_and_transform.py
+# tests/codegen/test_input_and_transform.py
 """Tests for input models, name types, validation catalog, preparation,
 ORM transforms, schema splitting, placeholders, generate options, and
 enum consistency.
@@ -1693,6 +1694,70 @@ class TestTransformApiWithDatabase:
         )
         result = prepare_api(api)
         assert "shop_api" in result.database_config.default_url
+
+    def test_mixed_mode_only_uses_placeholders_for_non_orm_views(self):
+        api = InputAPI(
+            name="MixedApi",
+            endpoints=[
+                InputEndpoint(
+                    name="GetItems",
+                    path="/items",
+                    method="GET",
+                    response="Item",
+                    response_shape="list",
+                ),
+                InputEndpoint(
+                    name="GetStatus",
+                    path="/status",
+                    method="GET",
+                    response="StatusResponse",
+                ),
+            ],
+            objects=[
+                _make_model(
+                    "Item",
+                    [
+                        {
+                            "name": "id",
+                            "type": "int",
+                            "pk": True,
+                            "exposure": "read_only",
+                        },
+                        {"name": "name", "type": "str"},
+                    ],
+                ),
+                _make_model(
+                    "StatusResponse",
+                    [
+                        {"name": "status", "type": "str"},
+                        {"name": "version", "type": "str"},
+                    ],
+                ),
+            ],
+            config=InputApiConfig(
+                database={"enabled": True},
+                response_placeholders=True,
+            ),
+        )
+
+        result = prepare_api(api)
+        items_view = next(view for view in result.views if view.snake_name == "get_items")
+        status_view = next(
+            view for view in result.views if view.snake_name == "get_status"
+        )
+
+        assert items_view.has_orm is True
+        assert items_view.response_placeholders is None
+        assert "    session: AsyncSession = Depends(get_session)," in (
+            items_view.signature_lines
+        )
+
+        assert status_view.has_orm is False
+        assert status_view.response_placeholders is not None
+        assert set(status_view.response_placeholders) == {"status", "version"}
+        assert "    session: AsyncSession = Depends(get_session)," not in (
+            status_view.signature_lines
+        )
 
 
 @pytest.mark.codegen

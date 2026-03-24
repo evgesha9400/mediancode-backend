@@ -1,4 +1,5 @@
 # tests/codegen/test_generated_project.py
+# tests/codegen/test_generated_project.py
 """Tests that generate projects to tmp_path and inspect the generated files
 statically (no TestClient).
 
@@ -10,6 +11,7 @@ Merges legacy tests from:
 import io
 import os
 from pathlib import Path
+import re
 import tempfile
 import zipfile
 
@@ -494,9 +496,21 @@ class TestMixedMode:
         assert "select(" in content
         assert "session.execute" in content
 
+    def test_db_backed_endpoint_signature_keeps_session(self, mixed_project: Path):
+        content = (mixed_project / "src" / "views.py").read_text()
+        match = re.search(r"async def get_items\((.*?)\):", content, re.DOTALL)
+        assert match is not None
+        assert "Depends(get_session)" in match.group(1)
+
     def test_non_pk_endpoint_uses_placeholders(self, mixed_project: Path):
         content = (mixed_project / "src" / "views.py").read_text()
         assert "StatusResponse(" in content
+
+    def test_non_pk_endpoint_signature_omits_session(self, mixed_project: Path):
+        content = (mixed_project / "src" / "views.py").read_text()
+        match = re.search(r"async def get_status\((.*?)\):", content, re.DOTALL)
+        assert match is not None
+        assert "Depends(get_session)" not in match.group(1)
 
     def test_database_files_exist(self, mixed_project: Path):
         assert (mixed_project / "src" / "orm_models.py").exists()
