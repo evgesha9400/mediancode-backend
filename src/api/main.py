@@ -106,6 +106,9 @@ app.add_middleware(
         "Origin",
         "X-Requested-With",
     ],
+    expose_headers=[
+        "Content-Disposition",
+    ],
 )
 
 
