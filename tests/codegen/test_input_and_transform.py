@@ -1741,7 +1741,9 @@ class TestTransformApiWithDatabase:
         )
 
         result = prepare_api(api)
-        items_view = next(view for view in result.views if view.snake_name == "get_items")
+        items_view = next(
+            view for view in result.views if view.snake_name == "get_items"
+        )
         status_view = next(
             view for view in result.views if view.snake_name == "get_status"
         )
