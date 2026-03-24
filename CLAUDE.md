@@ -94,4 +94,5 @@ To extend api_craft:
 
 ## Commit Messages
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/) as specified in `docs/COMMIT_MESSAGE_STANDARD.md`. Use scopes: `api`, `generation`, `models`, `config`, `deps`. Body must be sequential bullet points. Do NOT include Co-Authored-By lines.
+Follow [Conventional Commits](https://www.conventionalcommits.org/) as specified in `../mediancode-shared-workspace/docs/standards/COMMIT_MESSAGE_STANDARD.md`.
+Scopes: `api`, `generation`, `models`, `config`, `deps`. Body must be sequential bullet points. Do NOT include Co-Authored-By lines.
