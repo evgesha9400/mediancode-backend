@@ -11,6 +11,7 @@ Migrated from ``test_api_craft/test_e2e_generated.py``.
 import subprocess
 import time
 import uuid
+from pathlib import Path
 
 import httpx
 import pytest
@@ -516,3 +517,135 @@ class TestDatetimeTimezones:
         assert r.status_code == 200, (
             f"Customer UTC offset failed: {r.status_code} {r.text}"
         )
+
+
+# =============================================================================
+# Make target lifecycle tests (install → run-local → cleanup)
+# =============================================================================
+
+MAKE_APP_PORT = 8003
+MAKE_DB_PORT = 5435
+MAKE_STARTUP_TIMEOUT = 120  # seconds
+
+
+@pytest.fixture(scope="module")
+def make_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Generate the ShopApi project tree for make-target tests."""
+    tmp_dir = tmp_path_factory.mktemp("e2e_make")
+    input_api = _load_input("shop_api.yaml")
+    generate_fastapi(input_api, str(tmp_dir))
+    project_dir = tmp_dir / "shop-api"
+    assert project_dir.exists(), f"Generated project not found at {project_dir}"
+    (project_dir / ".env").write_text(
+        f"DB_PORT={MAKE_DB_PORT}\nAPP_PORT={MAKE_APP_PORT}\n"
+    )
+    return project_dir
+
+
+def _run_make(target: str, project_dir: Path, timeout: int = 180) -> subprocess.CompletedProcess:
+    """Run a make target in the generated project directory."""
+    return subprocess.run(
+        ["make", target],
+        cwd=str(project_dir),
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+
+
+def _run_make_background(target: str, project_dir: Path) -> subprocess.Popen:
+    """Start a long-running make target in a background subprocess."""
+    return subprocess.Popen(
+        ["make", target],
+        cwd=str(project_dir),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+
+def _wait_for_api(base_url: str, timeout: int) -> bool:
+    """Poll the OpenAPI endpoint until the API is ready or timeout elapses."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            r = httpx.get(f"{base_url}/openapi.json", timeout=3)
+            if r.status_code == 200:
+                return True
+        except (
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.ReadError,
+            httpx.RemoteProtocolError,
+        ):
+            pass
+        time.sleep(2)
+    return False
+
+
+class TestMakeTargets:
+    """Validate generated Makefile lifecycle: install, run-local, cleanup."""
+
+    def test_make_install(self, make_project: Path):
+        """make install completes without error (poetry install succeeds)."""
+        try:
+            _run_make("install", make_project, timeout=180)
+        except subprocess.CalledProcessError as e:
+            pytest.fail(
+                f"make install failed:\nstdout: {e.stdout}\nstderr: {e.stderr}"
+            )
+
+    def test_make_run_local_starts_api(self, make_project: Path):
+        """make run-local brings up the DB and API; openapi.json is reachable."""
+        base_url = f"http://localhost:{MAKE_APP_PORT}"
+        proc = _run_make_background("run-local", make_project)
+        try:
+            ready = _wait_for_api(base_url, MAKE_STARTUP_TIMEOUT)
+            if not ready:
+                proc.terminate()
+                proc.wait(timeout=10)
+                stdout, stderr = proc.communicate()
+                pytest.fail(
+                    f"API not ready after {MAKE_STARTUP_TIMEOUT}s via make run-local.\n"
+                    f"stdout: {stdout}\nstderr: {stderr}"
+                )
+            r = httpx.get(f"{base_url}/openapi.json", timeout=5)
+            assert r.status_code == 200
+        finally:
+            proc.terminate()
+            try:
+                proc.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+
+    def test_make_cleanup_removes_resources(self, make_project: Path):
+        """make cleanup tears down Compose stack, volumes, and image idempotently."""
+        try:
+            _run_make("cleanup", make_project, timeout=60)
+        except subprocess.CalledProcessError as e:
+            pytest.fail(
+                f"make cleanup failed:\nstdout: {e.stdout}\nstderr: {e.stderr}"
+            )
+
+        # Compose stack should be fully down after cleanup.
+        ps_result = subprocess.run(
+            ["docker", "compose", "ps", "--services", "--filter", "status=running"],
+            cwd=str(make_project),
+            capture_output=True,
+            text=True,
+        )
+        running_services = ps_result.stdout.strip()
+        assert running_services == "", (
+            f"Expected no running Compose services after cleanup, got: {running_services!r}"
+        )
+
+    def test_make_cleanup_is_idempotent(self, make_project: Path):
+        """A second make cleanup run must not fail when nothing is running."""
+        try:
+            _run_make("cleanup", make_project, timeout=60)
+        except subprocess.CalledProcessError as e:
+            pytest.fail(
+                f"Second make cleanup invocation failed:\nstdout: {e.stdout}\nstderr: {e.stderr}"
+            )

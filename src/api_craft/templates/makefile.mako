@@ -6,9 +6,9 @@
 export
 
 % if api.database_config:
-.PHONY: install run-local build clean run-container swagger db-up db-down db-migrate db-upgrade db-downgrade db-reset run-stack
+.PHONY: install run-local build cleanup clean run-container swagger db-up db-down db-migrate db-upgrade db-downgrade db-reset run-stack
 % else:
-.PHONY: install run-local build clean run-container swagger
+.PHONY: install run-local build cleanup clean run-container swagger
 % endif
 
 PROJECT_NAME=${api.snake_name}
@@ -30,12 +30,20 @@ run-local: install
 build:
 	@docker build -t $(PROJECT_NAME) .
 
-clean:
+% if api.database_config:
+cleanup:
+	-@docker compose down -v --remove-orphans 2>/dev/null || true
+	-@docker rmi $(PROJECT_NAME) 2>/dev/null || true
+% else:
+cleanup:
 	-@docker stop $(PROJECT_NAME) 2>/dev/null || true
 	-@docker rm $(PROJECT_NAME) 2>/dev/null || true
 	-@docker rmi $(PROJECT_NAME) 2>/dev/null || true
+% endif
 
-run-container: install clean build
+clean: cleanup
+
+run-container: install cleanup build
 	@docker run --name $(PROJECT_NAME) -p $(APP_PORT):80 -d $(PROJECT_NAME):latest
 
 swagger: install

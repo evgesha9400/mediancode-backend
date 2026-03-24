@@ -181,6 +181,25 @@ class TestMakefileWithDatabase:
         assert "db-upgrade:" in content
         assert "db-reset:" in content
         assert "db-downgrade:" in content
+        assert "db-down:" in content
+        assert "run-stack:" in content
+
+    def test_makefile_has_core_targets(self, db_project: Path):
+        content = (db_project / "Makefile").read_text()
+        assert "install:" in content
+        assert "run-local:" in content
+
+    def test_makefile_has_cleanup_target(self, db_project: Path):
+        content = (db_project / "Makefile").read_text()
+        assert "cleanup:" in content
+
+    def test_makefile_clean_aliases_cleanup(self, db_project: Path):
+        content = (db_project / "Makefile").read_text()
+        assert "clean: cleanup" in content
+
+    def test_makefile_cleanup_uses_compose_down(self, db_project: Path):
+        content = (db_project / "Makefile").read_text()
+        assert "docker compose down -v" in content
 
     def test_makefile_includes_env(self, db_project: Path):
         content = (db_project / "Makefile").read_text()
@@ -372,6 +391,25 @@ class TestDbBackwardCompatibility:
         assert "Depends" not in views
         assert "get_session" not in views
         assert "select(" not in views
+
+    def test_makefile_has_core_targets_when_disabled(self, tmp_path):
+        api_input = load_input("items_api.yaml")
+        APIGenerator().generate(api_input, path=str(tmp_path))
+        content = (tmp_path / "items-api" / "Makefile").read_text()
+
+        assert "install:" in content
+        assert "run-local:" in content
+        assert "cleanup:" in content
+        assert "clean: cleanup" in content
+
+    def test_makefile_has_no_db_targets_when_disabled(self, tmp_path):
+        api_input = load_input("items_api.yaml")
+        APIGenerator().generate(api_input, path=str(tmp_path))
+        content = (tmp_path / "items-api" / "Makefile").read_text()
+
+        assert "db-up:" not in content
+        assert "db-down:" not in content
+        assert "run-stack:" not in content
 
 
 class TestDatabaseDependencies:
