@@ -14,7 +14,7 @@ SEED_USER_EMAIL := aleshiner@mail.ru
 # =============================================================================
 
 .PHONY: setup
-setup: ## First-time setup: install deps, start DB, run migrations
+setup: install-hooks ## First-time setup: install deps, hooks, start DB, run migrations
 	@echo "Installing dependencies..."
 	@$(POETRY) install
 	@echo "Starting PostgreSQL..."
