@@ -13,30 +13,22 @@ Tests that verify a single function or class in complete isolation. No database,
 - Pydantic schema validation
 - Business logic that does not require a database session
 
-**Should NOT cover:**
-- Anything requiring a database connection
-- Anything requiring an HTTP request/response cycle
-
 **Speed:** Fast. No infrastructure required.
 
 ---
 
 ### Integration Tests (`pytest.mark.integration`)
 
-Tests that verify service-layer business logic with a real database. Services are instantiated directly (not through HTTP). Authentication is bypassed. Tests use real async database sessions.
+Tests that verify HTTP endpoint behavior through an in-process ASGI client against the FastAPI application. Authentication is overridden via dependency injection. These verify the full backend request/response cycle: routing, dependency injection, serialization, error formatting, and status codes.
 
 **Should cover:**
-- Service CRUD operations (create, read, update, delete)
-- Business rules (locked namespace enforcement, cascade deletes, user isolation)
-- Cross-service interactions (e.g., provisioning + field creation)
-- Database constraint enforcement (unique indexes, foreign keys)
-- Correct SQLAlchemy query behavior (joins, OR clauses, eager loading)
-
-**Should NOT cover:**
-- HTTP request/response serialization
-- Authentication/authorization flow
-- Middleware behavior
-- Route path correctness
+- Catalog contract (seed data matches runtime responses)
+- CRUD lifecycle (namespace, field, object, API, endpoint)
+- Validation and error handling (400, 404, 422)
+- Relationships and FK auto-creation
+- Field roles and server defaults
+- Name validation (PascalCase/snake_case)
+- API generation (ZIP structure, ORM models, Pydantic constraints)
 
 **Speed:** Medium. Requires a running PostgreSQL instance (Docker).
 
@@ -44,41 +36,30 @@ Tests that verify service-layer business logic with a real database. Services ar
 
 ### Codegen Tests (`pytest.mark.codegen`)
 
-Tests that verify the `api_craft` code generation pipeline end-to-end: load a YAML spec, generate a complete FastAPI project, dynamically import and boot it, then make HTTP requests against the generated app to verify correctness.
+Tests that verify the `api_craft` code generation pipeline: input validation, transform pipeline, generated project structure, and in-process runtime behavior of generated apps.
 
 **Should cover:**
-- Generated code is syntactically valid (imports succeed)
-- Generated Pydantic models enforce validators correctly
-- Generated FastAPI routes respond with correct shapes
-- Different spec configurations produce correct output
+- Input model validation (PascalCase, DB config, response shapes)
+- Transform/prepare pipeline (models, views, ORM, imports)
+- Filter inference, path/query params, relationship codegen
+- Generated project file presence, `compile()` checks, content assertions
+- In-process runtime: boot generated app with TestClient + SQLite and verify constraints, validators, CRUD, response shapes
 
-**Should NOT cover:**
-- The `api` service endpoints
-- Database interactions
-- Authentication
-
-**Speed:** Medium. No database, but generates files to disk and boots an app.
+**Speed:** Medium. No database, but generates files to disk and boots apps.
 
 ---
 
-### API Tests (`pytest.mark.api`) -- Future
+### E2E Tests (`pytest.mark.e2e`)
 
-Tests that verify HTTP endpoint behavior by making requests through `TestClient` against the `api` FastAPI application. Authentication is overridden via dependency injection. These verify the full backend request/response cycle: routing, dependency injection, serialization, error formatting, and status codes.
+Full-stack tests that generate a project, build it with Docker Compose, and run HTTP requests against a real PostgreSQL-backed API container.
 
-This category does not exist yet. When implemented, it should cover:
-- Every router endpoint (correct status codes, response shapes)
-- Request validation (422 for invalid input)
-- Authentication enforcement (401 without token)
-- Authorization (403/404 for resources owned by other users)
-- Error response format consistency
+**Should cover:**
+- CRUD round-trip against a real database
+- Constraint and validator enforcement at runtime
+- Timezone-aware datetime handling
+- Docker/poetry/Alembic integration
 
----
-
-## Why Not "E2E" in the Backend?
-
-"E2E" (end-to-end) in the industry most commonly refers to browser-based tests that verify the full user journey: frontend UI through API to database and back. For a backend-only service, the equivalent is **API tests** (HTTP in, HTTP out). We use the term "API tests" to avoid confusion with frontend E2E tests (Playwright/Cypress) that live in the frontend repository.
-
-The `api_craft` generation pipeline tests were previously labeled `e2e` because they test the full generation pipeline. They are now labeled `codegen` to accurately describe what they verify.
+**Speed:** Slow. Requires Docker and builds containers.
 
 ---
 
@@ -86,23 +67,31 @@ The `api_craft` generation pipeline tests were previously labeled `e2e` because 
 
 ```
 tests/
-├── conftest.py                          # Shared fixtures (DB sessions, user provisioning)
-├── test_api_craft/                      # Tests for the code generation library
-│   ├── __init__.py
-│   ├── conftest.py                      # api_craft fixtures (YAML loading, TestClient for generated apps)
-│   ├── test_codegen.py                  # [codegen] Generation pipeline tests
-│   └── test_placeholders.py             # [unit] Placeholder generation tests
-├── test_api/                            # Tests for the FastAPI API service
-│   ├── __init__.py
-│   └── test_services/                   # [integration] Service-layer with real DB
-│       ├── __init__.py
-│       ├── test_namespace.py
-│       ├── test_field.py
-│       ├── test_type.py
-│       ├── test_field_constraint.py
-│       └── test_user_provisioning.py
-└── specs/                               # Test input specifications
-    └── items_api.yaml
+├── conftest.py              # Shared fixtures (DB, HTTP client, user provisioning)
+├── support/                 # Shared test utilities (not test files)
+│   ├── api_client.py        # Auth override, cleanup, ASGI transport
+│   ├── catalog_contract.py  # Seed migration constants (source of truth)
+│   ├── shop_contract.py     # Canonical Shop domain + seed_shop/clean_shop
+│   └── generated_app.py     # Generated app loader + SQLite harness
+├── catalog/                 # [integration] Catalog contract tests
+│   └── test_system_catalog.py
+├── http/                    # [integration] HTTP endpoint tests
+│   ├── test_happy_path_and_seeding.py
+│   ├── test_validation_and_errors.py
+│   └── test_relationships_and_fields.py
+├── codegen/                 # [codegen] Code generation pipeline tests
+│   ├── test_input_and_transform.py
+│   ├── test_codegen_domains.py
+│   └── test_generated_project.py
+├── runtime/                 # [codegen/e2e] Generated app runtime tests
+│   ├── test_generated_runtime.py   # [codegen] In-process with SQLite
+│   └── test_generated_stack.py     # [e2e] Docker Compose + PostgreSQL
+└── specs/                   # YAML spec files for codegen tests
+    ├── items_api.yaml
+    ├── items_api_db.yaml
+    ├── items_api_db_uuid.yaml
+    ├── products_api_filters.yaml
+    └── shop_api.yaml
 ```
 
 ---
@@ -110,19 +99,19 @@ tests/
 ## Running Tests
 
 ```bash
-# All tests (excludes manual)
+# All tests (skips e2e if Docker unavailable, skips integration if DB unavailable)
 make test
 
-# By category
-poetry run pytest -m unit              # Fast, no DB needed
-poetry run pytest -m integration       # Needs PostgreSQL (Docker)
-poetry run pytest -m codegen           # No DB, tests generation pipeline
+# By layer
+poetry run pytest tests/catalog tests/http -m integration -v     # Needs PostgreSQL
+poetry run pytest tests/codegen tests/runtime/test_generated_runtime.py -m codegen -v
+poetry run pytest tests/runtime/test_generated_stack.py -m e2e -v   # Needs Docker
 
-# Quick smoke test (codegen only)
-make test-quick
+# Quick codegen-only smoke
+poetry run pytest tests/codegen -v
 
 # Single test
-poetry run pytest tests/test_api/test_services/test_namespace.py::test_create_namespace -v
+poetry run pytest tests/codegen/test_input_and_transform.py::TestNameTypes -v
 ```
 
 ---
@@ -134,18 +123,17 @@ Defined in `pyproject.toml`:
 | Marker | Description | Requires DB |
 |--------|-------------|-------------|
 | `unit` | Pure logic tests, no external dependencies | No |
-| `integration` | Service + database tests | Yes |
-| `codegen` | Code generation pipeline tests | No |
-| `api` | HTTP endpoint tests (future) | Yes |
-| `manual` | Generate output for manual inspection | No |
+| `integration` | Catalog + HTTP endpoint tests | Yes |
+| `codegen` | Code generation pipeline + in-process runtime | No |
+| `e2e` | Full Docker Compose stack tests | Yes (Docker) |
 
 ---
 
 ## Conventions
 
 1. **One marker per file.** Set `pytestmark = pytest.mark.<category>` at module level.
-2. **Fixtures go in `conftest.py`** at the appropriate level (root for shared, subdirectory for scoped).
-3. **Integration tests use services directly.** Instantiate the service class with a real `db_session`, not via HTTP.
-4. **Cleanup after yourself.** Use fixture teardown (after `yield`) to delete test data.
-5. **Test user IDs** are defined in `conftest.py` (`TEST_USER_ID`). Never use real Clerk user IDs.
+2. **Each HTTP test module defines `TEST_CLERK_ID`** at module level for user isolation.
+3. **Fixtures go in `conftest.py`** at the root level. Shared utilities go in `tests/support/`.
+4. **Cleanup after yourself.** The root `client` fixture auto-cleans DB data for the module's `TEST_CLERK_ID`.
+5. **One canonical Shop definition** in `tests/support/shop_contract.py`. Never duplicate field/object definitions in test files.
 6. **Format before committing.** Run `poetry run black src/ tests/` after any test changes.

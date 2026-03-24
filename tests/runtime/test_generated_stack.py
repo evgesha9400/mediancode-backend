@@ -1,14 +1,16 @@
-# tests/test_api_craft/test_e2e_generated.py
-"""End-to-end test: generate ShopApi, start with Docker Compose, validate endpoints.
+# tests/runtime/test_generated_stack.py
+"""End-to-end stack test: generate ShopApi, run via Docker Compose, validate.
 
-This test catches runtime bugs invisible to unit tests: missing dependencies,
-broken imports, port conflicts, ORM mapping errors, validator failures.
+Catches runtime bugs invisible to unit tests: missing dependencies, broken
+imports, port conflicts, ORM mapping errors, validator failures, and timezone
+handling.  Uses ``httpx`` against a real containerised service (not TestClient).
+
+Migrated from ``test_api_craft/test_e2e_generated.py``.
 """
 
 import subprocess
 import time
 import uuid
-from pathlib import Path
 
 import httpx
 import pytest
@@ -16,10 +18,10 @@ import yaml
 
 from api_craft.main import generate_fastapi
 from api_craft.models.input import InputAPI
+from support.generated_app import SPECS_PATH
 
 pytestmark = pytest.mark.e2e
 
-SPECS_DIR = Path(__file__).parent.parent / "specs"
 E2E_APP_PORT = 8002
 E2E_DB_PORT = 5434
 BASE_URL = f"http://localhost:{E2E_APP_PORT}"
@@ -27,9 +29,14 @@ STARTUP_TIMEOUT = 120  # seconds
 
 
 def _load_input(filename: str) -> InputAPI:
-    with open(SPECS_DIR / filename) as f:
+    with open(SPECS_PATH / filename) as f:
         data = yaml.safe_load(f)
     return InputAPI(**data)
+
+
+# ---------------------------------------------------------------------------
+# Session-scoped fixture: generate, docker compose up, yield, tear down
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="session")
@@ -38,17 +45,14 @@ def generated_shop_api(tmp_path_factory):
     tmp_dir = tmp_path_factory.mktemp("e2e_shop")
     input_api = _load_input("shop_api.yaml")
 
-    # 1. Generate project
     generate_fastapi(input_api, str(tmp_dir))
     project_dir = tmp_dir / "shop-api"
     assert project_dir.exists(), f"Generated project not found at {project_dir}"
 
-    # 2. Override .env with test ports
     (project_dir / ".env").write_text(
         f"DB_PORT={E2E_DB_PORT}\nAPP_PORT={E2E_APP_PORT}\n"
     )
 
-    # 3. Generate poetry.lock (required by Dockerfile)
     try:
         subprocess.run(
             ["poetry", "lock"],
@@ -61,7 +65,6 @@ def generated_shop_api(tmp_path_factory):
     except subprocess.CalledProcessError as e:
         pytest.fail(f"poetry lock failed:\nstdout: {e.stdout}\nstderr: {e.stderr}")
 
-    # 5. Docker compose up
     try:
         subprocess.run(
             ["docker", "compose", "up", "-d", "--build"],
@@ -76,7 +79,6 @@ def generated_shop_api(tmp_path_factory):
             f"docker compose up failed:\nstdout: {e.stdout}\nstderr: {e.stderr}"
         )
 
-    # 6. Wait for readiness
     deadline = time.time() + STARTUP_TIMEOUT
     ready = False
     while time.time() < deadline:
@@ -101,7 +103,6 @@ def generated_shop_api(tmp_path_factory):
             capture_output=True,
             text=True,
         )
-        # Tear down before failing
         subprocess.run(
             ["docker", "compose", "down", "-v"],
             cwd=str(project_dir),
@@ -114,7 +115,6 @@ def generated_shop_api(tmp_path_factory):
 
     yield BASE_URL
 
-    # 7. Teardown
     subprocess.run(
         ["docker", "compose", "down", "-v", "--remove-orphans"],
         cwd=str(project_dir),
@@ -129,7 +129,7 @@ def generated_shop_api(tmp_path_factory):
 
 
 def valid_product(**overrides) -> dict:
-    """Build a valid product payload. All required fields included."""
+    """Build a valid product payload with all required fields."""
     base = {
         "name": "Test Widget",
         "sku": "AB-1234",
@@ -148,7 +148,7 @@ def valid_product(**overrides) -> dict:
 
 
 def valid_customer(**overrides) -> dict:
-    """Build a valid customer payload. All required fields included."""
+    """Build a valid customer payload with all required fields."""
     base = {
         "customer_id": 1,
         "customer_name": "John Doe",
@@ -163,9 +163,9 @@ def valid_customer(**overrides) -> dict:
     return base
 
 
-# ---------------------------------------------------------------------------
+# =============================================================================
 # CRUD round-trip tests
-# ---------------------------------------------------------------------------
+# =============================================================================
 
 
 class TestCrudRoundTrip:
@@ -180,7 +180,6 @@ class TestCrudRoundTrip:
         r = httpx.post(f"{generated_shop_api}/products", json=payload)
         assert r.status_code == 200, f"Create product failed: {r.status_code} {r.text}"
         data = r.json()
-        # PK is auto-generated; use the response tracking_id for subsequent lookups
         TestCrudRoundTrip.product_tracking_id = data["tracking_id"]
         assert data["name"] == payload["name"]
 
@@ -244,7 +243,9 @@ class TestCrudRoundTrip:
             f"{generated_shop_api}/customers/{customer_id}",
             json=valid_customer(customer_name="Jane Smith", phone="9876543210"),
         )
-        assert r.status_code == 200, f"Update customer failed: {r.status_code} {r.text}"
+        assert r.status_code == 200, (
+            f"Update customer failed: {r.status_code} {r.text}"
+        )
 
     def test_phase_11_get_updated_customer(self, generated_shop_api):
         customer_id = TestCrudRoundTrip.customer_id
@@ -254,9 +255,9 @@ class TestCrudRoundTrip:
         assert data["customer_name"] == "Jane Smith"
 
 
-# ---------------------------------------------------------------------------
+# =============================================================================
 # Constraint violation tests (each expects 422)
-# ---------------------------------------------------------------------------
+# =============================================================================
 
 
 class TestConstraintViolations:
@@ -270,87 +271,110 @@ class TestConstraintViolations:
         assert self._post_product(generated_shop_api, name="").status_code == 422
 
     def test_name_max_length(self, generated_shop_api):
-        assert self._post_product(generated_shop_api, name="A" * 151).status_code == 422
+        assert (
+            self._post_product(generated_shop_api, name="A" * 151).status_code == 422
+        )
 
     def test_sku_pattern(self, generated_shop_api):
-        assert self._post_product(generated_shop_api, sku="test-01").status_code == 422
+        assert (
+            self._post_product(generated_shop_api, sku="test-01").status_code == 422
+        )
 
     def test_price_gt_zero(self, generated_shop_api):
         assert self._post_product(generated_shop_api, price=0).status_code == 422
 
     def test_sale_price_ge_zero(self, generated_shop_api):
-        assert self._post_product(generated_shop_api, sale_price=-1).status_code == 422
+        assert (
+            self._post_product(generated_shop_api, sale_price=-1).status_code == 422
+        )
 
     def test_weight_ge_zero(self, generated_shop_api):
-        # The clamp_weight validator (mode=before) clamps to max(0, ...),
-        # so -0.1 becomes 0.0 which passes ge=0. Use a value that bypasses
-        # the clamp but fails the constraint -- not possible here because
-        # the clamp always runs first. Instead verify the clamp accepts it.
-        # We test the lt=1000 boundary instead for a true rejection.
         r = self._post_product(generated_shop_api, weight=-0.1)
-        # Clamped to 0.0, passes ge=0 -- should succeed
         assert r.status_code == 200
 
     def test_weight_lt_1000(self, generated_shop_api):
-        # Clamped to min(1000, 1000)=1000, but lt=1000 rejects 1000
-        assert self._post_product(generated_shop_api, weight=1000).status_code == 422
+        assert (
+            self._post_product(generated_shop_api, weight=1000).status_code == 422
+        )
 
     def test_quantity_ge_zero(self, generated_shop_api):
-        assert self._post_product(generated_shop_api, quantity=-1).status_code == 422
+        assert (
+            self._post_product(generated_shop_api, quantity=-1).status_code == 422
+        )
 
     def test_min_order_ge_one(self, generated_shop_api):
         assert (
-            self._post_product(generated_shop_api, min_order_quantity=0).status_code
+            self._post_product(
+                generated_shop_api, min_order_quantity=0
+            ).status_code
             == 422
         )
 
     def test_max_order_le_1000(self, generated_shop_api):
         assert (
-            self._post_product(generated_shop_api, max_order_quantity=1001).status_code
+            self._post_product(
+                generated_shop_api, max_order_quantity=1001
+            ).status_code
             == 422
         )
 
     def test_discount_percent_ge_zero(self, generated_shop_api):
         assert (
-            self._post_product(generated_shop_api, discount_percent=-5).status_code
+            self._post_product(
+                generated_shop_api, discount_percent=-5
+            ).status_code
             == 422
         )
 
     def test_discount_percent_le_100(self, generated_shop_api):
         assert (
-            self._post_product(generated_shop_api, discount_percent=105).status_code
+            self._post_product(
+                generated_shop_api, discount_percent=105
+            ).status_code
             == 422
         )
 
     def test_discount_percent_multiple_of_5(self, generated_shop_api):
         assert (
-            self._post_product(generated_shop_api, discount_percent=3).status_code
+            self._post_product(
+                generated_shop_api, discount_percent=3
+            ).status_code
             == 422
         )
 
     def test_discount_amount_ge_zero(self, generated_shop_api):
         assert (
-            self._post_product(generated_shop_api, discount_amount=-1).status_code
+            self._post_product(
+                generated_shop_api, discount_amount=-1
+            ).status_code
             == 422
         )
 
     def test_customer_name_min_length(self, generated_shop_api):
         assert (
-            self._post_customer(generated_shop_api, customer_name="").status_code == 422
+            self._post_customer(
+                generated_shop_api, customer_name=""
+            ).status_code
+            == 422
         )
 
     def test_phone_min_length(self, generated_shop_api):
-        assert self._post_customer(generated_shop_api, phone="123").status_code == 422
+        assert (
+            self._post_customer(generated_shop_api, phone="123").status_code == 422
+        )
 
     def test_phone_max_length(self, generated_shop_api):
         assert (
-            self._post_customer(generated_shop_api, phone="1" * 16).status_code == 422
+            self._post_customer(
+                generated_shop_api, phone="1" * 16
+            ).status_code
+            == 422
         )
 
 
-# ---------------------------------------------------------------------------
+# =============================================================================
 # Field validator tests
-# ---------------------------------------------------------------------------
+# =============================================================================
 
 
 class TestFieldValidators:
@@ -383,7 +407,6 @@ class TestFieldValidators:
             f"{generated_shop_api}/products",
             json=valid_product(weight=-5),
         )
-        # clamp_weight (mode=before) converts -5 to 0.0, passes ge=0
         assert r.status_code == 200
         assert float(r.json()["weight"]) == 0.0
 
@@ -396,9 +419,9 @@ class TestFieldValidators:
         assert r.json()["customer_name"] == "John Doe"
 
 
-# ---------------------------------------------------------------------------
+# =============================================================================
 # Model validator tests
-# ---------------------------------------------------------------------------
+# =============================================================================
 
 
 class TestModelValidators:
@@ -438,18 +461,17 @@ class TestModelValidators:
         assert r.status_code == 422
 
 
-# ---------------------------------------------------------------------------
+# =============================================================================
 # Timezone-aware datetime tests
-# ---------------------------------------------------------------------------
+# =============================================================================
 
 
 class TestDatetimeTimezones:
-    """Datetime fields must accept timezone-aware strings (UTC, offsets, Z suffix).
+    """Datetime fields must accept timezone-aware ISO 8601 strings.
 
-    Real API clients (Swagger UI, JS fetch, mobile apps) typically send
-    timezone-aware ISO 8601 strings. The generated API must handle these
-    without asyncpg raising 'can't subtract offset-naive and offset-aware
-    datetimes'.
+    Real API clients typically send timezone-aware strings.  The generated
+    API must handle these without asyncpg raising ``can't subtract
+    offset-naive and offset-aware datetimes``.
     """
 
     def test_product_datetime_utc_offset(self, generated_shop_api):
@@ -471,14 +493,18 @@ class TestDatetimeTimezones:
             f"{generated_shop_api}/products",
             json=valid_product(created_at="2026-06-01T17:30:00+05:30"),
         )
-        assert r.status_code == 200, f"Positive offset failed: {r.status_code} {r.text}"
+        assert r.status_code == 200, (
+            f"Positive offset failed: {r.status_code} {r.text}"
+        )
 
     def test_product_datetime_negative_offset(self, generated_shop_api):
         r = httpx.post(
             f"{generated_shop_api}/products",
             json=valid_product(created_at="2026-06-01T07:00:00-05:00"),
         )
-        assert r.status_code == 200, f"Negative offset failed: {r.status_code} {r.text}"
+        assert r.status_code == 200, (
+            f"Negative offset failed: {r.status_code} {r.text}"
+        )
 
     def test_customer_datetime_utc_offset(self, generated_shop_api):
         r = httpx.post(
@@ -487,6 +513,6 @@ class TestDatetimeTimezones:
                 customer_id=500, registered_at="2026-06-01T12:00:00+00:00"
             ),
         )
-        assert (
-            r.status_code == 200
-        ), f"Customer UTC offset failed: {r.status_code} {r.text}"
+        assert r.status_code == 200, (
+            f"Customer UTC offset failed: {r.status_code} {r.text}"
+        )

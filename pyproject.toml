@@ -54,12 +54,10 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
-addopts = "-m 'not manual' -rs"
+addopts = "-rs"
 markers = [
-    "manual: generate output to tests/output/ for manual verification",
     "unit: pure logic tests with no external dependencies",
-    "integration: tests requiring database or external services",
-    "codegen: code generation pipeline tests that generate and boot full applications",
-    "api: HTTP endpoint tests using TestClient against the api service",
-    "e2e: end-to-end tests that generate and run full API projects (requires Docker)",
+    "integration: tests requiring PostgreSQL (catalog, HTTP layer)",
+    "codegen: code generation pipeline tests (input, transform, static project, in-process runtime)",
+    "e2e: end-to-end tests that generate and run full API projects via Docker Compose",
 ]

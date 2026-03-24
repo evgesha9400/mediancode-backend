@@ -1,5 +1,12 @@
-# tests/test_api_craft/conftest.py
-"""Fixtures for api_craft code generation tests."""
+# tests/support/generated_app.py
+"""Helpers for loading generated FastAPI projects in-process.
+
+Migrated from the old ``tests/test_api_craft/conftest.py``.  Provides
+:func:`load_input` for YAML specs and :func:`load_app` for dynamically
+importing a generated project with an in-memory SQLite backend.
+"""
+
+from __future__ import annotations
 
 import importlib.util
 import sys
@@ -7,18 +14,21 @@ import types
 import uuid
 from pathlib import Path
 
-import pytest
 import yaml
 from fastapi.testclient import TestClient
 
 from api_craft.main import APIGenerator
 from api_craft.models.input import InputAPI
 
-SPECS_PATH = Path(__file__).parent.parent / "specs"
+SPECS_PATH = Path(__file__).resolve().parent.parent / "specs"
 
 
 def load_input(filename: str) -> InputAPI:
-    """Load and validate an API input from YAML file."""
+    """Load and validate an API input from a YAML spec file.
+
+    :param filename: Name of YAML file relative to ``tests/specs/``.
+    :returns: Validated :class:`InputAPI` instance.
+    """
     yaml_path = SPECS_PATH / filename
     with open(yaml_path, "r") as f:
         api_data = yaml.safe_load(f)
@@ -26,11 +36,11 @@ def load_input(filename: str) -> InputAPI:
 
 
 def _create_test_db_module(orm_module, prefix: str):
-    """Create a fake database module backed by in-memory SQLite.
+    """Create a fake ``database`` module backed by in-memory SQLite."""
+    import datetime
+    import sqlite3
 
-    Uses SQLAlchemy's async engine with aiosqlite to support
-    the async session pattern used by generated views.
-    """
+    from pydantic import HttpUrl
     from sqlalchemy.ext.asyncio import (
         AsyncSession,
         async_sessionmaker,
@@ -38,12 +48,6 @@ def _create_test_db_module(orm_module, prefix: str):
     )
     from sqlalchemy.pool import StaticPool
 
-    import datetime
-    import sqlite3
-
-    from pydantic import HttpUrl
-
-    # Register SQLite adapters for types not natively supported
     sqlite3.register_adapter(HttpUrl, str)
     sqlite3.register_adapter(datetime.time, lambda t: t.isoformat())
 
@@ -73,28 +77,24 @@ def _create_test_db_module(orm_module, prefix: str):
 def load_app(src_path: Path):
     """Dynamically import the FastAPI app from a generated project.
 
-    Uses unique module names to avoid conflicts between different
-    generated projects in the same test session.
+    For database-enabled projects the async PostgreSQL session is
+    replaced with an in-memory SQLite session so tests run without
+    a real database.
 
-    For database-enabled projects, replaces the async PostgreSQL session
-    with an in-memory SQLite session so tests run without a real database.
+    :param src_path: Path to the ``src/`` directory of a generated project.
+    :returns: The FastAPI ``app`` instance.
     """
     import asyncio
 
-    # Generate unique prefix for this import
     prefix = f"_gen_{uuid.uuid4().hex[:8]}"
-
-    # Add src_path to sys.path so relative imports work
     sys.path.insert(0, str(src_path))
 
     has_database = (src_path / "database.py").exists()
     has_orm_models = (src_path / "orm_models.py").exists()
 
-    modules_to_cleanup = []
+    modules_to_cleanup: list[str] = []
     try:
-        # If database-enabled, set up in-memory SQLite before loading modules
         if has_database and has_orm_models:
-            # Load orm_models first to get the Base class
             orm_spec = importlib.util.spec_from_file_location(
                 f"{prefix}_orm_models", src_path / "orm_models.py"
             )
@@ -104,7 +104,6 @@ def load_app(src_path: Path):
             modules_to_cleanup.extend([f"{prefix}_orm_models", "orm_models"])
             orm_spec.loader.exec_module(orm_module)
 
-            # Create fake database module with in-memory SQLite
             db_module, async_engine, orm_mod = _create_test_db_module(
                 orm_module, prefix
             )
@@ -112,14 +111,12 @@ def load_app(src_path: Path):
             sys.modules["database"] = db_module
             modules_to_cleanup.extend([f"{prefix}_database", "database"])
 
-            # Create tables using async engine
             async def _create_tables():
                 async with async_engine.begin() as conn:
                     await conn.run_sync(orm_mod.Base.metadata.create_all)
 
             asyncio.get_event_loop().run_until_complete(_create_tables())
 
-        # Load modules in dependency order with unique names
         module_files = [
             "orm_models",
             "database",
@@ -131,7 +128,6 @@ def load_app(src_path: Path):
         ]
 
         for module_name in module_files:
-            # Skip orm_models and database if already loaded for DB projects
             if (
                 has_database
                 and has_orm_models
@@ -147,7 +143,6 @@ def load_app(src_path: Path):
             spec = importlib.util.spec_from_file_location(unique_name, module_path)
             module = importlib.util.module_from_spec(spec)
 
-            # Register with both unique and simple names for import resolution
             sys.modules[unique_name] = module
             sys.modules[module_name] = module
             modules_to_cleanup.append(unique_name)
@@ -157,52 +152,32 @@ def load_app(src_path: Path):
 
         return sys.modules["main"].app
     finally:
-        # Clean up sys.path
         if str(src_path) in sys.path:
             sys.path.remove(str(src_path))
-
-        # Clean up sys.modules to prevent cross-test pollution
         for mod_name in modules_to_cleanup:
             sys.modules.pop(mod_name, None)
 
 
-@pytest.fixture(scope="session")
-def items_api_client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
-    """Generate Items API once per test session and return TestClient."""
-    tmp_path = tmp_path_factory.mktemp("items_api")
+def generate_and_client(
+    spec_filename: str, tmp_path: Path
+) -> TestClient:
+    """Generate a project from a YAML spec and return a live TestClient.
 
-    api_input = load_input("items_api.yaml")
+    :param spec_filename: YAML file name under ``tests/specs/``.
+    :param tmp_path: Temporary directory for generated output.
+    :returns: A :class:`TestClient` wired to the generated FastAPI app.
+    """
+    api_input = load_input(spec_filename)
     APIGenerator().generate(api_input, path=str(tmp_path))
 
-    src_path = tmp_path / "items-api" / "src"
+    kebab_name = api_input.name.replace(" ", "-").lower()
+    for segment in ("_", " "):
+        kebab_name = kebab_name.replace(segment, "-")
+    project_name = api_input.name
+    from api_craft.models.types import Name
+
+    n = Name(project_name)
+    project_dir = tmp_path / n.kebab_name
+    src_path = project_dir / "src"
     app = load_app(src_path)
-
-    return TestClient(app)
-
-
-@pytest.fixture(scope="session")
-def shop_api_client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
-    """Generate Shop API once per test session and return TestClient."""
-    tmp_path = tmp_path_factory.mktemp("shop_api")
-
-    api_input = load_input("shop_api.yaml")
-    APIGenerator().generate(api_input, path=str(tmp_path))
-
-    src_path = tmp_path / "shop-api" / "src"
-    app = load_app(src_path)
-
-    return TestClient(app)
-
-
-@pytest.fixture(scope="session")
-def products_filter_api_client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
-    """Generate Products Filter API once per session and return TestClient."""
-    tmp_path = tmp_path_factory.mktemp("products_filter_api")
-
-    api_input = load_input("products_api_filters.yaml")
-    APIGenerator().generate(api_input, path=str(tmp_path))
-
-    src_path = tmp_path / "products-filter-api" / "src"
-    app = load_app(src_path)
-
     return TestClient(app)

@@ -1,22 +1,39 @@
-"""Tests for database-enabled code generation.
+# tests/codegen/test_generated_project.py
+"""Tests that generate projects to tmp_path and inspect the generated files
+statically (no TestClient).
 
-Validates that when database.enabled is true:
-- ORM models, database.py are generated
-- Docker Compose, Alembic config are generated
-- Generated Python files compile without errors
-- views.py uses DB session injection
-- main.py has lifespan with DB init
-- Makefile has db-* targets
+Merges legacy tests from:
+- test_db_codegen, static generation tests from test_codegen,
+  ZIP __pycache__ exclusion from test_generation_unit
 """
 
+import io
+import os
+import tempfile
+import zipfile
 from pathlib import Path
 
 import pytest
 
 from api_craft.main import APIGenerator
-from .conftest import load_input
+from api_craft.models.input import (
+    InputAPI,
+    InputApiConfig,
+    InputDatabaseConfig,
+    InputEndpoint,
+    InputField,
+    InputModel,
+    InputPathParam,
+    InputResolvedFieldValidator,
+)
+from support.generated_app import load_input
 
 pytestmark = pytest.mark.codegen
+
+
+# ---------------------------------------------------------------------------
+# Database codegen (from test_db_codegen)
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="module")
@@ -29,8 +46,6 @@ def db_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 class TestDatabaseFilesGenerated:
-    """Verify all expected database files are created."""
-
     def test_orm_models_exists(self, db_project: Path):
         assert (db_project / "src" / "orm_models.py").exists()
 
@@ -51,8 +66,6 @@ class TestDatabaseFilesGenerated:
 
 
 class TestGeneratedCodeCompiles:
-    """Verify generated Python files have valid syntax."""
-
     @pytest.mark.parametrize(
         "filename",
         [
@@ -69,8 +82,6 @@ class TestGeneratedCodeCompiles:
 
 
 class TestOrmModelsContent:
-    """Verify ORM models are correctly generated."""
-
     def test_contains_base_class(self, db_project: Path):
         content = (db_project / "src" / "orm_models.py").read_text()
         assert "class Base(DeclarativeBase):" in content
@@ -88,20 +99,15 @@ class TestOrmModelsContent:
         assert "primary_key=True" in content
 
     def test_no_create_request_in_orm(self, db_project: Path):
-        """CreateItemRequest (no pk) should NOT be an ORM model."""
         content = (db_project / "src" / "orm_models.py").read_text()
         assert "CreateItemRequestRecord" not in content
 
     def test_str_fields_use_correct_column_type(self, db_project: Path):
-        """String fields with max_length use String(N), without use Text."""
         content = (db_project / "src" / "orm_models.py").read_text()
-        # Item has str fields with max_length validators, so String(N) should be present
         assert "String(" in content or "Text" in content
 
 
 class TestEnvFileContent:
-    """Verify .env file is correctly generated."""
-
     def test_env_has_db_port(self, db_project: Path):
         content = (db_project / ".env").read_text()
         assert "DB_PORT=5433" in content
@@ -163,7 +169,6 @@ class TestMainWithDatabase:
         assert "from database import" in content
 
     def test_main_no_create_all(self, db_project: Path):
-        """Alembic is sole schema manager -- no create_all in app startup."""
         content = (db_project / "src" / "main.py").read_text()
         assert "create_all" not in content
 
@@ -241,8 +246,6 @@ def uuid_db_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 class TestUuidPkCodegen:
-    """Verify UUID PK generates import uuid and default=uuid.uuid4."""
-
     def test_orm_models_import_uuid(self, uuid_db_project: Path):
         content = (uuid_db_project / "src" / "orm_models.py").read_text()
         assert "import uuid" in content
@@ -265,8 +268,6 @@ class TestUuidPkCodegen:
 
 
 class TestIntPkNoUuidImport:
-    """Verify int PK does NOT generate import uuid."""
-
     def test_no_uuid_import(self, db_project: Path):
         content = (db_project / "src" / "orm_models.py").read_text()
         assert "import uuid" not in content
@@ -277,8 +278,6 @@ class TestIntPkNoUuidImport:
 
 
 class TestInitialMigration:
-    """Verify initial migration file is generated correctly."""
-
     def test_migration_file_exists(self, db_project: Path):
         assert (db_project / "migrations" / "versions" / "0001_initial.py").exists()
 
@@ -326,8 +325,6 @@ class TestInitialMigration:
 
 
 class TestUuidMigration:
-    """Verify initial migration for UUID PK projects."""
-
     def test_migration_file_exists(self, uuid_db_project: Path):
         assert (
             uuid_db_project / "migrations" / "versions" / "0001_initial.py"
@@ -352,7 +349,7 @@ class TestUuidMigration:
         assert "autoincrement" not in content
 
 
-class TestBackwardCompatibility:
+class TestDbBackwardCompatibility:
     """Ensure database.enabled=false produces identical output."""
 
     def test_no_database_files_when_disabled(self, tmp_path):
@@ -378,8 +375,6 @@ class TestBackwardCompatibility:
 
 
 class TestDatabaseDependencies:
-    """Verify database dependencies are included in pyproject.toml."""
-
     def test_sqlalchemy_in_dependencies(self, db_project: Path):
         content = (db_project / "pyproject.toml").read_text()
         assert "sqlalchemy" in content
@@ -402,20 +397,8 @@ class TestDatabaseDependencies:
 
 
 class TestMixedMode:
-    """Verify mixed mode: DB-backed endpoints coexist with placeholder endpoints."""
-
     @pytest.fixture(scope="class")
     def mixed_project(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
-        """Generate an API with both PK and non-PK objects, placeholders enabled."""
-        from api_craft.models.input import (
-            InputAPI,
-            InputApiConfig,
-            InputDatabaseConfig,
-            InputEndpoint,
-            InputField,
-            InputModel,
-        )
-
         api_input = InputAPI(
             name="MixedApi",
             objects=[
@@ -475,7 +458,6 @@ class TestMixedMode:
 
     def test_non_pk_endpoint_uses_placeholders(self, mixed_project: Path):
         content = (mixed_project / "src" / "views.py").read_text()
-        # StatusResponse is not split (no PK, no appears flags), so keeps its original name
         assert "StatusResponse(" in content
 
     def test_database_files_exist(self, mixed_project: Path):
@@ -491,20 +473,8 @@ class TestMixedMode:
 
 
 class TestServerDefaultCodegen:
-    """Tests for generated code with server_default strategies."""
-
     @pytest.fixture(scope="class")
     def server_defaults_project(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
-        """Generate an API with various default strategies."""
-        from api_craft.models.input import (
-            InputAPI,
-            InputApiConfig,
-            InputDatabaseConfig,
-            InputEndpoint,
-            InputField,
-            InputModel,
-        )
-
         api_input = InputAPI(
             name="DefaultsApi",
             objects=[
@@ -558,23 +528,19 @@ class TestServerDefaultCodegen:
         compile(content, "orm_models.py", "exec")
 
     def test_now_renders_func_now_in_orm(self, server_defaults_project: Path):
-        """server_default='now' renders server_default=func.now() in ORM model."""
         content = (server_defaults_project / "src" / "orm_models.py").read_text()
         assert "server_default=func.now()" in content
 
     def test_func_imported_in_orm(self, server_defaults_project: Path):
-        """func must be imported when server_default='now' is used."""
         content = (server_defaults_project / "src" / "orm_models.py").read_text()
         assert "from sqlalchemy import" in content
         assert "func" in content
 
     def test_now_on_update_renders_onupdate(self, server_defaults_project: Path):
-        """server_default='now_on_update' renders onupdate=func.now() in ORM."""
         content = (server_defaults_project / "src" / "orm_models.py").read_text()
         assert "onupdate=func.now()" in content
 
     def test_literal_renders_server_default_string(self, server_defaults_project: Path):
-        """server_default='literal' renders server_default="'value'" in ORM."""
         content = (server_defaults_project / "src" / "orm_models.py").read_text()
         assert "server_default=\"'active'\"" in content
 
@@ -585,14 +551,12 @@ class TestServerDefaultCodegen:
         compile(content, "0001_initial.py", "exec")
 
     def test_now_renders_in_migration(self, server_defaults_project: Path):
-        """server_default='now' renders server_default=sa.func.now() in migration."""
         content = (
             server_defaults_project / "migrations" / "versions" / "0001_initial.py"
         ).read_text()
         assert "server_default=sa.func.now()" in content
 
     def test_literal_renders_in_migration(self, server_defaults_project: Path):
-        """server_default='literal' renders server_default="'value'" in migration."""
         content = (
             server_defaults_project / "migrations" / "versions" / "0001_initial.py"
         ).read_text()
@@ -601,7 +565,6 @@ class TestServerDefaultCodegen:
     def test_now_on_update_migration_has_no_onupdate(
         self, server_defaults_project: Path
     ):
-        """onupdate is ORM-level only, not DDL -- should not appear in migration."""
         content = (
             server_defaults_project / "migrations" / "versions" / "0001_initial.py"
         ).read_text()
@@ -611,3 +574,266 @@ class TestServerDefaultCodegen:
         for py_file in server_defaults_project.rglob("*.py"):
             source = py_file.read_text()
             compile(source, str(py_file), "exec")
+
+
+# ---------------------------------------------------------------------------
+# Static generation tests (from test_codegen)
+# ---------------------------------------------------------------------------
+
+
+def test_field_validator_body_indentation(tmp_path):
+    api = InputAPI(
+        name="IndentTest",
+        endpoints=[
+            InputEndpoint(
+                name="GetItems", path="/items", method="GET", response="Item"
+            )
+        ],
+        objects=[
+            InputModel(
+                name="Item",
+                fields=[
+                    InputField(
+                        name="value",
+                        type="str",
+                        field_validators=[
+                            InputResolvedFieldValidator(
+                                function_name="trim_value",
+                                mode="before",
+                                function_body="    v = v.strip()\n    return v",
+                            )
+                        ],
+                    )
+                ],
+            )
+        ],
+        config=InputApiConfig(response_placeholders=False),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    models_py = (tmp_path / "indent-test" / "src" / "models.py").read_text()
+
+    compile(models_py, "models.py", "exec")
+
+    for line in models_py.splitlines():
+        stripped = line.lstrip()
+        if stripped.startswith("v = v.strip()") or stripped.startswith("return v"):
+            indent = len(line) - len(stripped)
+            assert indent >= 8, f"Insufficient indent ({indent}): {line!r}"
+
+
+def test_decimal_type_generates_import(tmp_path):
+    api = InputAPI(
+        name="DecimalTest",
+        endpoints=[
+            InputEndpoint(name="GetItems", path="/items", method="GET", response="Item")
+        ],
+        objects=[
+            InputModel(
+                name="Item",
+                fields=[InputField(name="price", type="decimal.Decimal")],
+            )
+        ],
+        config=InputApiConfig(response_placeholders=False),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    models_py = (tmp_path / "decimal-test" / "src" / "models.py").read_text()
+
+    assert "import decimal" in models_py or "from decimal import Decimal" in models_py
+    compile(models_py, "models.py", "exec")
+
+
+def test_clamp_to_range_renders_values(tmp_path):
+    api = InputAPI(
+        name="ClampTest",
+        endpoints=[
+            InputEndpoint(name="GetItems", path="/items", method="GET", response="Item")
+        ],
+        objects=[
+            InputModel(
+                name="Item",
+                fields=[
+                    InputField(
+                        name="weight",
+                        type="float",
+                        field_validators=[
+                            InputResolvedFieldValidator(
+                                function_name="clamp_to_range_weight",
+                                mode="before",
+                                function_body="    v = max(0, min(1000, v))\n    return v",
+                            )
+                        ],
+                    )
+                ],
+            )
+        ],
+        config=InputApiConfig(response_placeholders=False),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    models_py = (tmp_path / "clamp-test" / "src" / "models.py").read_text()
+    assert "max(0, min(1000, v))" in models_py
+    assert "max(, min(, v))" not in models_py
+
+
+def test_list_response_shape_generates_list_type(tmp_path):
+    api = InputAPI(
+        name="ListTest",
+        endpoints=[
+            InputEndpoint(
+                name="GetItems",
+                path="/items",
+                method="GET",
+                response="Item",
+                response_shape="list",
+            )
+        ],
+        objects=[
+            InputModel(
+                name="Item",
+                fields=[InputField(name="name", type="str")],
+            )
+        ],
+        config=InputApiConfig(response_placeholders=False),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    views_py = (tmp_path / "list-test" / "src" / "views.py").read_text()
+
+    assert "response_model=list[Item]" in views_py
+    assert "return [Item(" in views_py or "return []" in views_py
+
+
+def test_delete_endpoint_without_response_object(tmp_path):
+    api = InputAPI(
+        name="DeleteTest",
+        endpoints=[
+            InputEndpoint(
+                name="GetItems", path="/items", method="GET", response="Item"
+            ),
+            InputEndpoint(
+                name="DeleteItem",
+                path="/items/{item_id}",
+                method="DELETE",
+                path_params=[InputPathParam(name="item_id", type="str")],
+            ),
+        ],
+        objects=[
+            InputModel(
+                name="Item",
+                fields=[InputField(name="name", type="str")],
+            )
+        ],
+        config=InputApiConfig(response_placeholders=False),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    views_py = (tmp_path / "delete-test" / "src" / "views.py").read_text()
+
+    assert "async def delete_item" in views_py
+    assert "status_code=204" in views_py
+    assert "Response" in views_py
+    compile(views_py, "views.py", "exec")
+
+
+def test_delete_endpoint_without_response_resolves_orm_from_pk(tmp_path):
+    api = InputAPI(
+        name="DeletePkTest",
+        endpoints=[
+            InputEndpoint(
+                name="DeleteProduct",
+                path="/products/{tracking_id}",
+                method="DELETE",
+                path_params=[InputPathParam(name="tracking_id", type="uuid")],
+            ),
+        ],
+        objects=[
+            InputModel(
+                name="Product",
+                fields=[
+                    InputField(
+                        name="tracking_id", type="uuid", pk=True, exposure="read_only"
+                    ),
+                    InputField(name="name", type="str"),
+                ],
+            )
+        ],
+        config=InputApiConfig(
+            response_placeholders=False,
+            database=InputDatabaseConfig(enabled=True),
+        ),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    views_py = (tmp_path / "delete-pk-test" / "src" / "views.py").read_text()
+
+    assert "async def delete_product" in views_py
+    assert "status_code=204" in views_py
+    assert "session.delete(record)" in views_py
+    assert "ProductRecord" in views_py
+    assert "TODO" not in views_py
+    compile(views_py, "views.py", "exec")
+
+
+def test_path_param_uses_field_type(tmp_path):
+    api = InputAPI(
+        name="PathTypeTest",
+        endpoints=[
+            InputEndpoint(
+                name="GetItem",
+                path="/items/{item_id}",
+                method="GET",
+                response="Item",
+                path_params=[
+                    InputPathParam(name="item_id", type="uuid.UUID"),
+                ],
+            ),
+        ],
+        objects=[
+            InputModel(
+                name="Item",
+                fields=[InputField(name="name", type="str")],
+            )
+        ],
+        config=InputApiConfig(response_placeholders=False),
+    )
+
+    APIGenerator().generate(api, path=str(tmp_path))
+    path_py = (tmp_path / "path-type-test" / "src" / "path.py").read_text()
+
+    assert "uuid.UUID" in path_py
+    assert "import uuid" in path_py
+
+
+# ---------------------------------------------------------------------------
+# ZIP __pycache__ exclusion (from test_generation_unit)
+# ---------------------------------------------------------------------------
+
+
+def test_zip_excludes_pycache():
+    with tempfile.TemporaryDirectory() as tmp:
+        project = os.path.join(tmp, "test-api")
+        src = os.path.join(project, "src")
+        pycache = os.path.join(src, "__pycache__")
+        os.makedirs(pycache)
+
+        with open(os.path.join(src, "main.py"), "w") as f:
+            f.write("# main")
+        with open(os.path.join(pycache, "main.cpython-313.pyc"), "wb") as f:
+            f.write(b"\x00")
+
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            for root, dirs, files in os.walk(project):
+                dirs[:] = [d for d in dirs if d != "__pycache__"]
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arc_name = os.path.relpath(file_path, project)
+                    zf.write(file_path, arc_name)
+
+        zip_buffer.seek(0)
+        with zipfile.ZipFile(zip_buffer, "r") as zf:
+            names = zf.namelist()
+            assert not any("__pycache__" in n for n in names)
+            assert any("main.py" in n for n in names)

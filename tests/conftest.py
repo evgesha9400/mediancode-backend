@@ -9,6 +9,7 @@ import pytest_asyncio
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from api.main import app
 from api.models.database import GenerationModel, Namespace, UserModel
 
 # --- Database availability check ---
@@ -70,6 +71,39 @@ def pytest_collection_modifyitems(
         skip_e2e = pytest.mark.skip(reason="Docker not available")
         for item in e2e_items:
             item.add_marker(skip_e2e)
+
+
+# --- Module-scoped HTTP client for integration tests ---
+#
+# Each test module that needs an authenticated HTTP client defines a
+# module-level ``TEST_CLERK_ID`` string.  The fixture below reads it,
+# wires up auth, yields the client, and cleans up DB data on teardown.
+
+
+@pytest_asyncio.fixture(scope="module", loop_scope="session")
+async def client(request):
+    """Module-scoped HTTP client with Clerk auth override and DB cleanup.
+
+    The calling module **must** define ``TEST_CLERK_ID`` at module scope.
+    """
+    from httpx import ASGITransport, AsyncClient as _AsyncClient
+
+    from support.api_client import cleanup_user_data, clear_auth, override_auth
+
+    clerk_id = getattr(request.module, "TEST_CLERK_ID", None)
+    if clerk_id is None:
+        pytest.skip("Module does not define TEST_CLERK_ID")
+
+    override_auth(clerk_id)
+
+    async with _AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test/v1",
+    ) as c:
+        yield c
+
+    clear_auth()
+    await cleanup_user_data(clerk_id)
 
 
 # --- Integration test (database) fixtures ---

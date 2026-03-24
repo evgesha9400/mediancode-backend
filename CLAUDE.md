@@ -37,7 +37,7 @@ make test
 # Or: poetry run pytest tests/ -v
 
 # Run a single test
-poetry run pytest tests/test_e2e.py::TestItemsAPI::test_list_items -v
+poetry run pytest tests/codegen/test_input_and_transform.py::TestNameTypes -v
 
 # Format code
 poetry run black src/
