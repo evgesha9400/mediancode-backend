@@ -251,6 +251,6 @@ async def generate_api_code(
         io.BytesIO(zip_buffer.getvalue()),
         media_type="application/zip",
         headers={
-            "Content-Disposition": f'attachment; filename="{camel_to_kebab(api.title)}-api.zip"'
+            "Content-Disposition": f'attachment; filename="{camel_to_kebab(api.title)}.zip"'
         },
     )
