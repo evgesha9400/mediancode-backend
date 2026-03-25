@@ -15,8 +15,8 @@ from api.models.database import (
     FieldModel,
     FieldValidatorTemplateModel,
     Namespace,
-    ObjectFieldAssociation,
 )
+from api.models.members import ScalarMember
 from api.schemas.field import (
     FieldConstraintValueInput,
     FieldCreate,
@@ -203,8 +203,8 @@ class FieldService(BaseService[FieldModel]):
         """
         count_query = (
             select(func.count())
-            .select_from(ObjectFieldAssociation)
-            .where(ObjectFieldAssociation.field_id == field.id)
+            .select_from(ScalarMember)
+            .where(ScalarMember.field_id == field.id)
         )
         result = await self.db.execute(count_query)
         usage_count = result.scalar() or 0
@@ -225,8 +225,8 @@ class FieldService(BaseService[FieldModel]):
         :returns: List of API IDs.
         """
         objects_subquery = (
-            select(ObjectFieldAssociation.object_id)
-            .where(ObjectFieldAssociation.field_id == field_id)
+            select(ScalarMember.object_id)
+            .where(ScalarMember.field_id == field_id)
             .subquery()
         )
         query = (

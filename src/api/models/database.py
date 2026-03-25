@@ -453,6 +453,12 @@ class ObjectDefinition(Base):
         foreign_keys="ObjectRelationship.source_object_id",
         cascade="all, delete-orphan",
     )
+    members: Mapped[list["ObjectMember"]] = relationship(  # noqa: F821
+        "ObjectMember",
+        back_populates="parent_object",
+        order_by="ObjectMember.position",
+        cascade="all, delete-orphan",
+    )
 
 
 class ObjectFieldAssociation(Base):

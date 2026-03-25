@@ -17,14 +17,13 @@ ValidatorMode = Literal["before", "after"]
 OnDeleteAction = Literal["cascade", "restrict", "set_null"]
 FieldExposure = Literal["read_write", "write_only", "read_only"]
 FieldAppearance = FieldExposure  # deprecated alias, remove after full migration
-Cardinality = Literal["has_one", "has_many", "references", "many_to_many"]
+RelationshipKind = Literal["one_to_one", "one_to_many", "many_to_many"]
 FilterOperator = Literal["eq", "gte", "lte", "gt", "lt", "like", "ilike", "in"]
 GeneratedStrategy = Literal["uuid4", "now", "now_on_update", "auto_increment"]
 ServerDefault = GeneratedStrategy  # deprecated alias, remove after full migration
 DefaultKind = Literal["literal", "generated"]
 FieldRole = Literal[
     "pk",
-    "fk",
     "writable",
     "write_only",
     "read_only",
@@ -32,6 +31,9 @@ FieldRole = Literal[
     "updated_timestamp",
     "generated_uuid",
 ]
+
+# Legacy types kept only for existing Alembic migrations that reference them.
+Cardinality = Literal["has_one", "has_many", "references", "many_to_many"]
 
 
 def check_constraint_sql(column: str, literal_type: type) -> str:

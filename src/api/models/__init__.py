@@ -16,6 +16,7 @@ from api.models.database import (
     TypeModel,
     UserModel,
 )
+from api.models.members import ObjectMember, RelationshipMember, ScalarMember
 
 __all__ = [
     "ApiEndpoint",
@@ -29,6 +30,9 @@ __all__ = [
     "Namespace",
     "ObjectDefinition",
     "ObjectFieldAssociation",
+    "ObjectMember",
+    "RelationshipMember",
+    "ScalarMember",
     "TypeModel",
     "UserModel",
 ]
