@@ -210,7 +210,7 @@ def collect_association_tables(orm_models: list[TemplateORMModel]) -> list[dict]
 
     for model in orm_models:
         for rel in model.relationships:
-            if rel.cardinality != "many_to_many" or not rel.association_table:
+            if rel.kind != "many_to_many" or not rel.association_table:
                 continue
             if rel.association_table in seen:
                 continue

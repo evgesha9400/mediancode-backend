@@ -27,10 +27,13 @@ class TemplateRelationship(BaseModel):
     name: str
     target_model: str
     target_class_name: str
-    cardinality: str
-    is_inferred: bool = False
+    kind: str
+    back_populates: str | None = None
     fk_column: str | None = None
+    uselist: bool = True
+    remote_side: str | None = None
     association_table: str | None = None
+    unique_fk: bool = False
 
 
 class TemplateORMModel(BaseModel):

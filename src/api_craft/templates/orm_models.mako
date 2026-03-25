@@ -24,6 +24,12 @@ if has_assoc_tables:
     extra_sa.add("Table")
 if needs_func:
     extra_sa.add("func")
+# Check for unique FK constraints (one_to_one)
+has_unique_fk = any(
+    rel.unique_fk for m in orm_models for rel in m.relationships
+)
+if has_unique_fk:
+    extra_sa.add("UniqueConstraint")
 combined_sa = sorted(set(sa_imports) | extra_sa)
 orm_imports = ["DeclarativeBase", "Mapped", "mapped_column"]
 if has_relationships:
@@ -86,14 +92,25 @@ class ${model.class_name}(Base):
     ${field.name}: Mapped[${field.python_type}] = mapped_column(${', '.join(parts)})
 % endfor
 % for rel in model.relationships:
-% if rel.cardinality == "references":
-    ${rel.name}: Mapped["${rel.target_class_name}"] = relationship(foreign_keys=[${rel.fk_column}])
-% elif rel.cardinality == "has_one":
-    ${rel.name}: Mapped["${rel.target_class_name}"] = relationship(back_populates=None, uselist=False)
-% elif rel.cardinality == "has_many":
-    ${rel.name}: Mapped[list["${rel.target_class_name}"]] = relationship(back_populates=None)
-% elif rel.cardinality == "many_to_many":
-    ${rel.name}: Mapped[list["${rel.target_class_name}"]] = relationship(secondary=${rel.association_table}, back_populates=None)
-% endif
+<%
+    rel_parts = []
+    if rel.kind == "many_to_many" and rel.association_table:
+        rel_parts.append(f"secondary={rel.association_table}")
+    if rel.fk_column:
+        rel_parts.append(f"foreign_keys=[{rel.fk_column}]")
+    if rel.remote_side:
+        rel_parts.append(f"remote_side=[{rel.remote_side}]")
+    if rel.back_populates:
+        rel_parts.append(f'back_populates="{rel.back_populates}"')
+    if not rel.uselist:
+        rel_parts.append("uselist=False")
+    rel_args = ", ".join(rel_parts)
+    # Determine Mapped type annotation
+    if rel.uselist:
+        mapped_type = f'list["{rel.target_class_name}"]'
+    else:
+        mapped_type = f'"{rel.target_class_name}"'
+%>\
+    ${rel.name}: Mapped[${mapped_type}] = relationship(${rel_args})
 % endfor
 % endfor

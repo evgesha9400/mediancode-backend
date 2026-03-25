@@ -3,11 +3,11 @@ from typing import Annotated, Any, Literal, Self
 from pydantic import BaseModel, Field, model_validator
 
 from api_craft.models.enums import (
-    Cardinality,
     FieldExposure,
     FilterOperator,
     GeneratedStrategy,
     HttpMethod,
+    RelationshipKind,
     ResponseShape,
     ValidatorMode,
 )
@@ -120,16 +120,18 @@ class InputField(BaseModel):
 class InputRelationship(BaseModel):
     """Relationship definition between objects.
 
-    :ivar name: Relationship name (e.g. "posts", "author").
+    :ivar name: Relationship name (e.g. "orders", "tags").
     :ivar target_model: PascalCase name of the target object.
-    :ivar cardinality: Relationship type (has_one, has_many, references, many_to_many).
-    :ivar is_inferred: True for auto-created inverse side.
+    :ivar kind: Relationship kind (one_to_one, one_to_many, many_to_many).
+    :ivar inverse_name: Name for the derived reverse field on the target.
+    :ivar required: Whether the derived FK column is NOT NULL.
     """
 
     name: str
     target_model: str
-    cardinality: Cardinality
-    is_inferred: bool = False
+    kind: RelationshipKind
+    inverse_name: str
+    required: bool = True
 
 
 class InputModel(BaseModel):

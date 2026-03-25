@@ -1,5 +1,9 @@
 # src/api_craft/orm_builder.py
-"""ORM model generation: converts InputModels into SQLAlchemy TemplateORMModels."""
+"""ORM model generation: converts InputModels into SQLAlchemy TemplateORMModels.
+
+Full-graph approach: collects all relationships across all models, then for each
+model emits authored relationships, incoming FK columns, and inverse relationships.
+"""
 
 from api_craft.models.input import InputModel
 from api_craft.models.orm_types import (
@@ -10,11 +14,6 @@ from api_craft.models.orm_types import (
 from api_craft.utils import camel_to_snake, snake_to_plural
 
 # Map input type names to Python type annotations for Mapped[].
-# Keys match the canonical python_type values from the system types table.
-# The fallback in transform_orm_models splits qualified names on "." and
-# retries with the base module (e.g. "decimal.Decimal" → "decimal"), so
-# entries like "datetime.date" are required to avoid resolving to the
-# wrong base entry ("datetime" → "datetime.datetime").
 ORM_PYTHON_TYPE_MAP = {
     "str": "str",
     "int": "int",
@@ -43,7 +42,6 @@ def map_column_type(type_str: str, validators: list) -> str | None:
 
     Returns None for types that cannot be mapped to columns (List, Dict, model refs).
     """
-    # Skip collection types
     if type_str.startswith(("List[", "Dict[", "Set[", "Tuple[")):
         return None
 
@@ -63,7 +61,6 @@ def map_column_type(type_str: str, validators: list) -> str | None:
         "HttpUrl": lambda: "Text",
     }
 
-    # Try full qualified name first (e.g. "datetime.date"), then base module name
     factory = type_map.get(type_str)
     if factory is None:
         base = type_str.split(".")[0] if "." in type_str else type_str
@@ -73,31 +70,25 @@ def map_column_type(type_str: str, validators: list) -> str | None:
     return factory()
 
 
-def _make_association_table_name(table_a: str, table_b: str) -> str:
-    """Build a deterministic association table name for many_to_many.
+def _make_association_table_name(source_table: str, relationship_name: str) -> str:
+    """Build association table name: {source_table}_{relationship_name}.
 
-    Sorts the two table names alphabetically to ensure the same name
-    regardless of which side declares the relationship.
-
-    :param table_a: First table name.
-    :param table_b: Second table name.
+    :param source_table: Source model's table name.
+    :param relationship_name: Relationship field name.
     :returns: Association table name.
     """
-    return "_".join(sorted([table_a, table_b]))
+    return f"{source_table}_{relationship_name}"
 
 
 def _sort_by_dependencies(orm_models: list[TemplateORMModel]) -> list[TemplateORMModel]:
-    """Sort ORM models so tables with FK dependencies come after the tables they reference.
+    """Sort ORM models so tables with FK dependencies come after referenced tables.
 
-    Uses Kahn's algorithm for topological sort. Models without FK dependencies
-    retain their relative input order.
+    Uses Kahn's algorithm for topological sort.
     """
     if not orm_models:
         return orm_models
 
-    # Map table_name -> model and build dependency graph
     model_by_table: dict[str, TemplateORMModel] = {m.table_name: m for m in orm_models}
-    # deps[table] = set of table names this table depends on (via FK)
     deps: dict[str, set[str]] = {m.table_name: set() for m in orm_models}
 
     for model in orm_models:
@@ -107,13 +98,10 @@ def _sort_by_dependencies(orm_models: list[TemplateORMModel]) -> list[TemplateOR
                 if ref_table in model_by_table and ref_table != model.table_name:
                     deps[model.table_name].add(ref_table)
 
-    # Kahn's algorithm: iteratively pick tables with zero unresolved deps
     sorted_tables: list[str] = []
-    # Use input order for tie-breaking (pick first available with 0 deps)
     input_order = [m.table_name for m in orm_models]
 
     while input_order:
-        # Find next table with no unresolved dependencies, preserving input order
         ready = None
         for table in input_order:
             if not deps[table]:
@@ -128,29 +116,48 @@ def _sort_by_dependencies(orm_models: list[TemplateORMModel]) -> list[TemplateOR
 
         sorted_tables.append(ready)
         input_order.remove(ready)
-        # Remove this table from others' dependency sets
         for d in deps.values():
             d.discard(ready)
 
     return [model_by_table[t] for t in sorted_tables]
 
 
+def _singular(table_name: str) -> str:
+    """Naive de-pluralization: strip trailing 's'.
+
+    :param table_name: Pluralized table name.
+    :returns: Singular form.
+    """
+    return table_name.rstrip("s") if table_name.endswith("s") else table_name
+
+
 def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMModel]:
-    """Convert InputModels with pk fields into TemplateORMModels."""
-    # Build entity lookup: name -> (table_name, pk_column_name, class_name)
-    entity_lookup: dict[str, tuple[str, str, str]] = {}
+    """Convert InputModels into TemplateORMModels using full-graph FK derivation.
+
+    FK columns are derived from relationships and placed on the target side.
+    No dedup logic needed -- one clean pass.
+    """
+    # Build entity lookup: model_name -> (table_name, pk_field, class_name)
+    entity_lookup: dict[str, tuple[str, "InputModel", str]] = {}
     for model in input_models:
         pk_fields = [f for f in model.fields if f.pk]
         if pk_fields:
             table_name = snake_to_plural(camel_to_snake(model.name))
             class_name = f"{model.name}Record"
-            entity_lookup[str(model.name)] = (
-                table_name,
-                str(pk_fields[0].name),
-                class_name,
-            )
+            entity_lookup[str(model.name)] = (table_name, model, class_name)
 
-    orm_models = []
+    # Collect all relationships for full-graph processing
+    # Each entry: (source_model_name, relationship)
+    all_relationships: list[tuple[str, object]] = []
+    for model in input_models:
+        for rel in model.relationships:
+            all_relationships.append((str(model.name), rel))
+
+    # Build per-model data: fields + relationships + incoming FK columns
+    model_fields: dict[str, list[TemplateORMField]] = {}
+    model_rels: dict[str, list[TemplateRelationship]] = {}
+
+    # First pass: build base fields for all models
     for model in input_models:
         pk_fields = [f for f in model.fields if f.pk]
         if not pk_fields:
@@ -170,13 +177,11 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
             )
             python_type = orm_type if not field.nullable else f"{orm_type} | None"
 
-            # Determine server_default strategy
             sd = None
             on_update = None
             default_literal = None
 
             if field.pk:
-                # PK auto-gen: infer from type
                 if base_type in ("uuid", "UUID"):
                     sd = "uuid4"
                 elif base_type in ("int",):
@@ -193,16 +198,10 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
                     else:
                         sd = strategy
 
-            # SQL-quote string literals so the DDL emits DEFAULT 'value' not DEFAULT value
             if (
                 sd == "literal"
                 and default_literal
-                and base_type
-                in (
-                    "str",
-                    "EmailStr",
-                    "HttpUrl",
-                )
+                and base_type in ("str", "EmailStr", "HttpUrl")
             ):
                 default_literal = f"'{default_literal}'"
 
@@ -219,89 +218,136 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
                 )
             )
 
-        # Transform relationships
-        template_rels = []
-        for rel in model.relationships:
-            target_info = entity_lookup.get(rel.target_model)
-            if not target_info:
-                continue
-            target_table, target_pk, target_class = target_info
+        model_fields[str(model.name)] = orm_fields
+        model_rels[str(model.name)] = []
 
-            fk_column = None
-            association_table = None
+    # Second pass: process relationships (full graph)
+    for source_name, rel in all_relationships:
+        source_info = entity_lookup.get(source_name)
+        target_info = entity_lookup.get(rel.target_model)
+        if not source_info or not target_info:
+            continue
 
-            if rel.cardinality == "references":
-                # Add FK column to this model's fields
-                fk_col_name = f"{rel.name}_id"
-                fk_ref = f"{target_table}.{target_pk}"
+        source_table, source_model, source_class = source_info
+        target_table, target_model, target_class = target_info
+        is_self_referential = source_name == rel.target_model
 
-                # Check if a field with this name already exists (e.g. added
-                # by the backend as an explicit FK field).  If so, stamp it
-                # with the foreign_key reference instead of creating a
-                # duplicate column.
-                existing = next(
-                    (f for f in orm_fields if f.name == fk_col_name), None
-                )
-                if existing is not None:
-                    if not existing.foreign_key:
-                        existing.foreign_key = fk_ref
-                else:
-                    # Determine FK column type from target PK
-                    target_model = next(
-                        (m for m in input_models if str(m.name) == rel.target_model),
-                        None,
+        # Get source PK for FK type derivation
+        source_pk_field = next((f for f in source_model.fields if f.pk), None)
+        if not source_pk_field:
+            continue
+
+        if rel.kind in ("one_to_many", "one_to_one"):
+            # FK goes on the target side, named {inverse_name}_id
+            fk_col_name = f"{rel.inverse_name}_id"
+            fk_ref = f"{source_table}.{source_pk_field.name}"
+
+            # Derive FK column type from source PK
+            fk_base_type = (
+                source_pk_field.type.split(".")[0]
+                if "." in source_pk_field.type
+                else source_pk_field.type
+            )
+            fk_col_type = map_column_type(
+                source_pk_field.type, source_pk_field.validators
+            )
+            fk_orm_type = ORM_PYTHON_TYPE_MAP.get(
+                source_pk_field.type
+            ) or ORM_PYTHON_TYPE_MAP.get(fk_base_type, fk_base_type)
+
+            nullable = not rel.required
+            fk_python_type = f"{fk_orm_type} | None" if nullable else fk_orm_type
+
+            if fk_col_type and rel.target_model in model_fields:
+                # Add FK column to target model
+                model_fields[rel.target_model].append(
+                    TemplateORMField(
+                        name=fk_col_name,
+                        python_type=fk_python_type,
+                        column_type=fk_col_type,
+                        nullable=nullable,
+                        foreign_key=fk_ref,
                     )
-                    if target_model:
-                        target_pk_field = next(
-                            (f for f in target_model.fields if f.pk), None
-                        )
-                        if target_pk_field:
-                            fk_col_type = map_column_type(
-                                target_pk_field.type, target_pk_field.validators
-                            )
-                            fk_base = (
-                                target_pk_field.type.split(".")[0]
-                                if "." in target_pk_field.type
-                                else target_pk_field.type
-                            )
-                            fk_orm_type = ORM_PYTHON_TYPE_MAP.get(
-                                target_pk_field.type
-                            ) or ORM_PYTHON_TYPE_MAP.get(fk_base, fk_base)
-                            if fk_col_type:
-                                orm_fields.append(
-                                    TemplateORMField(
-                                        name=fk_col_name,
-                                        python_type=fk_orm_type,
-                                        column_type=fk_col_type,
-                                        foreign_key=fk_ref,
-                                    )
-                                )
-                fk_column = fk_col_name
-
-            elif rel.cardinality == "many_to_many":
-                association_table = _make_association_table_name(
-                    table_name, target_table
                 )
 
-            template_rels.append(
+            uselist_source = rel.kind == "one_to_many"
+            uselist_target = rel.kind != "one_to_one"
+
+            # Source-side relationship (authored)
+            source_rel = TemplateRelationship(
+                name=rel.name,
+                target_model=rel.target_model,
+                target_class_name=target_class,
+                kind=rel.kind,
+                back_populates=rel.inverse_name,
+                uselist=uselist_source,
+            )
+            if is_self_referential:
+                source_rel = source_rel.model_copy(update={"fk_column": None})
+            model_rels[source_name].append(source_rel)
+
+            # Target-side relationship (inverse)
+            inverse_rel = TemplateRelationship(
+                name=rel.inverse_name,
+                target_model=source_name,
+                target_class_name=source_class,
+                kind=rel.kind,
+                back_populates=rel.name,
+                fk_column=fk_col_name,
+                uselist=not uselist_target if rel.kind == "one_to_one" else False,
+            )
+            if is_self_referential:
+                # Self-referential: target-side uses remote_side
+                inverse_rel = inverse_rel.model_copy(
+                    update={
+                        "remote_side": str(source_pk_field.name),
+                        "uselist": False,
+                    }
+                )
+            model_rels[rel.target_model].append(inverse_rel)
+
+        elif rel.kind == "many_to_many":
+            assoc_table = _make_association_table_name(source_table, rel.name)
+
+            # Source-side
+            model_rels[source_name].append(
                 TemplateRelationship(
                     name=rel.name,
                     target_model=rel.target_model,
                     target_class_name=target_class,
-                    cardinality=rel.cardinality,
-                    is_inferred=rel.is_inferred,
-                    fk_column=fk_column,
-                    association_table=association_table,
+                    kind="many_to_many",
+                    back_populates=rel.inverse_name,
+                    association_table=assoc_table,
                 )
             )
 
+            # Target-side (inverse)
+            model_rels[rel.target_model].append(
+                TemplateRelationship(
+                    name=rel.inverse_name,
+                    target_model=source_name,
+                    target_class_name=source_class,
+                    kind="many_to_many",
+                    back_populates=rel.name,
+                    association_table=assoc_table,
+                )
+            )
+
+    # Build final ORM models
+    orm_models = []
+    for model in input_models:
+        name = str(model.name)
+        if name not in model_fields:
+            continue
+
+        table_name = snake_to_plural(camel_to_snake(model.name))
         orm_models.append(
             TemplateORMModel(
                 class_name=f"{model.name}Record",
                 table_name=table_name,
-                source_model=str(model.name),
-                fields=orm_fields,
-                relationships=template_rels,
+                source_model=name,
+                fields=model_fields[name],
+                relationships=model_rels.get(name, []),
             )
         )
 

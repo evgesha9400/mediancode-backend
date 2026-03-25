@@ -1,14 +1,17 @@
 # src/api_craft/schema_splitter.py
-"""Schema splitting: derives Create/Update/Response schemas from InputModel."""
+"""Schema splitting: derives Create/Update/Response schemas from InputModel.
+
+FK injection uses the full model graph: for each one_to_one/one_to_many
+relationship targeting a model, inject ``{inverse_name}_id`` into Create,
+Update, and Response schemas.
+"""
 
 from api_craft.models.input import InputAPI, InputField, InputModel
 from api_craft.models.types import PascalCaseName
 
 
 def _resolve_fk_type(
-    fk_name: str,
     target_model_name: str,
-    source_model: InputModel,
     all_models: list[InputModel] | None = None,
 ) -> str:
     """Resolve the FK field type from the target model's PK type.
@@ -33,6 +36,9 @@ def split_model_schemas(
     - Create: fields with exposure in (read_write, write_only), PK excluded
     - Update: same as Create but all fields nullable
     - Response: fields with exposure in (read_write, read_only), PK included
+
+    FK fields are injected from the full model graph for incoming
+    one_to_one and one_to_many relationships.
     """
     model_validators = list(input_model.model_validators)
 
@@ -51,49 +57,56 @@ def split_model_schemas(
         f for f in input_model.fields if f.exposure in ("read_write", "read_only")
     )
 
-    # Add FK ID fields for `references` relationships
-    for rel in input_model.relationships:
-        if rel.cardinality == "references":
-            fk_name = f"{rel.name}_id"
-            fk_type = _resolve_fk_type(
-                fk_name, rel.target_model, input_model, all_models
-            )
+    # Inject FK fields from incoming relationships across the full graph
+    if all_models:
+        model_name = str(input_model.name)
+        for source_model in all_models:
+            for rel in source_model.relationships:
+                if rel.target_model != model_name:
+                    continue
+                if rel.kind not in ("one_to_one", "one_to_many"):
+                    continue
 
-            # Add to Create (required)
-            existing_create = {str(f.name) for f in create_fields}
-            if fk_name not in existing_create:
-                create_fields.append(
-                    InputField(
-                        type=fk_type,
-                        name=fk_name,
-                        nullable=False,
-                        description=f"FK reference to {rel.target_model}",
-                    )
-                )
+                fk_name = f"{rel.inverse_name}_id"
+                # Resolve FK type from the source model's PK
+                fk_type = _resolve_fk_type(str(source_model.name), all_models)
+                is_required = rel.required
 
-            # Add to Update (nullable — optional on partial update)
-            existing_update = {str(f.name) for f in update_fields}
-            if fk_name not in existing_update:
-                update_fields.append(
-                    InputField(
-                        type=fk_type,
-                        name=fk_name,
-                        nullable=True,
-                        description=f"FK reference to {rel.target_model}",
+                # Add to Create
+                existing_create = {str(f.name) for f in create_fields}
+                if fk_name not in existing_create:
+                    create_fields.append(
+                        InputField(
+                            type=fk_type,
+                            name=fk_name,
+                            nullable=not is_required,
+                            description=f"FK reference to {source_model.name}",
+                        )
                     )
-                )
 
-            # Add to Response
-            existing_response = {str(f.name) for f in response_fields}
-            if fk_name not in existing_response:
-                response_fields.append(
-                    InputField(
-                        type=fk_type,
-                        name=fk_name,
-                        nullable=False,
-                        description=f"FK reference to {rel.target_model}",
+                # Add to Update (always nullable on partial update)
+                existing_update = {str(f.name) for f in update_fields}
+                if fk_name not in existing_update:
+                    update_fields.append(
+                        InputField(
+                            type=fk_type,
+                            name=fk_name,
+                            nullable=True,
+                            description=f"FK reference to {source_model.name}",
+                        )
                     )
-                )
+
+                # Add to Response
+                existing_response = {str(f.name) for f in response_fields}
+                if fk_name not in existing_response:
+                    response_fields.append(
+                        InputField(
+                            type=fk_type,
+                            name=fk_name,
+                            nullable=not is_required,
+                            description=f"FK reference to {source_model.name}",
+                        )
+                    )
 
     return [
         InputModel(

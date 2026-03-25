@@ -121,6 +121,13 @@ objects:
         mode: after
         function_body: "        if self.discount_percent is not None and self.sale_price is None:\n            raise ValueError('discount_percent requires sale_price to be set')\n        return self"
 
+    relationships:
+      - name: customers
+        target_model: Customer
+        kind: one_to_many
+        inverse_name: favorite_product
+        required: false
+
   - name: Customer
     description: Shop customer
     fields:
