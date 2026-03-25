@@ -26,6 +26,7 @@ from api_craft.models.input import (
     InputField,
     InputModel,
     InputPathParam,
+    InputRelationship,
     InputResolvedFieldValidator,
 )
 from support.generated_app import load_input
@@ -854,6 +855,107 @@ def test_path_param_uses_field_type(tmp_path):
 
     assert "uuid.UUID" in path_py
     assert "import uuid" in path_py
+
+
+# ---------------------------------------------------------------------------
+# Regression: FK field + references relationship must not duplicate columns
+# ---------------------------------------------------------------------------
+
+
+class TestFkFieldWithReferencesRelationship:
+    """Regression test for duplicate column bug.
+
+    When the backend seeds both an explicit FK field (role=fk) AND a references
+    relationship pointing to the same target, the generator must produce exactly
+    one column — not two.
+    """
+
+    @pytest.fixture(scope="class")
+    def fk_rel_project(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
+        api_input = InputAPI(
+            name="FkRelTest",
+            objects=[
+                InputModel(
+                    name="Customer",
+                    fields=[
+                        InputField(name="id", type="int", pk=True, exposure="read_only"),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(
+                            name="tracking_id", type="uuid", pk=True, exposure="read_only"
+                        ),
+                        InputField(name="title", type="str"),
+                        # Explicit FK field (as the backend creates it)
+                        InputField(name="customer_id", type="int"),
+                    ],
+                    relationships=[
+                        InputRelationship(
+                            name="customer",
+                            target_model="Customer",
+                            cardinality="references",
+                            is_inferred=True,
+                        )
+                    ],
+                ),
+            ],
+            endpoints=[
+                InputEndpoint(
+                    name="ListProducts",
+                    path="/products",
+                    method="GET",
+                    response="Product",
+                    response_shape="list",
+                ),
+            ],
+            config=InputApiConfig(
+                database=InputDatabaseConfig(enabled=True),
+            ),
+        )
+        tmp_path = tmp_path_factory.mktemp("fk_rel_test")
+        APIGenerator().generate(api_input, path=str(tmp_path))
+        return tmp_path / "fk-rel-test"
+
+    def test_orm_models_compile(self, fk_rel_project: Path):
+        content = (fk_rel_project / "src" / "orm_models.py").read_text()
+        compile(content, "orm_models.py", "exec")
+
+    def test_migration_compiles(self, fk_rel_project: Path):
+        content = (
+            fk_rel_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        compile(content, "0001_initial.py", "exec")
+
+    def test_no_duplicate_customer_id_in_orm(self, fk_rel_project: Path):
+        content = (fk_rel_project / "src" / "orm_models.py").read_text()
+        count = content.count("customer_id")
+        # Once for the field definition, once for the relationship foreign_keys=[]
+        assert count == 2, (
+            f"Expected 'customer_id' exactly 2 times (field + relationship ref), "
+            f"got {count}:\n{content}"
+        )
+
+    def test_no_duplicate_customer_id_in_migration(self, fk_rel_project: Path):
+        content = (
+            fk_rel_project / "migrations" / "versions" / "0001_initial.py"
+        ).read_text()
+        count = content.count('"customer_id"')
+        assert count == 1, (
+            f"Expected '\"customer_id\"' exactly 1 time in migration, "
+            f"got {count}:\n{content}"
+        )
+
+    def test_customer_id_has_foreign_key(self, fk_rel_project: Path):
+        content = (fk_rel_project / "src" / "orm_models.py").read_text()
+        assert 'ForeignKey("customers.id")' in content
+
+    def test_all_python_files_compile(self, fk_rel_project: Path):
+        for py_file in fk_rel_project.rglob("*.py"):
+            source = py_file.read_text()
+            compile(source, str(py_file), "exec")
 
 
 # ---------------------------------------------------------------------------

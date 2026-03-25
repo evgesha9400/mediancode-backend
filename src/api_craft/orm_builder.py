@@ -233,36 +233,49 @@ def transform_orm_models(input_models: list[InputModel]) -> list[TemplateORMMode
             if rel.cardinality == "references":
                 # Add FK column to this model's fields
                 fk_col_name = f"{rel.name}_id"
-                # Determine FK column type from target PK
-                target_model = next(
-                    (m for m in input_models if str(m.name) == rel.target_model),
-                    None,
+                fk_ref = f"{target_table}.{target_pk}"
+
+                # Check if a field with this name already exists (e.g. added
+                # by the backend as an explicit FK field).  If so, stamp it
+                # with the foreign_key reference instead of creating a
+                # duplicate column.
+                existing = next(
+                    (f for f in orm_fields if f.name == fk_col_name), None
                 )
-                if target_model:
-                    target_pk_field = next(
-                        (f for f in target_model.fields if f.pk), None
+                if existing is not None:
+                    if not existing.foreign_key:
+                        existing.foreign_key = fk_ref
+                else:
+                    # Determine FK column type from target PK
+                    target_model = next(
+                        (m for m in input_models if str(m.name) == rel.target_model),
+                        None,
                     )
-                    if target_pk_field:
-                        fk_col_type = map_column_type(
-                            target_pk_field.type, target_pk_field.validators
+                    if target_model:
+                        target_pk_field = next(
+                            (f for f in target_model.fields if f.pk), None
                         )
-                        fk_base = (
-                            target_pk_field.type.split(".")[0]
-                            if "." in target_pk_field.type
-                            else target_pk_field.type
-                        )
-                        fk_orm_type = ORM_PYTHON_TYPE_MAP.get(
-                            target_pk_field.type
-                        ) or ORM_PYTHON_TYPE_MAP.get(fk_base, fk_base)
-                        if fk_col_type:
-                            orm_fields.append(
-                                TemplateORMField(
-                                    name=fk_col_name,
-                                    python_type=fk_orm_type,
-                                    column_type=fk_col_type,
-                                    foreign_key=f"{target_table}.{target_pk}",
-                                )
+                        if target_pk_field:
+                            fk_col_type = map_column_type(
+                                target_pk_field.type, target_pk_field.validators
                             )
+                            fk_base = (
+                                target_pk_field.type.split(".")[0]
+                                if "." in target_pk_field.type
+                                else target_pk_field.type
+                            )
+                            fk_orm_type = ORM_PYTHON_TYPE_MAP.get(
+                                target_pk_field.type
+                            ) or ORM_PYTHON_TYPE_MAP.get(fk_base, fk_base)
+                            if fk_col_type:
+                                orm_fields.append(
+                                    TemplateORMField(
+                                        name=fk_col_name,
+                                        python_type=fk_orm_type,
+                                        column_type=fk_col_type,
+                                        foreign_key=fk_ref,
+                                    )
+                                )
                 fk_column = fk_col_name
 
             elif rel.cardinality == "many_to_many":

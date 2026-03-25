@@ -2020,6 +2020,111 @@ class TestReferencesRelationship:
 
 
 @pytest.mark.codegen
+class TestReferencesWithExistingFkField:
+    """Regression: when the backend seeds both an FK field AND a references
+    relationship, orm_builder must not produce a duplicate column."""
+
+    def test_no_duplicate_fk_column(self):
+        """Model has explicit customer_id field + references relationship → single column."""
+        models = [
+            _make_model(
+                "Product",
+                [
+                    {"name": "tracking_id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                    {"name": "customer_id", "type": "int"},
+                ],
+                relationships=[
+                    {
+                        "name": "customer",
+                        "target_model": "Customer",
+                        "cardinality": "references",
+                        "is_inferred": True,
+                    }
+                ],
+            ),
+            _make_model(
+                "Customer",
+                [
+                    {"name": "id", "type": "int", "pk": True},
+                    {"name": "customer_name", "type": "str"},
+                ],
+            ),
+        ]
+        result = transform_orm_models(models)
+        product_model = next(m for m in result if m.source_model == "Product")
+        customer_id_fields = [f for f in product_model.fields if f.name == "customer_id"]
+        assert len(customer_id_fields) == 1, (
+            f"Expected exactly 1 customer_id field, got {len(customer_id_fields)}"
+        )
+        assert customer_id_fields[0].foreign_key == "customers.id"
+
+    def test_existing_field_gets_fk_ref_stamped(self):
+        """An explicit FK field without foreign_key gets stamped by the relationship."""
+        models = [
+            _make_model(
+                "Order",
+                [
+                    {"name": "id", "type": "int", "pk": True},
+                    {"name": "user_id", "type": "uuid"},
+                ],
+                relationships=[
+                    {
+                        "name": "user",
+                        "target_model": "Account",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "Account",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "email", "type": "str"},
+                ],
+            ),
+        ]
+        result = transform_orm_models(models)
+        order_model = next(m for m in result if m.source_model == "Order")
+        fk_field = next(f for f in order_model.fields if f.name == "user_id")
+        assert fk_field.foreign_key == "accounts.id"
+
+    def test_existing_field_with_fk_ref_not_overwritten(self):
+        """If the field already has a foreign_key, don't overwrite it."""
+        models = [
+            _make_model(
+                "Post",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "author",
+                        "target_model": "User",
+                        "cardinality": "references",
+                    }
+                ],
+            ),
+            _make_model(
+                "User",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "name", "type": "str"},
+                ],
+            ),
+        ]
+        result = transform_orm_models(models)
+        post_model = next(m for m in result if m.source_model == "Post")
+        # No pre-existing field, so relationship creates it
+        fk_field = next(f for f in post_model.fields if f.name == "author_id")
+        assert fk_field.foreign_key == "users.id"
+        # Still only one
+        author_id_fields = [f for f in post_model.fields if f.name == "author_id"]
+        assert len(author_id_fields) == 1
+
+
+@pytest.mark.codegen
 class TestHasManyRelationship:
     def test_has_many_no_fk_on_source(self):
         models = [
