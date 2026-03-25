@@ -17,9 +17,10 @@ from api.models.database import (
     AppliedModelValidatorModel,
     FieldConstraintValueAssociation,
     FieldModel,
+    Namespace,
     ObjectDefinition,
-    ObjectRelationship,
 )
+from api.models.members import ObjectMember, RelationshipMember, ScalarMember
 from api.schemas.api import GenerateOptions
 from api_craft.main import APIGenerator
 from api_craft.models.input import (
@@ -60,9 +61,10 @@ async def generate_api_zip(
 
     :param api: The API model with loaded relations.
     :param db: Database session for fetching related entities.
+    :param options: Optional generation options.
     :returns: BytesIO buffer containing the ZIP file.
     """
-    # Fetch all related data
+    # Fetch ALL objects (not just endpoint-selected) for full-graph FK derivation
     objects_map = await _fetch_objects(api, db)
     fields_map = await _fetch_fields(api, objects_map, db)
 
@@ -98,36 +100,26 @@ async def generate_api_zip(
 async def _fetch_objects(
     api: ApiModel, db: AsyncSession
 ) -> dict[str, ObjectDefinition]:
-    """Fetch all objects referenced by the API's endpoints.
+    """Fetch ALL objects in the user's namespace for full-graph FK derivation.
+
+    All objects are needed (not just endpoint-selected) because any object
+    may have a relationship whose target is an endpoint-selected object,
+    and that relationship determines FK columns on the target.
 
     :param api: The API model.
     :param db: Database session.
     :returns: Map of object ID to ObjectDefinition.
     """
-    # Collect all object IDs from endpoints
-    object_ids: set[str] = set()
-    for endpoint in api.endpoints:
-        if endpoint.query_params_object_id:
-            object_ids.add(endpoint.query_params_object_id)
-        if endpoint.object_id:
-            object_ids.add(endpoint.object_id)
-
-    if not object_ids:
-        return {}
-
-    # Fetch objects with field associations, validator templates, and relationships
+    # Fetch all objects in the same namespace as the API, with members loaded
     query = (
         select(ObjectDefinition)
+        .where(ObjectDefinition.namespace_id == api.namespace_id)
         .options(
-            selectinload(ObjectDefinition.field_associations),
+            selectinload(ObjectDefinition.members).selectinload(ScalarMember.field),
             selectinload(ObjectDefinition.validators).selectinload(
                 AppliedModelValidatorModel.template
             ),
-            selectinload(ObjectDefinition.relationships).selectinload(
-                ObjectRelationship.target_object
-            ),
         )
-        .where(ObjectDefinition.id.in_(object_ids))
     )
     result = await db.execute(query)
     objects = result.scalars().all()
@@ -147,11 +139,12 @@ async def _fetch_fields(
     :param db: Database session.
     :returns: Map of field ID to FieldModel.
     """
-    # Collect all field IDs from objects
+    # Collect all field IDs from scalar members
     field_ids: set[str] = set()
     for obj in objects_map.values():
-        for assoc in obj.field_associations:
-            field_ids.add(assoc.field_id)
+        for member in obj.members:
+            if isinstance(member, ScalarMember):
+                field_ids.add(member.field_id)
 
     # Collect field IDs from endpoint path_params
     for endpoint in api.endpoints:
@@ -183,11 +176,10 @@ async def _fetch_fields(
     return {f.id: f for f in fields}
 
 
-# --- Role → InputField property derivation ---
+# --- Role -> InputField property derivation ---
 
 _ROLE_TO_EXPOSURE: dict[str, str] = {
     "pk": "read_only",
-    "fk": "read_write",
     "writable": "read_write",
     "write_only": "write_only",
     "read_only": "read_only",
@@ -205,21 +197,21 @@ _ROLE_GENERATED_STRATEGY: dict[str, str] = {
 _ROLE_IS_PK = {"pk"}
 
 
-def _derive_input_field_props(assoc):
-    """Derive InputField properties (pk, exposure, default) from a role-based association.
+def _derive_input_field_props(member: ScalarMember):
+    """Derive InputField properties (pk, exposure, default) from a scalar member.
 
-    :param assoc: An ObjectFieldAssociation record.
+    :param member: A ScalarMember record.
     :returns: Tuple of (pk, exposure, default).
     """
-    pk = assoc.role in _ROLE_IS_PK
-    exposure = _ROLE_TO_EXPOSURE[assoc.role]
+    pk = member.role in _ROLE_IS_PK
+    exposure = _ROLE_TO_EXPOSURE[member.role]
 
-    if assoc.role in _ROLE_GENERATED_STRATEGY:
+    if member.role in _ROLE_GENERATED_STRATEGY:
         default = FieldDefaultGenerated(
-            kind="generated", strategy=_ROLE_GENERATED_STRATEGY[assoc.role]
+            kind="generated", strategy=_ROLE_GENERATED_STRATEGY[member.role]
         )
-    elif assoc.default_value is not None:
-        default = FieldDefaultLiteral(kind="literal", value=assoc.default_value)
+    elif member.default_value is not None:
+        default = FieldDefaultLiteral(kind="literal", value=member.default_value)
     else:
         default = None
 
@@ -237,47 +229,53 @@ def _convert_to_input_api(
     :param api: The API model.
     :param objects_map: Map of object ID to ObjectDefinition.
     :param fields_map: Map of field ID to FieldModel.
+    :param options: Generation options.
     :returns: InputAPI for code generation.
     """
-    # Convert objects to InputModel
+    # Convert objects to InputModel — single loop over members
     input_objects: list[InputModel] = []
     for obj in objects_map.values():
         fields: list[InputField] = []
-        for assoc in sorted(obj.field_associations, key=lambda x: x.position):
-            field = fields_map.get(assoc.field_id)
-            if field:
-                pk, exposure, default = _derive_input_field_props(assoc)
-                input_field = InputField(
-                    name=field.name,
-                    type=_build_field_type(
-                        field.field_type.python_type, field.container
-                    ),
-                    nullable=assoc.nullable,
-                    description=field.description,
-                    default=default,
-                    validators=_build_field_validators(field),
-                    field_validators=[
-                        InputResolvedFieldValidator(**rv)
-                        for rv in _build_resolved_field_validators(field)
-                    ],
-                    pk=pk,
-                    exposure=exposure,
-                )
-                fields.append(input_field)
+        input_relationships: list[InputRelationship] = []
 
-        obj_name = obj.name
-        input_relationships = [
-            InputRelationship(
-                name=rel.name,
-                target_model=rel.target_object.name,
-                cardinality=rel.cardinality,
-                is_inferred=rel.is_inferred,
-            )
-            for rel in (obj.relationships or [])
-        ]
+        for member in sorted(obj.members, key=lambda x: x.position):
+            if isinstance(member, ScalarMember):
+                field = fields_map.get(member.field_id)
+                if field:
+                    pk, exposure, default = _derive_input_field_props(member)
+                    input_field = InputField(
+                        name=field.name,
+                        type=_build_field_type(
+                            field.field_type.python_type, field.container
+                        ),
+                        nullable=member.is_nullable,
+                        description=field.description,
+                        default=default,
+                        validators=_build_field_validators(field),
+                        field_validators=[
+                            InputResolvedFieldValidator(**rv)
+                            for rv in _build_resolved_field_validators(field)
+                        ],
+                        pk=pk,
+                        exposure=exposure,
+                    )
+                    fields.append(input_field)
+            elif isinstance(member, RelationshipMember):
+                target_obj = objects_map.get(member.target_object_id)
+                target_name = target_obj.name if target_obj else "Unknown"
+                input_relationships.append(
+                    InputRelationship(
+                        name=member.name,
+                        target_model=target_name,
+                        kind=member.kind,
+                        inverse_name=member.inverse_name,
+                        required=member.required,
+                    )
+                )
+
         input_objects.append(
             InputModel(
-                name=obj_name,
+                name=obj.name,
                 fields=fields,
                 description=obj.description,
                 model_validators=[
@@ -295,10 +293,7 @@ def _convert_to_input_api(
     # Convert endpoints to InputEndpoint
     input_endpoints: list[InputEndpoint] = []
     for endpoint in api.endpoints:
-        # Build endpoint name from method and path
         endpoint_name = _build_endpoint_name(endpoint.method, endpoint.path)
-
-        # Get tag name directly from endpoint (no longer need lookup)
         tag_name = endpoint.tag_name
 
         # Convert path params (JSONB dicts with name and fieldId)
@@ -325,19 +320,20 @@ def _convert_to_input_api(
             query_obj = objects_map.get(endpoint.query_params_object_id)
             if query_obj:
                 query_params = []
-                for assoc in sorted(
-                    query_obj.field_associations, key=lambda x: x.position
-                ):
-                    field = fields_map.get(assoc.field_id)
-                    if field:
-                        query_params.append(
-                            InputQueryParam(
-                                name=field.name,
-                                type=_build_field_type(field.field_type.python_type),
-                                optional=assoc.nullable,
-                                description=field.description,
+                for member in sorted(query_obj.members, key=lambda x: x.position):
+                    if isinstance(member, ScalarMember):
+                        field = fields_map.get(member.field_id)
+                        if field:
+                            query_params.append(
+                                InputQueryParam(
+                                    name=field.name,
+                                    type=_build_field_type(
+                                        field.field_type.python_type
+                                    ),
+                                    optional=member.is_nullable,
+                                    description=field.description,
+                                )
                             )
-                        )
 
         # Get object name for the endpoint's associated object
         object_name = None
@@ -390,9 +386,9 @@ def _convert_to_input_api(
 def _build_field_type(python_type: str, container: str | None = None) -> str:
     """Build a Python type annotation from the DB python_type and optional container.
 
-    :param python_type: The python_type value from the TypeModel (e.g. 'str', 'datetime.datetime').
+    :param python_type: The python_type value from the TypeModel.
     :param container: Optional container type (e.g. 'List').
-    :returns: Python type string, e.g. 'str' or 'List[datetime.datetime]'.
+    :returns: Python type string.
     """
     if container:
         return f"{container}[{python_type}]"
@@ -401,9 +397,6 @@ def _build_field_type(python_type: str, container: str | None = None) -> str:
 
 def _build_endpoint_name(method: str, path: str) -> str:
     """Build a PascalCase endpoint name from HTTP method and path.
-
-    Splits path segments on non-alphanumeric characters and capitalizes
-    each word to produce valid PascalCase names.
 
     :param method: HTTP method (GET, POST, etc.).
     :param path: URL path.

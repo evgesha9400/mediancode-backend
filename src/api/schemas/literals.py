@@ -15,6 +15,7 @@ from api_craft.models.enums import (  # noqa: F401
     GeneratedStrategy,
     HttpMethod,
     OnDeleteAction,
+    RelationshipKind,
     ResponseShape,
     ServerDefault,
     ValidatorMode,

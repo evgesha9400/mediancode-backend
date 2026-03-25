@@ -13,7 +13,6 @@ from api.schemas.field_constraint import FieldConstraintResponse
 from api.schemas.namespace import NamespaceCreate, NamespaceResponse, NamespaceUpdate
 from api.schemas.object import (
     ObjectCreate,
-    ObjectFieldReferenceSchema,
     ObjectResponse,
     ObjectUpdate,
 )
@@ -35,7 +34,6 @@ __all__ = [
     "NamespaceResponse",
     "NamespaceUpdate",
     "ObjectCreate",
-    "ObjectFieldReferenceSchema",
     "ObjectResponse",
     "ObjectUpdate",
     "TypeResponse",

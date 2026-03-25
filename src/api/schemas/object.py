@@ -5,28 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from api.schemas.literals import FieldRole
-from api.schemas.relationship import ObjectRelationshipResponse
+from api.schemas.members import DerivedRelationshipResponse, MemberInput, MemberResponse
 from api_craft.models.types import PascalCaseName
-
-
-class ObjectFieldReferenceSchema(BaseModel):
-    """Schema for a field reference in an object.
-
-    :ivar field_id: Reference to Field.id.
-    :ivar role: Structural role of the field (pk, writable, etc.).
-    :ivar optional: Whether this field is optional in the object.
-    :ivar default_value: Optional literal default value (only for writable roles).
-    """
-
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
-
-    field_id: UUID = Field(
-        ..., alias="fieldId", examples=["00000000-0000-0000-0003-000000000001"]
-    )
-    role: FieldRole = Field(default="writable")
-    optional: bool = Field(default=False, validation_alias="nullable")
-    default_value: str | None = Field(default=None, alias="defaultValue")
 
 
 class ModelValidatorInput(BaseModel):
@@ -67,7 +47,7 @@ class ObjectCreate(BaseModel):
     :ivar namespace_id: Namespace this object belongs to.
     :ivar name: Object name.
     :ivar description: Object description.
-    :ivar fields: List of field references.
+    :ivar members: Ordered list of scalar and relationship members.
     :ivar validators: Inline model validator definitions for this object.
     """
 
@@ -76,7 +56,7 @@ class ObjectCreate(BaseModel):
     )
     name: PascalCaseName = Field(..., examples=["User"])
     description: str | None = Field(default=None, examples=["User object definition"])
-    fields: list[ObjectFieldReferenceSchema] = Field(...)
+    members: list[MemberInput] = Field(default_factory=list)
     validators: list[ModelValidatorInput] = Field(default_factory=list)
 
 
@@ -85,13 +65,13 @@ class ObjectUpdate(BaseModel):
 
     :ivar name: Updated object name.
     :ivar description: Updated description.
-    :ivar fields: Updated list of field references (None = don't touch).
+    :ivar members: Complete members array for reconcile-by-ID (None = don't touch).
     :ivar validators: Updated validators (None = don't touch, [] = clear all).
     """
 
     name: PascalCaseName | None = Field(default=None, examples=["UpdatedObjectName"])
     description: str | None = Field(default=None, examples=["Updated description"])
-    fields: list[ObjectFieldReferenceSchema] | None = Field(default=None)
+    members: list[MemberInput] | None = Field(default=None)
     validators: list[ModelValidatorInput] | None = Field(default=None)
 
 
@@ -102,10 +82,10 @@ class ObjectResponse(BaseModel):
     :ivar namespace_id: Namespace this object belongs to.
     :ivar name: Object name.
     :ivar description: Object description.
-    :ivar fields: List of field references.
+    :ivar members: Ordered list of scalar and relationship members.
+    :ivar derived_relationships: Incoming relationships from other objects.
     :ivar used_in_apis: Array of API IDs that use this object.
     :ivar validators: Model validators attached to this object.
-    :ivar relationships: Object relationships.
     """
 
     id: UUID = Field(..., examples=["00000000-0000-0000-0007-000000000001"])
@@ -114,13 +94,15 @@ class ObjectResponse(BaseModel):
     )
     name: str = Field(..., examples=["User"])
     description: str | None = Field(default=None, examples=["User account object"])
-    fields: list[ObjectFieldReferenceSchema] = Field(default_factory=list)
+    members: list[MemberResponse] = Field(default_factory=list)
+    derived_relationships: list[DerivedRelationshipResponse] = Field(
+        default_factory=list, alias="derivedRelationships"
+    )
     used_in_apis: list[UUID] = Field(
         default_factory=list,
         alias="usedInApis",
         examples=[["00000000-0000-0000-0004-000000000001"]],
     )
     validators: list[ModelValidatorResponse] = Field(default_factory=list)
-    relationships: list[ObjectRelationshipResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

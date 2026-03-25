@@ -11,7 +11,6 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
-    Integer,
     Text,
     UniqueConstraint,
     text,
@@ -365,9 +364,6 @@ class FieldModel(Base):
     user: Mapped["UserModel"] = relationship(back_populates="fields")
     namespace: Mapped["Namespace"] = relationship(back_populates="fields")
     field_type: Mapped["TypeModel"] = relationship(back_populates="fields")
-    object_associations: Mapped[list["ObjectFieldAssociation"]] = relationship(
-        back_populates="field"
-    )
     constraint_values: Mapped[list["FieldConstraintValueAssociation"]] = relationship(
         back_populates="field", cascade="all, delete-orphan"
     )
@@ -440,132 +436,16 @@ class ObjectDefinition(Base):
     # Relationships
     user: Mapped["UserModel"] = relationship(back_populates="objects")
     namespace: Mapped["Namespace"] = relationship(back_populates="objects")
-    field_associations: Mapped[list["ObjectFieldAssociation"]] = relationship(
-        back_populates="object", cascade="all, delete-orphan"
-    )
     validators: Mapped[list["AppliedModelValidatorModel"]] = relationship(
         back_populates="object",
         cascade="all, delete-orphan",
         order_by="AppliedModelValidatorModel.position",
-    )
-    relationships: Mapped[list["ObjectRelationship"]] = relationship(
-        "ObjectRelationship",
-        foreign_keys="ObjectRelationship.source_object_id",
-        cascade="all, delete-orphan",
     )
     members: Mapped[list["ObjectMember"]] = relationship(  # noqa: F821
         "ObjectMember",
         back_populates="parent_object",
         order_by="ObjectMember.position",
         cascade="all, delete-orphan",
-    )
-
-
-class ObjectFieldAssociation(Base):
-    """Association between objects and fields with role-based structural intent.
-
-    :ivar id: Unique identifier for the association.
-    :ivar object_id: Reference to the parent object.
-    :ivar field_id: Reference to the field.
-    :ivar role: Structural role of the field (pk, writable, etc.).
-    :ivar nullable: Whether this field is nullable (default False).
-    :ivar position: Order position for field display.
-    :ivar default_value: Optional literal default value for writable roles.
-    """
-
-    __tablename__ = "fields_on_objects"
-    __table_args__ = (
-        CheckConstraint(
-            "role IN ('pk', 'fk', 'writable', 'write_only', 'read_only', "
-            "'created_timestamp', 'updated_timestamp', 'generated_uuid')",
-            name="ck_fields_on_objects_role",
-        ),
-    )
-
-    id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
-    )
-    object_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True),
-        ForeignKey("objects.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    field_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("fields.id"), nullable=False, index=True
-    )
-    role: Mapped[str] = mapped_column(Text, nullable=False)
-    nullable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    position: Mapped[int] = mapped_column(default=0, nullable=False)
-    default_value: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    # Relationships
-    object: Mapped["ObjectDefinition"] = relationship(
-        back_populates="field_associations"
-    )
-    field: Mapped["FieldModel"] = relationship(back_populates="object_associations")
-
-
-class ObjectRelationship(Base):
-    """Relationship between two object definitions.
-
-    :ivar id: Unique identifier for the relationship.
-    :ivar source_object_id: Reference to the source object.
-    :ivar target_object_id: Reference to the target object.
-    :ivar name: Relationship name (e.g. "posts", "author").
-    :ivar cardinality: Relationship type (has_one, has_many, references, many_to_many).
-    :ivar is_inferred: True for auto-created inverse side.
-    :ivar inverse_id: Reference to the inverse relationship.
-    :ivar position: Display order position.
-    """
-
-    __tablename__ = "object_relationships"
-
-    id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), primary_key=True, default=generate_uuid
-    )
-    source_object_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True),
-        ForeignKey("objects.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    target_object_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True),
-        ForeignKey("objects.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    name: Mapped[str] = mapped_column(Text, nullable=False)
-    cardinality: Mapped[str] = mapped_column(Text, nullable=False)
-    is_inferred: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    inverse_id: Mapped[UUID | None] = mapped_column(
-        PgUUID(as_uuid=True),
-        ForeignKey("object_relationships.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-    position: Mapped[int] = mapped_column(default=0, nullable=False)
-    fk_field_id: Mapped[UUID | None] = mapped_column(
-        PgUUID(as_uuid=True),
-        ForeignKey("fields.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
-    __table_args__ = (
-        CheckConstraint(
-            "cardinality IN ('has_one', 'has_many', 'references', 'many_to_many')",
-            name="ck_object_relationships_cardinality",
-        ),
-    )
-
-    # Relationships
-    source_object: Mapped["ObjectDefinition"] = relationship(
-        "ObjectDefinition",
-        foreign_keys=[source_object_id],
-        overlaps="relationships",
-    )
-    target_object: Mapped["ObjectDefinition"] = relationship(
-        "ObjectDefinition", foreign_keys=[target_object_id]
     )
 
 

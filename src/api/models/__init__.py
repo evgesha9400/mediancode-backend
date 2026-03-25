@@ -12,7 +12,6 @@ from api.models.database import (
     GenerationModel,
     Namespace,
     ObjectDefinition,
-    ObjectFieldAssociation,
     TypeModel,
     UserModel,
 )
@@ -29,7 +28,6 @@ __all__ = [
     "GenerationModel",
     "Namespace",
     "ObjectDefinition",
-    "ObjectFieldAssociation",
     "ObjectMember",
     "RelationshipMember",
     "ScalarMember",

@@ -4,25 +4,18 @@
 from fastapi import APIRouter, HTTPException, status
 
 from api.deps import DbSession, ProvisionedUser
-from api.models.database import FieldModel, ObjectDefinition, ObjectRelationship
-from api.schemas.field import FieldResponse
+from api.models.members import RelationshipMember, ScalarMember
+from api.schemas.members import (
+    RelationshipMemberResponse,
+    ScalarMemberResponse,
+)
 from api.schemas.object import (
     ModelValidatorResponse,
     ObjectCreate,
-    ObjectFieldReferenceSchema,
     ObjectResponse,
     ObjectUpdate,
 )
-from api.schemas.relationship import (
-    ObjectRelationshipCreate,
-    ObjectRelationshipResponse,
-    RelationshipMutationResponse,
-)
 from api.services.object import ObjectService, get_object_service
-from api.services.relationship import RelationshipService, get_relationship_service
-
-# Resolve forward references now that all schemas are imported.
-RelationshipMutationResponse.model_rebuild()
 
 router = APIRouter(prefix="/objects", tags=["Objects"])
 
@@ -40,18 +33,34 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
     """Convert an object model to response schema.
 
     :param obj: Object database model.
-    :param service: ObjectService for fetching usage.
+    :param service: ObjectService for fetching usage and derived relationships.
     :returns: ObjectResponse schema.
     """
-    fields = [
-        ObjectFieldReferenceSchema(
-            field_id=fa.field_id,
-            role=fa.role,
-            optional=fa.nullable,
-            default_value=fa.default_value,
-        )
-        for fa in sorted(obj.field_associations, key=lambda x: x.position)
-    ]
+    members = []
+    for m in sorted(obj.members, key=lambda x: x.position):
+        if isinstance(m, ScalarMember):
+            members.append(
+                ScalarMemberResponse(
+                    id=m.id,
+                    name=m.name,
+                    field_id=m.field_id,
+                    role=m.role,
+                    is_nullable=m.is_nullable,
+                    default_value=m.default_value,
+                )
+            )
+        elif isinstance(m, RelationshipMember):
+            members.append(
+                RelationshipMemberResponse(
+                    id=m.id,
+                    name=m.name,
+                    target_object_id=m.target_object_id,
+                    kind=m.kind,
+                    inverse_name=m.inverse_name,
+                    required=m.required,
+                )
+            )
+
     validators = [
         ModelValidatorResponse(
             id=v.id,
@@ -61,48 +70,19 @@ async def _to_response(obj, service: ObjectService) -> ObjectResponse:
         )
         for v in sorted(obj.validators, key=lambda x: x.position)
     ]
-    relationships = [
-        ObjectRelationshipResponse(
-            id=r.id,
-            source_object_id=r.source_object_id,
-            target_object_id=r.target_object_id,
-            name=r.name,
-            cardinality=r.cardinality,
-            is_inferred=r.is_inferred,
-            inverse_id=r.inverse_id,
-            fk_field_id=r.fk_field_id,
-        )
-        for r in sorted(obj.relationships, key=lambda x: x.position)
-    ]
+
     used_in_apis = await service.get_used_in_apis(obj.id)
+    derived_relationships = await service.compute_derived_relationships(obj.id)
+
     return ObjectResponse(
         id=obj.id,
         namespace_id=obj.namespace_id,
         name=obj.name,
         description=obj.description,
-        fields=fields,
+        members=members,
+        derived_relationships=derived_relationships,
         used_in_apis=used_in_apis,
         validators=validators,
-        relationships=relationships,
-    )
-
-
-def _field_to_response(field: FieldModel) -> FieldResponse:
-    """Convert a field model to response schema (no associations).
-
-    :param field: Field database model.
-    :returns: FieldResponse schema.
-    """
-    return FieldResponse(
-        id=field.id,
-        namespace_id=field.namespace_id,
-        name=field.name,
-        type_id=field.type_id,
-        description=field.description,
-        default_value=field.default_value,
-        used_in_apis=[],
-        constraints=[],
-        validators=[],
     )
 
 
@@ -150,7 +130,7 @@ async def create_object(
     """
     service = get_service(db)
     obj = await service.create_for_user(user.id, data)
-    # Reload with field associations
+    # Reload with members
     obj = await service.get_by_id_for_user(obj.id, user.id)
     return await _to_response(obj, service)
 
@@ -221,7 +201,7 @@ async def update_object(
         )
 
     updated = await service.update_object(obj, data)
-    # Reload with field associations
+    # Reload with members
     updated = await service.get_by_id_for_user(updated.id, user.id)
     return await _to_response(updated, service)
 
@@ -260,146 +240,3 @@ async def delete_object(
         )
 
     await service.delete_object(obj)
-
-
-@router.post(
-    "/{object_id}/relationships",
-    response_model=RelationshipMutationResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create a relationship",
-    description="Create a relationship from this object to a target object. Auto-creates the inverse.",
-)
-async def create_relationship(
-    object_id: str,
-    data: ObjectRelationshipCreate,
-    user: ProvisionedUser,
-    db: DbSession,
-) -> RelationshipMutationResponse:
-    """Create a relationship on an object.
-
-    :param object_id: Source object ID.
-    :param data: Relationship creation data.
-    :param user: Authenticated user.
-    :param db: Database session.
-    :returns: Graph mutation response with updated objects and created fields.
-    :raises HTTPException: If object not found.
-    """
-    obj_service = get_service(db)
-    obj = await obj_service.get_by_id_for_user(object_id, user.id)
-    if not obj:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Object with ID '{object_id}' not found",
-        )
-
-    rel_service = get_relationship_service(db)
-    source_id = str(obj.id)
-    target_id = str(data.target_object_id)
-    rel = await rel_service.create_relationship(obj.id, data)
-
-    # Expire cached relationship collections so selectinload re-runs
-    db.expire(obj, ["relationships", "field_associations"])
-    target_ref = await db.get(ObjectDefinition, data.target_object_id)
-    if target_ref:
-        db.expire(target_ref, ["relationships", "field_associations"])
-
-    # Re-fetch both objects with fresh field/relationship data
-    source_obj = await obj_service.get_by_id_for_user(source_id, user.id)
-    target_obj = await obj_service.get_by_id_for_user(target_id, user.id)
-
-    updated_objects = []
-    if source_obj:
-        updated_objects.append(await _to_response(source_obj, obj_service))
-    if target_obj:
-        updated_objects.append(await _to_response(target_obj, obj_service))
-
-    # Collect created FK fields
-    created_fields: list[FieldResponse] = []
-    if rel.fk_field_id:
-        fk_field = await db.get(FieldModel, rel.fk_field_id)
-        if fk_field:
-            created_fields.append(_field_to_response(fk_field))
-    if rel.inverse_id:
-        inverse = await db.get(ObjectRelationship, rel.inverse_id)
-        if inverse and inverse.fk_field_id:
-            fk_field = await db.get(FieldModel, inverse.fk_field_id)
-            if fk_field:
-                created_fields.append(_field_to_response(fk_field))
-
-    return RelationshipMutationResponse(
-        updated_objects=updated_objects,
-        created_fields=created_fields,
-        deleted_field_ids=[],
-    )
-
-
-@router.delete(
-    "/{object_id}/relationships/{relationship_id}",
-    response_model=RelationshipMutationResponse,
-    summary="Delete a relationship",
-    description="Delete a relationship and its auto-created inverse.",
-)
-async def delete_relationship(
-    object_id: str,
-    relationship_id: str,
-    user: ProvisionedUser,
-    db: DbSession,
-) -> RelationshipMutationResponse:
-    """Delete a relationship and its inverse.
-
-    :param object_id: Object ID (for URL structure).
-    :param relationship_id: Relationship ID.
-    :param user: Authenticated user.
-    :param db: Database session.
-    :returns: Graph mutation response with updated objects and deleted field IDs.
-    :raises HTTPException: If object or relationship not found.
-    """
-    obj_service = get_service(db)
-    obj = await obj_service.get_by_id_for_user(object_id, user.id)
-    if not obj:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Object with ID '{object_id}' not found",
-        )
-
-    rel_service = get_relationship_service(db)
-    rel = await rel_service.get_by_id(relationship_id)
-    if not rel:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Relationship not found",
-        )
-
-    # Capture side-effect data before deletion
-    target_object_id = rel.target_object_id
-    deleted_field_ids = []
-    if rel.fk_field_id:
-        deleted_field_ids.append(rel.fk_field_id)
-    if rel.inverse_id:
-        inverse = await rel_service.get_by_id(rel.inverse_id)
-        if inverse and inverse.fk_field_id:
-            deleted_field_ids.append(inverse.fk_field_id)
-
-    await rel_service.delete_relationship(relationship_id)
-
-    # Expire cached relationship collections so selectinload re-runs
-    db.expire(obj, ["relationships", "field_associations"])
-    target_ref = await db.get(ObjectDefinition, target_object_id)
-    if target_ref:
-        db.expire(target_ref, ["relationships", "field_associations"])
-
-    # Re-fetch both objects with fresh data
-    source_obj = await obj_service.get_by_id_for_user(object_id, user.id)
-    target_obj = await obj_service.get_by_id_for_user(str(target_object_id), user.id)
-
-    updated_objects = []
-    if source_obj:
-        updated_objects.append(await _to_response(source_obj, obj_service))
-    if target_obj:
-        updated_objects.append(await _to_response(target_obj, obj_service))
-
-    return RelationshipMutationResponse(
-        updated_objects=updated_objects,
-        created_fields=[],
-        deleted_field_ids=deleted_field_ids,
-    )
