@@ -172,9 +172,9 @@ def generate_and_client(spec_filename: str, tmp_path: Path) -> TestClient:
     for segment in ("_", " "):
         kebab_name = kebab_name.replace(segment, "-")
     project_name = api_input.name
-    from api_craft.models.types import Name
+    from api_craft.models.types import PascalCaseName
 
-    n = Name(project_name)
+    n = PascalCaseName(project_name)
     project_dir = tmp_path / n.kebab_name
     src_path = project_dir / "src"
     app = load_app(src_path)

@@ -348,12 +348,16 @@ OBJECTS = [PRODUCT_OBJECT, CUSTOMER_OBJECT]
 # Relationship
 # ---------------------------------------------------------------------------
 
-RELATIONSHIP = {
-    "source_object": "Customer",
-    "target_object": "Product",
-    "name": "products",
-    "cardinality": "has_many",
-}
+CUSTOMER_RELATIONSHIP_MEMBERS = [
+    {
+        "member_type": "relationship",
+        "name": "products",
+        "target_object": "Product",
+        "kind": "one_to_many",
+        "inverse_name": "customer",
+        "required": False,
+    },
+]
 
 # ---------------------------------------------------------------------------
 # API

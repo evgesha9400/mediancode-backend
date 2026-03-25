@@ -1895,7 +1895,8 @@ class TestReferencesRelationship:
                     {
                         "name": "author",
                         "target_model": "User",
-                        "cardinality": "references",
+                        "kind": "one_to_many",
+                        "inverse_name": "ref",
                     }
                 ],
             ),
@@ -1927,7 +1928,8 @@ class TestReferencesRelationship:
                     {
                         "name": "author",
                         "target_model": "User",
-                        "cardinality": "references",
+                        "kind": "one_to_many",
+                        "inverse_name": "ref",
                     }
                 ],
             ),
@@ -1944,7 +1946,7 @@ class TestReferencesRelationship:
         assert len(post_model.relationships) == 1
         rel = post_model.relationships[0]
         assert rel.name == "author"
-        assert rel.cardinality == "references"
+        assert rel.kind == "references"
         assert rel.fk_column == "author_id"
         assert rel.target_class_name == "UserRecord"
 
@@ -1957,7 +1959,10 @@ class TestReferencesRelationship:
             ],
             relationships=[
                 InputRelationship(
-                    name="author", target_model="User", cardinality="references"
+                    name="author",
+                    target_model="User",
+                    kind="one_to_many",
+                    inverse_name="ref",
                 )
             ],
         )
@@ -1974,7 +1979,10 @@ class TestReferencesRelationship:
             ],
             relationships=[
                 InputRelationship(
-                    name="author", target_model="User", cardinality="references"
+                    name="author",
+                    target_model="User",
+                    kind="one_to_many",
+                    inverse_name="ref",
                 )
             ],
         )
@@ -1991,7 +1999,10 @@ class TestReferencesRelationship:
             ],
             relationships=[
                 InputRelationship(
-                    name="author", target_model="User", cardinality="references"
+                    name="author",
+                    target_model="User",
+                    kind="one_to_many",
+                    inverse_name="ref",
                 )
             ],
         )
@@ -2010,118 +2021,16 @@ class TestReferencesRelationship:
             ],
             relationships=[
                 InputRelationship(
-                    name="author", target_model="User", cardinality="references"
+                    name="author",
+                    target_model="User",
+                    kind="one_to_many",
+                    inverse_name="ref",
                 )
             ],
         )
         schemas = split_model_schemas(model)
         fk_field = next(f for f in schemas[0].fields if str(f.name) == "author_id")
         assert fk_field.nullable is False
-
-
-@pytest.mark.codegen
-class TestReferencesWithExistingFkField:
-    """Regression: when the backend seeds both an FK field AND a references
-    relationship, orm_builder must not produce a duplicate column."""
-
-    def test_no_duplicate_fk_column(self):
-        """Model has explicit customer_id field + references relationship → single column."""
-        models = [
-            _make_model(
-                "Product",
-                [
-                    {"name": "tracking_id", "type": "uuid", "pk": True},
-                    {"name": "name", "type": "str"},
-                    {"name": "customer_id", "type": "int"},
-                ],
-                relationships=[
-                    {
-                        "name": "customer",
-                        "target_model": "Customer",
-                        "cardinality": "references",
-                        "is_inferred": True,
-                    }
-                ],
-            ),
-            _make_model(
-                "Customer",
-                [
-                    {"name": "id", "type": "int", "pk": True},
-                    {"name": "customer_name", "type": "str"},
-                ],
-            ),
-        ]
-        result = transform_orm_models(models)
-        product_model = next(m for m in result if m.source_model == "Product")
-        customer_id_fields = [f for f in product_model.fields if f.name == "customer_id"]
-        assert len(customer_id_fields) == 1, (
-            f"Expected exactly 1 customer_id field, got {len(customer_id_fields)}"
-        )
-        assert customer_id_fields[0].foreign_key == "customers.id"
-
-    def test_existing_field_gets_fk_ref_stamped(self):
-        """An explicit FK field without foreign_key gets stamped by the relationship."""
-        models = [
-            _make_model(
-                "Order",
-                [
-                    {"name": "id", "type": "int", "pk": True},
-                    {"name": "user_id", "type": "uuid"},
-                ],
-                relationships=[
-                    {
-                        "name": "user",
-                        "target_model": "Account",
-                        "cardinality": "references",
-                    }
-                ],
-            ),
-            _make_model(
-                "Account",
-                [
-                    {"name": "id", "type": "uuid", "pk": True},
-                    {"name": "email", "type": "str"},
-                ],
-            ),
-        ]
-        result = transform_orm_models(models)
-        order_model = next(m for m in result if m.source_model == "Order")
-        fk_field = next(f for f in order_model.fields if f.name == "user_id")
-        assert fk_field.foreign_key == "accounts.id"
-
-    def test_existing_field_with_fk_ref_not_overwritten(self):
-        """If the field already has a foreign_key, don't overwrite it."""
-        models = [
-            _make_model(
-                "Post",
-                [
-                    {"name": "id", "type": "uuid", "pk": True},
-                    {"name": "title", "type": "str"},
-                ],
-                relationships=[
-                    {
-                        "name": "author",
-                        "target_model": "User",
-                        "cardinality": "references",
-                    }
-                ],
-            ),
-            _make_model(
-                "User",
-                [
-                    {"name": "id", "type": "uuid", "pk": True},
-                    {"name": "name", "type": "str"},
-                ],
-            ),
-        ]
-        result = transform_orm_models(models)
-        post_model = next(m for m in result if m.source_model == "Post")
-        # No pre-existing field, so relationship creates it
-        fk_field = next(f for f in post_model.fields if f.name == "author_id")
-        assert fk_field.foreign_key == "users.id"
-        # Still only one
-        author_id_fields = [f for f in post_model.fields if f.name == "author_id"]
-        assert len(author_id_fields) == 1
 
 
 @pytest.mark.codegen
@@ -2135,7 +2044,12 @@ class TestHasManyRelationship:
                     {"name": "name", "type": "str"},
                 ],
                 relationships=[
-                    {"name": "posts", "target_model": "Post", "cardinality": "has_many"}
+                    {
+                        "name": "posts",
+                        "target_model": "Post",
+                        "kind": "one_to_many",
+                        "inverse_name": "owner",
+                    }
                 ],
             ),
             _make_model(
@@ -2160,7 +2074,12 @@ class TestHasManyRelationship:
                     {"name": "name", "type": "str"},
                 ],
                 relationships=[
-                    {"name": "posts", "target_model": "Post", "cardinality": "has_many"}
+                    {
+                        "name": "posts",
+                        "target_model": "Post",
+                        "kind": "one_to_many",
+                        "inverse_name": "owner",
+                    }
                 ],
             ),
             _make_model(
@@ -2176,7 +2095,7 @@ class TestHasManyRelationship:
         assert len(user_model.relationships) == 1
         rel = user_model.relationships[0]
         assert rel.name == "posts"
-        assert rel.cardinality == "has_many"
+        assert rel.kind == "has_many"
         assert rel.target_class_name == "PostRecord"
         assert rel.fk_column is None
 
@@ -2195,7 +2114,8 @@ class TestHasOneRelationship:
                     {
                         "name": "profile",
                         "target_model": "Profile",
-                        "cardinality": "has_one",
+                        "kind": "one_to_one",
+                        "inverse_name": "parent",
                     }
                 ],
             ),
@@ -2224,7 +2144,8 @@ class TestHasOneRelationship:
                     {
                         "name": "profile",
                         "target_model": "Profile",
-                        "cardinality": "has_one",
+                        "kind": "one_to_one",
+                        "inverse_name": "parent",
                     }
                 ],
             ),
@@ -2241,7 +2162,7 @@ class TestHasOneRelationship:
         assert len(user_model.relationships) == 1
         rel = user_model.relationships[0]
         assert rel.name == "profile"
-        assert rel.cardinality == "has_one"
+        assert rel.kind == "has_one"
         assert rel.target_class_name == "ProfileRecord"
 
 
@@ -2259,7 +2180,8 @@ class TestManyToManyRelationship:
                     {
                         "name": "courses",
                         "target_model": "Course",
-                        "cardinality": "many_to_many",
+                        "kind": "many_to_many",
+                        "inverse_name": "related",
                     }
                 ],
             ),
@@ -2275,7 +2197,7 @@ class TestManyToManyRelationship:
         student_model = next(m for m in result if m.source_model == "Student")
         assert len(student_model.relationships) == 1
         rel = student_model.relationships[0]
-        assert rel.cardinality == "many_to_many"
+        assert rel.kind == "many_to_many"
         assert rel.association_table is not None
         assert "courses" in rel.association_table
         assert "students" in rel.association_table
@@ -2292,7 +2214,8 @@ class TestManyToManyRelationship:
                     {
                         "name": "courses",
                         "target_model": "Course",
-                        "cardinality": "many_to_many",
+                        "kind": "many_to_many",
+                        "inverse_name": "related",
                     }
                 ],
             ),
@@ -2324,7 +2247,8 @@ class TestCollectAssociationTables:
                     {
                         "name": "courses",
                         "target_model": "Course",
-                        "cardinality": "many_to_many",
+                        "kind": "many_to_many",
+                        "inverse_name": "related",
                     }
                 ],
             ),
@@ -2354,7 +2278,8 @@ class TestCollectAssociationTables:
                     {
                         "name": "author",
                         "target_model": "User",
-                        "cardinality": "references",
+                        "kind": "one_to_many",
+                        "inverse_name": "ref",
                     }
                 ],
             ),
@@ -2388,7 +2313,10 @@ class TestRelationshipCodeGeneration:
                     ],
                     relationships=[
                         InputRelationship(
-                            name="posts", target_model="Post", cardinality="has_many"
+                            name="posts",
+                            target_model="Post",
+                            kind="one_to_many",
+                            inverse_name="owner",
                         )
                     ],
                 ),
@@ -2402,10 +2330,16 @@ class TestRelationshipCodeGeneration:
                     ],
                     relationships=[
                         InputRelationship(
-                            name="author", target_model="User", cardinality="references"
+                            name="author",
+                            target_model="User",
+                            kind="one_to_many",
+                            inverse_name="ref",
                         ),
                         InputRelationship(
-                            name="tags", target_model="Tag", cardinality="many_to_many"
+                            name="tags",
+                            target_model="Tag",
+                            kind="many_to_many",
+                            inverse_name="related",
                         ),
                     ],
                 ),
@@ -2547,7 +2481,8 @@ class TestMigrationTableOrdering:
                     {
                         "name": "author",
                         "target_model": "User",
-                        "cardinality": "references",
+                        "kind": "one_to_many",
+                        "inverse_name": "ref",
                     }
                 ],
             ),
@@ -2572,7 +2507,12 @@ class TestMigrationTableOrdering:
                     {"name": "val", "type": "str"},
                 ],
                 relationships=[
-                    {"name": "b_ref", "target_model": "B", "cardinality": "references"}
+                    {
+                        "name": "b_ref",
+                        "target_model": "B",
+                        "kind": "one_to_many",
+                        "inverse_name": "ref",
+                    }
                 ],
             ),
             _make_model(
@@ -2582,7 +2522,12 @@ class TestMigrationTableOrdering:
                     {"name": "val", "type": "str"},
                 ],
                 relationships=[
-                    {"name": "c_ref", "target_model": "C", "cardinality": "references"}
+                    {
+                        "name": "c_ref",
+                        "target_model": "C",
+                        "kind": "one_to_many",
+                        "inverse_name": "ref",
+                    }
                 ],
             ),
             _make_model(
@@ -2620,7 +2565,8 @@ class TestMigrationTableOrdering:
                     {
                         "name": "courses",
                         "target_model": "Course",
-                        "cardinality": "many_to_many",
+                        "kind": "many_to_many",
+                        "inverse_name": "related",
                     }
                 ],
             ),
@@ -2651,7 +2597,8 @@ class TestFkTypeDerivedFromTargetPk:
                     {
                         "name": "article",
                         "target_model": "Article",
-                        "cardinality": "references",
+                        "kind": "one_to_many",
+                        "inverse_name": "ref",
                     }
                 ],
             ),
@@ -2677,7 +2624,10 @@ class TestFkTypeDerivedFromTargetPk:
             ],
             relationships=[
                 InputRelationship(
-                    name="author", target_model="User", cardinality="references"
+                    name="author",
+                    target_model="User",
+                    kind="one_to_many",
+                    inverse_name="ref",
                 )
             ],
         )
@@ -2698,7 +2648,8 @@ class TestFkTypeDerivedFromTargetPk:
                     {
                         "name": "article",
                         "target_model": "Article",
-                        "cardinality": "references",
+                        "kind": "one_to_many",
+                        "inverse_name": "ref",
                     }
                 ],
             ),

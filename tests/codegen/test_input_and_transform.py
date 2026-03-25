@@ -23,6 +23,7 @@ from api_craft.models.enums import (
     FilterOperator,
     GeneratedStrategy,
     HttpMethod,
+    RelationshipKind,
     ResponseShape,
     ValidatorMode,
     check_constraint_sql,
@@ -2494,8 +2495,8 @@ class TestGenerateOptionsSchema:
 
 ENUM_CHECK_PAIRS = [
     (Container, "container", "fields"),
-    (FieldRole, "role", "fields_on_objects"),
-    (Cardinality, "cardinality", "object_relationships"),
+    (FieldRole, "role", "scalar_members"),
+    (RelationshipKind, "kind", "relationship_members"),
     (HttpMethod, "method", "api_endpoints"),
     (ResponseShape, "response_shape", "api_endpoints"),
     (ValidatorMode, "mode", "field_validator_templates"),

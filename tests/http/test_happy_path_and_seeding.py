@@ -64,16 +64,20 @@ class TestSeedRunner:
         assert resp.status_code == 200
         product = resp.json()
         created_at = next(
-            f
-            for f in product["fields"]
-            if f["fieldId"] == result.field_ids["created_at"]
+            m
+            for m in product["members"]
+            if m["memberType"] == "scalar"
+            and m.get("fieldId") == result.field_ids["created_at"]
         )
         assert created_at["role"] == "created_timestamp"
 
         resp = await client.get(f"/objects/{result.object_ids['Customer']}")
         assert resp.status_code == 200
         customer = resp.json()
-        assert len(customer.get("relationships", [])) >= 1
+        rel_members = [
+            m for m in customer["members"] if m["memberType"] == "relationship"
+        ]
+        assert len(rel_members) >= 1
 
         resp = await client.get("/endpoints")
         assert resp.status_code == 200
@@ -160,14 +164,18 @@ class TestShopLifecycle:
         assert resp.status_code == 200
         product = resp.json()
         assert product["name"] == "Product"
-        assert len(product["fields"]) >= 16
+        scalar_members = [m for m in product["members"] if m["memberType"] == "scalar"]
+        assert len(scalar_members) >= 16
         assert len(product["validators"]) == 4
 
         resp = await client.get(f"/objects/{seed.object_ids['Customer']}")
         assert resp.status_code == 200
         customer = resp.json()
         assert customer["name"] == "Customer"
-        assert len(customer["fields"]) == 8
+        customer_scalars = [
+            m for m in customer["members"] if m["memberType"] == "scalar"
+        ]
+        assert len(customer_scalars) == 8
 
     # --- Phase 4: Verify endpoints ---
 

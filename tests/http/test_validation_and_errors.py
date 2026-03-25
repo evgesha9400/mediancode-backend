@@ -112,10 +112,12 @@ class TestErrorGuards:
                 "namespaceId": cls.blog_namespace_id,
                 "name": "Post",
                 "description": "Blog post",
-                "fields": [
+                "members": [
                     {
+                        "memberType": "scalar",
+                        "name": "title",
                         "fieldId": cls.title_field_id,
-                        "optional": False,
+                        "isNullable": False,
                         "role": "writable",
                     }
                 ],
@@ -349,7 +351,14 @@ class TestErrorGuards:
             json={
                 "namespaceId": FAKE_NAMESPACE_ID,
                 "name": "Phantom",
-                "fields": [{"fieldId": cls.title_field_id, "optional": False}],
+                "members": [
+                    {
+                        "memberType": "scalar",
+                        "name": "title",
+                        "fieldId": cls.title_field_id,
+                        "isNullable": False,
+                    }
+                ],
             },
         )
         assert resp.status_code == 400
@@ -364,7 +373,14 @@ class TestErrorGuards:
                 json={
                     "namespaceId": cls.blog_namespace_id,
                     "name": "Phantom",
-                    "fields": [{"fieldId": FAKE_FIELD_ID, "optional": False}],
+                    "members": [
+                        {
+                            "memberType": "scalar",
+                            "name": "bogus",
+                            "fieldId": FAKE_FIELD_ID,
+                            "isNullable": False,
+                        }
+                    ],
                 },
             )
             status = resp.status_code
@@ -381,7 +397,14 @@ class TestErrorGuards:
                 json={
                     "namespaceId": cls.blog_namespace_id,
                     "name": "Phantom",
-                    "fields": [{"fieldId": cls.title_field_id, "optional": False}],
+                    "members": [
+                        {
+                            "memberType": "scalar",
+                            "name": "title",
+                            "fieldId": cls.title_field_id,
+                            "isNullable": False,
+                        }
+                    ],
                     "validators": [
                         {
                             "templateId": FAKE_MV_TEMPLATE_ID,
@@ -546,7 +569,7 @@ class TestNameValidation:
             json={
                 "namespaceId": cls.namespace_id,
                 "name": "user_profile",
-                "fields": [],
+                "members": [],
             },
         )
         assert resp.status_code == 422
@@ -561,7 +584,7 @@ class TestNameValidation:
             json={
                 "namespaceId": cls.namespace_id,
                 "name": "userProfile",
-                "fields": [],
+                "members": [],
             },
         )
         assert resp.status_code == 422
@@ -574,7 +597,7 @@ class TestNameValidation:
             json={
                 "namespaceId": cls.namespace_id,
                 "name": "UserAPI",
-                "fields": [],
+                "members": [],
             },
         )
         assert resp.status_code == 422
@@ -587,7 +610,7 @@ class TestNameValidation:
             json={
                 "namespaceId": cls.namespace_id,
                 "name": "",
-                "fields": [],
+                "members": [],
             },
         )
         assert resp.status_code == 422
@@ -600,7 +623,7 @@ class TestNameValidation:
             json={
                 "namespaceId": cls.namespace_id,
                 "name": "UserProfile",
-                "fields": [],
+                "members": [],
             },
         )
         assert resp.status_code == 201, f"Unexpected: {resp.text}"

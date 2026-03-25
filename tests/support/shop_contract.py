@@ -267,15 +267,19 @@ CUSTOMER_OBJECT = {
 OBJECTS = [PRODUCT_OBJECT, CUSTOMER_OBJECT]
 
 # ---------------------------------------------------------------------------
-# Relationship
+# Relationship (now authored as a member on Customer)
 # ---------------------------------------------------------------------------
 
-RELATIONSHIP = {
-    "source_object": "Customer",
-    "target_object": "Product",
-    "name": "products",
-    "cardinality": "has_many",
-}
+CUSTOMER_RELATIONSHIP_MEMBERS = [
+    {
+        "member_type": "relationship",
+        "name": "products",
+        "target_object": "Product",
+        "kind": "one_to_many",
+        "inverse_name": "customer",
+        "required": False,
+    },
+]
 
 # ---------------------------------------------------------------------------
 # API
@@ -463,18 +467,22 @@ async def seed_shop(client: AsyncClient) -> SeedResult:
         f = _check(resp, "field", field_def["name"])
         result.field_ids[field_def["name"]] = f["id"]
 
+    # First pass: create objects without relationship members
+    # (target objects must exist before we can reference them)
     for obj_def in OBJECTS:
-        obj_fields = []
+        members = []
         for fref in obj_def["fields"]:
-            field_payload: dict = {
+            member: dict = {
+                "memberType": "scalar",
+                "name": fref["field_name"],
                 "fieldId": result.field_ids[fref["field_name"]],
                 "role": fref["role"],
             }
             if "optional" in fref:
-                field_payload["optional"] = fref["optional"]
+                member["isNullable"] = fref["optional"]
             if fref.get("default_value") is not None:
-                field_payload["defaultValue"] = fref["default_value"]
-            obj_fields.append(field_payload)
+                member["defaultValue"] = fref["default_value"]
+            members.append(member)
         obj_validators = [
             {
                 "templateId": cat["mv_templates"][vdef["template"]],
@@ -487,32 +495,37 @@ async def seed_shop(client: AsyncClient) -> SeedResult:
             "namespaceId": result.namespace_id,
             "name": obj_def["name"],
             "description": obj_def["description"],
-            "fields": obj_fields,
+            "members": members,
             "validators": obj_validators,
         }
         resp = await client.post("/objects", json=payload)
         obj = _check(resp, "object", obj_def["name"])
         result.object_ids[obj_def["name"]] = obj["id"]
 
-    source_id = result.object_ids[RELATIONSHIP["source_object"]]
-    resp = await client.post(
-        f"/objects/{source_id}/relationships",
-        json={
-            "targetObjectId": result.object_ids[RELATIONSHIP["target_object"]],
-            "name": RELATIONSHIP["name"],
-            "cardinality": RELATIONSHIP["cardinality"],
-        },
+    # Second pass: add relationship members to Customer via PUT
+    customer_id = result.object_ids["Customer"]
+    resp = await client.get(f"/objects/{customer_id}")
+    customer_obj = resp.json()
+    existing_members = customer_obj["members"]
+    for rel_def in CUSTOMER_RELATIONSHIP_MEMBERS:
+        existing_members.append(
+            {
+                "memberType": "relationship",
+                "name": rel_def["name"],
+                "targetObjectId": result.object_ids[rel_def["target_object"]],
+                "kind": rel_def["kind"],
+                "inverseName": rel_def["inverse_name"],
+                "required": rel_def["required"],
+            }
+        )
+    resp = await client.put(
+        f"/objects/{customer_id}",
+        json={"members": existing_members},
     )
-    body = _check(resp, "relationship", RELATIONSHIP["name"])
-    source_obj = next(o for o in body["updatedObjects"] if o["id"] == str(source_id))
-    rel = next(
-        r
-        for r in source_obj["relationships"]
-        if r["name"] == RELATIONSHIP["name"] and not r["isInferred"]
-    )
-    result.relationship_ids.append(rel["id"])
-    if rel.get("inverseId"):
-        result.relationship_ids.append(rel["inverseId"])
+    updated = _check(resp, "object", "Customer (update)", expected=200)
+    rel_members = [m for m in updated["members"] if m["memberType"] == "relationship"]
+    for rm in rel_members:
+        result.relationship_ids.append(rm["id"])
 
     resp = await client.post(
         "/apis",
