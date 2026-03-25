@@ -2525,7 +2525,6 @@ class TestEnumCheckConsistency:
         assert "role IN (" in sql
         for value in (
             "pk",
-            "fk",
             "writable",
             "write_only",
             "read_only",

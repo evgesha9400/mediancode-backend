@@ -136,6 +136,8 @@ class TestConvertToInputApi:
         return api
 
     def _make_api_with_objects(self, *, is_pk=False):
+        from api.models.members import ScalarMember
+
         field = MagicMock()
         field.name = "id"
         field.field_type = MagicMock()
@@ -146,24 +148,28 @@ class TestConvertToInputApi:
         field.constraint_values = []
         field.validators = []
 
-        assoc = MagicMock()
-        assoc.field_id = "field-1"
-        assoc.nullable = False
-        assoc.position = 0
-        assoc.role = "pk" if is_pk else "writable"
-        assoc.default_value = None
+        member = MagicMock(spec=ScalarMember)
+        member.member_type = "scalar"
+        member.field_id = "field-1"
+        member.is_nullable = False
+        member.position = 0
+        member.role = "pk" if is_pk else "writable"
+        member.default_value = None
+        member.name = "id"
 
         obj = MagicMock()
         obj.id = "obj-1"
         obj.name = "Item"
         obj.description = "Test item"
-        obj.field_associations = [assoc]
+        obj.namespace_id = "ns-1"
+        obj.members = [member]
         obj.validators = []
 
         api = MagicMock()
         api.title = "TestApi"
         api.version = "1.0.0"
         api.description = "Test"
+        api.namespace_id = "ns-1"
         api.endpoints = []
 
         objects_map = {"obj-1": obj}
@@ -1882,29 +1888,35 @@ class TestDetailEndpointFilterCodeGen:
 
 
 @pytest.mark.codegen
-class TestReferencesRelationship:
-    def test_references_adds_fk_field_to_orm(self):
+class TestIncomingFkRelationship:
+    """Tests for FK placement on the target side of one_to_many relationships.
+
+    In the unified field model, ``User.posts: one_to_many -> Post,
+    inverse_name="author"`` places ``author_id`` FK on the Post (target) table.
+    """
+
+    def test_incoming_fk_field_on_target_orm(self):
         models = [
-            _make_model(
-                "Post",
-                [
-                    {"name": "id", "type": "uuid", "pk": True},
-                    {"name": "title", "type": "str"},
-                ],
-                relationships=[
-                    {
-                        "name": "author",
-                        "target_model": "User",
-                        "kind": "one_to_many",
-                        "inverse_name": "ref",
-                    }
-                ],
-            ),
             _make_model(
                 "User",
                 [
                     {"name": "id", "type": "uuid", "pk": True},
                     {"name": "name", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "posts",
+                        "target_model": "Post",
+                        "kind": "one_to_many",
+                        "inverse_name": "author",
+                    }
+                ],
+            ),
+            _make_model(
+                "Post",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
                 ],
             ),
         ]
@@ -1916,28 +1928,28 @@ class TestReferencesRelationship:
         assert fk_field.foreign_key == "users.id"
         assert fk_field.column_type == "Uuid"
 
-    def test_references_creates_relationship(self):
+    def test_inverse_relationship_on_target(self):
         models = [
-            _make_model(
-                "Post",
-                [
-                    {"name": "id", "type": "uuid", "pk": True},
-                    {"name": "title", "type": "str"},
-                ],
-                relationships=[
-                    {
-                        "name": "author",
-                        "target_model": "User",
-                        "kind": "one_to_many",
-                        "inverse_name": "ref",
-                    }
-                ],
-            ),
             _make_model(
                 "User",
                 [
                     {"name": "id", "type": "uuid", "pk": True},
                     {"name": "name", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "posts",
+                        "target_model": "Post",
+                        "kind": "one_to_many",
+                        "inverse_name": "author",
+                    }
+                ],
+            ),
+            _make_model(
+                "Post",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
                 ],
             ),
         ]
@@ -1946,89 +1958,125 @@ class TestReferencesRelationship:
         assert len(post_model.relationships) == 1
         rel = post_model.relationships[0]
         assert rel.name == "author"
-        assert rel.kind == "references"
+        assert rel.kind == "one_to_many"
         assert rel.fk_column == "author_id"
         assert rel.target_class_name == "UserRecord"
 
-    def test_references_fk_id_in_response_schema(self):
-        model = InputModel(
-            name="Post",
-            fields=[
-                InputField(name="id", type="uuid", pk=True, exposure="read_only"),
-                InputField(name="title", type="str"),
-            ],
-            relationships=[
-                InputRelationship(
-                    name="author",
-                    target_model="User",
-                    kind="one_to_many",
-                    inverse_name="ref",
-                )
-            ],
-        )
-        schemas = split_model_schemas(model)
+    def test_fk_id_in_response_schema(self):
+        all_models = [
+            InputModel(
+                name="User",
+                fields=[
+                    InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                    InputField(name="name", type="str"),
+                ],
+                relationships=[
+                    InputRelationship(
+                        name="posts",
+                        target_model="Post",
+                        kind="one_to_many",
+                        inverse_name="author",
+                    )
+                ],
+            ),
+            InputModel(
+                name="Post",
+                fields=[
+                    InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                    InputField(name="title", type="str"),
+                ],
+            ),
+        ]
+        schemas = split_model_schemas(all_models[1], all_models=all_models)
         response_names = [f.name for f in schemas[2].fields]
         assert "author_id" in response_names
 
-    def test_references_fk_id_in_create_schema(self):
-        model = InputModel(
-            name="Post",
-            fields=[
-                InputField(name="id", type="uuid", pk=True, exposure="read_only"),
-                InputField(name="title", type="str"),
-            ],
-            relationships=[
-                InputRelationship(
-                    name="author",
-                    target_model="User",
-                    kind="one_to_many",
-                    inverse_name="ref",
-                )
-            ],
-        )
-        schemas = split_model_schemas(model)
+    def test_fk_id_in_create_schema(self):
+        all_models = [
+            InputModel(
+                name="User",
+                fields=[
+                    InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                    InputField(name="name", type="str"),
+                ],
+                relationships=[
+                    InputRelationship(
+                        name="posts",
+                        target_model="Post",
+                        kind="one_to_many",
+                        inverse_name="author",
+                    )
+                ],
+            ),
+            InputModel(
+                name="Post",
+                fields=[
+                    InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                    InputField(name="title", type="str"),
+                ],
+            ),
+        ]
+        schemas = split_model_schemas(all_models[1], all_models=all_models)
         create_names = [f.name for f in schemas[0].fields]
         assert "author_id" in create_names
 
-    def test_references_fk_id_in_update_schema(self):
-        model = InputModel(
-            name="Post",
-            fields=[
-                InputField(name="id", type="uuid", pk=True, exposure="read_only"),
-                InputField(name="title", type="str"),
-            ],
-            relationships=[
-                InputRelationship(
-                    name="author",
-                    target_model="User",
-                    kind="one_to_many",
-                    inverse_name="ref",
-                )
-            ],
-        )
-        schemas = split_model_schemas(model)
+    def test_fk_id_in_update_schema(self):
+        all_models = [
+            InputModel(
+                name="User",
+                fields=[
+                    InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                    InputField(name="name", type="str"),
+                ],
+                relationships=[
+                    InputRelationship(
+                        name="posts",
+                        target_model="Post",
+                        kind="one_to_many",
+                        inverse_name="author",
+                    )
+                ],
+            ),
+            InputModel(
+                name="Post",
+                fields=[
+                    InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                    InputField(name="title", type="str"),
+                ],
+            ),
+        ]
+        schemas = split_model_schemas(all_models[1], all_models=all_models)
         update_names = [f.name for f in schemas[1].fields]
         assert "author_id" in update_names
         fk_field = next(f for f in schemas[1].fields if str(f.name) == "author_id")
         assert fk_field.nullable is True
 
-    def test_references_fk_required_in_create(self):
-        model = InputModel(
-            name="Post",
-            fields=[
-                InputField(name="id", type="uuid", pk=True, exposure="read_only"),
-                InputField(name="title", type="str"),
-            ],
-            relationships=[
-                InputRelationship(
-                    name="author",
-                    target_model="User",
-                    kind="one_to_many",
-                    inverse_name="ref",
-                )
-            ],
-        )
-        schemas = split_model_schemas(model)
+    def test_fk_required_in_create(self):
+        all_models = [
+            InputModel(
+                name="User",
+                fields=[
+                    InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                    InputField(name="name", type="str"),
+                ],
+                relationships=[
+                    InputRelationship(
+                        name="posts",
+                        target_model="Post",
+                        kind="one_to_many",
+                        inverse_name="author",
+                    )
+                ],
+            ),
+            InputModel(
+                name="Post",
+                fields=[
+                    InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                    InputField(name="title", type="str"),
+                ],
+            ),
+        ]
+        schemas = split_model_schemas(all_models[1], all_models=all_models)
         fk_field = next(f for f in schemas[0].fields if str(f.name) == "author_id")
         assert fk_field.nullable is False
 
@@ -2095,7 +2143,7 @@ class TestHasManyRelationship:
         assert len(user_model.relationships) == 1
         rel = user_model.relationships[0]
         assert rel.name == "posts"
-        assert rel.kind == "has_many"
+        assert rel.kind == "one_to_many"
         assert rel.target_class_name == "PostRecord"
         assert rel.fk_column is None
 
@@ -2162,7 +2210,7 @@ class TestHasOneRelationship:
         assert len(user_model.relationships) == 1
         rel = user_model.relationships[0]
         assert rel.name == "profile"
-        assert rel.kind == "has_one"
+        assert rel.kind == "one_to_one"
         assert rel.target_class_name == "ProfileRecord"
 
 
@@ -2316,7 +2364,7 @@ class TestRelationshipCodeGeneration:
                             name="posts",
                             target_model="Post",
                             kind="one_to_many",
-                            inverse_name="owner",
+                            inverse_name="author",
                         )
                     ],
                 ),
@@ -2329,12 +2377,6 @@ class TestRelationshipCodeGeneration:
                         InputField(name="title", type="str"),
                     ],
                     relationships=[
-                        InputRelationship(
-                            name="author",
-                            target_model="User",
-                            kind="one_to_many",
-                            inverse_name="ref",
-                        ),
                         InputRelationship(
                             name="tags",
                             target_model="Tag",
@@ -2469,28 +2511,28 @@ class TestRelationshipCodeGeneration:
 
 @pytest.mark.codegen
 class TestMigrationTableOrdering:
-    def test_references_target_created_before_source(self):
+    def test_fk_target_created_after_source(self):
         models = [
-            _make_model(
-                "Post",
-                [
-                    {"name": "id", "type": "uuid", "pk": True},
-                    {"name": "title", "type": "str"},
-                ],
-                relationships=[
-                    {
-                        "name": "author",
-                        "target_model": "User",
-                        "kind": "one_to_many",
-                        "inverse_name": "ref",
-                    }
-                ],
-            ),
             _make_model(
                 "User",
                 [
                     {"name": "id", "type": "uuid", "pk": True},
                     {"name": "name", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "posts",
+                        "target_model": "Post",
+                        "kind": "one_to_many",
+                        "inverse_name": "author",
+                    }
+                ],
+            ),
+            _make_model(
+                "Post",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "title", "type": "str"},
                 ],
             ),
         ]
@@ -2506,14 +2548,6 @@ class TestMigrationTableOrdering:
                     {"name": "id", "type": "uuid", "pk": True},
                     {"name": "val", "type": "str"},
                 ],
-                relationships=[
-                    {
-                        "name": "b_ref",
-                        "target_model": "B",
-                        "kind": "one_to_many",
-                        "inverse_name": "ref",
-                    }
-                ],
             ),
             _make_model(
                 "B",
@@ -2523,10 +2557,10 @@ class TestMigrationTableOrdering:
                 ],
                 relationships=[
                     {
-                        "name": "c_ref",
-                        "target_model": "C",
+                        "name": "a_items",
+                        "target_model": "A",
                         "kind": "one_to_many",
-                        "inverse_name": "ref",
+                        "inverse_name": "b_ref",
                     }
                 ],
             ),
@@ -2535,6 +2569,14 @@ class TestMigrationTableOrdering:
                 [
                     {"name": "id", "type": "uuid", "pk": True},
                     {"name": "val", "type": "str"},
+                ],
+                relationships=[
+                    {
+                        "name": "b_items",
+                        "target_model": "B",
+                        "kind": "one_to_many",
+                        "inverse_name": "c_ref",
+                    }
                 ],
             ),
         ]
@@ -2584,84 +2626,93 @@ class TestMigrationTableOrdering:
 
 
 @pytest.mark.codegen
-class TestFkTypeDerivedFromTargetPk:
+class TestFkTypeDerivedFromSourcePk:
     def test_fk_type_matches_int_pk(self):
         models = [
-            _make_model(
-                "Comment",
-                [
-                    {"name": "id", "type": "uuid", "pk": True},
-                    {"name": "body", "type": "str"},
-                ],
-                relationships=[
-                    {
-                        "name": "article",
-                        "target_model": "Article",
-                        "kind": "one_to_many",
-                        "inverse_name": "ref",
-                    }
-                ],
-            ),
             _make_model(
                 "Article",
                 [
                     {"name": "id", "type": "int", "pk": True},
                     {"name": "title", "type": "str"},
                 ],
+                relationships=[
+                    {
+                        "name": "comments",
+                        "target_model": "Comment",
+                        "kind": "one_to_many",
+                        "inverse_name": "article",
+                    }
+                ],
+            ),
+            _make_model(
+                "Comment",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "body", "type": "str"},
+                ],
             ),
         ]
-        schemas = split_model_schemas(models[0], all_models=models)
+        schemas = split_model_schemas(models[1], all_models=models)
         response = schemas[2]
         fk_field = next(f for f in response.fields if str(f.name) == "article_id")
         assert fk_field.type == "int"
 
     def test_fk_type_defaults_to_uuid_without_context(self):
-        model = InputModel(
-            name="Post",
-            fields=[
-                InputField(name="id", type="uuid", pk=True, exposure="read_only"),
-                InputField(name="title", type="str"),
-            ],
-            relationships=[
-                InputRelationship(
-                    name="author",
-                    target_model="User",
-                    kind="one_to_many",
-                    inverse_name="ref",
-                )
-            ],
-        )
-        schemas = split_model_schemas(model)
+        all_models = [
+            InputModel(
+                name="User",
+                fields=[
+                    InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                    InputField(name="name", type="str"),
+                ],
+                relationships=[
+                    InputRelationship(
+                        name="posts",
+                        target_model="Post",
+                        kind="one_to_many",
+                        inverse_name="author",
+                    )
+                ],
+            ),
+            InputModel(
+                name="Post",
+                fields=[
+                    InputField(name="id", type="uuid", pk=True, exposure="read_only"),
+                    InputField(name="title", type="str"),
+                ],
+            ),
+        ]
+        schemas = split_model_schemas(all_models[1], all_models=all_models)
         response = schemas[2]
         fk_field = next(f for f in response.fields if str(f.name) == "author_id")
         assert fk_field.type == "uuid"
 
-    def test_fk_type_in_create_matches_target_pk(self):
+    def test_fk_type_in_create_matches_source_pk(self):
         models = [
-            _make_model(
-                "Comment",
-                [
-                    {"name": "id", "type": "uuid", "pk": True},
-                    {"name": "body", "type": "str"},
-                ],
-                relationships=[
-                    {
-                        "name": "article",
-                        "target_model": "Article",
-                        "kind": "one_to_many",
-                        "inverse_name": "ref",
-                    }
-                ],
-            ),
             _make_model(
                 "Article",
                 [
                     {"name": "id", "type": "int", "pk": True},
                     {"name": "title", "type": "str"},
                 ],
+                relationships=[
+                    {
+                        "name": "comments",
+                        "target_model": "Comment",
+                        "kind": "one_to_many",
+                        "inverse_name": "article",
+                    }
+                ],
+            ),
+            _make_model(
+                "Comment",
+                [
+                    {"name": "id", "type": "uuid", "pk": True},
+                    {"name": "body", "type": "str"},
+                ],
             ),
         ]
-        schemas = split_model_schemas(models[0], all_models=models)
+        schemas = split_model_schemas(models[1], all_models=models)
         create = schemas[0]
         fk_field = next(f for f in create.fields if str(f.name) == "article_id")
         assert fk_field.type == "int"
