@@ -9,7 +9,7 @@ import zipfile
 from jinja2 import Environment
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectin_polymorphic, selectinload
 
 from api.models.database import (
     ApiModel,
@@ -115,7 +115,10 @@ async def _fetch_objects(
         select(ObjectDefinition)
         .where(ObjectDefinition.namespace_id == api.namespace_id)
         .options(
-            selectinload(ObjectDefinition.members).selectinload(ScalarMember.field),
+            selectinload(ObjectDefinition.members).options(
+                selectin_polymorphic(ObjectMember, [ScalarMember, RelationshipMember]),
+                selectinload(ScalarMember.field),
+            ),
             selectinload(ObjectDefinition.validators).selectinload(
                 AppliedModelValidatorModel.template
             ),

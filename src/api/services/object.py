@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectin_polymorphic, selectinload
 
 from api.models.database import (
     ApiEndpoint,
@@ -60,7 +60,10 @@ class ObjectService(BaseService[ObjectDefinition]):
     def _object_load_options(self):
         """Standard eager-load options for object queries."""
         return [
-            selectinload(ObjectDefinition.members).selectinload(ScalarMember.field),
+            selectinload(ObjectDefinition.members).options(
+                selectin_polymorphic(ObjectMember, [ScalarMember, RelationshipMember]),
+                selectinload(ScalarMember.field),
+            ),
             selectinload(ObjectDefinition.validators).selectinload(
                 AppliedModelValidatorModel.template
             ),
@@ -187,6 +190,18 @@ class ObjectService(BaseService[ObjectDefinition]):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot delete object: used in {usage_count} endpoints",
             )
+
+        # Delete incoming relationship members that target this object
+        # (relationship_members.target_object_id has ON DELETE RESTRICT,
+        # so we must remove them before deleting the object).
+        incoming_ids_subq = (
+            select(RelationshipMember.id)
+            .where(RelationshipMember.target_object_id == obj.id)
+            .scalar_subquery()
+        )
+        await self.db.execute(
+            delete(ObjectMember).where(ObjectMember.id.in_(incoming_ids_subq))
+        )
 
         await self.db.delete(obj)
         await self.db.flush()

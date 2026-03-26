@@ -17,6 +17,7 @@ from api.models.database import (
     ObjectDefinition,
     UserModel,
 )
+from api.models.members import ObjectMember
 
 
 def override_auth(clerk_id: str) -> None:
@@ -62,6 +63,16 @@ async def cleanup_user_data(clerk_id: str) -> None:
                 delete(GenerationModel).where(GenerationModel.user_id == uid)
             )
             await session.execute(delete(ApiModel).where(ApiModel.user_id == uid))
+            # Delete object members first to avoid RESTRICT violation on
+            # relationship_members.target_object_id when objects are deleted.
+            obj_ids_subq = (
+                select(ObjectDefinition.id)
+                .where(ObjectDefinition.user_id == uid)
+                .scalar_subquery()
+            )
+            await session.execute(
+                delete(ObjectMember).where(ObjectMember.object_id.in_(obj_ids_subq))
+            )
             await session.execute(
                 delete(ObjectDefinition).where(ObjectDefinition.user_id == uid)
             )

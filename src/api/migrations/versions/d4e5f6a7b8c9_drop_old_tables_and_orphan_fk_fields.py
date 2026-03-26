@@ -27,32 +27,42 @@ def upgrade() -> None:
     conn = op.get_bind()
 
     # ------------------------------------------------------------------
-    # 1. Delete orphaned FK fields
+    # 1. Identify orphaned FK field IDs before dropping old tables
     # ------------------------------------------------------------------
     # FK fields are identified by having role='fk' in the old
     # fields_on_objects_old table and no remaining scalar_members reference.
-    orphan_count = conn.execute(
+    orphan_ids = conn.execute(
         sa.text(
-            "DELETE FROM fields "
-            "WHERE id IN ("
-            "  SELECT DISTINCT f.id FROM fields f "
-            "  INNER JOIN fields_on_objects_old foa ON f.id = foa.field_id "
-            "  WHERE foa.role = 'fk' "
-            "  AND NOT EXISTS ("
-            "    SELECT 1 FROM scalar_members sm WHERE sm.field_id = f.id"
-            "  )"
+            "SELECT DISTINCT f.id FROM fields f "
+            "INNER JOIN fields_on_objects_old foa ON f.id = foa.field_id "
+            "WHERE foa.role = 'fk' "
+            "AND NOT EXISTS ("
+            "  SELECT 1 FROM scalar_members sm WHERE sm.field_id = f.id"
             ")"
         )
-    ).rowcount
-    logger.info("Deleted %d orphaned FK field rows", orphan_count)
+    ).fetchall()
+    orphan_id_list = [row[0] for row in orphan_ids]
 
     # ------------------------------------------------------------------
-    # 2. Drop old tables
+    # 2. Drop old tables (must happen before deleting orphan fields
+    #    because fields_on_objects_old has an FK referencing fields)
     # ------------------------------------------------------------------
     op.drop_table("object_relationships_old")
     op.drop_table("fields_on_objects_old")
 
     logger.info("Dropped fields_on_objects_old and object_relationships_old tables")
+
+    # ------------------------------------------------------------------
+    # 3. Delete orphaned FK fields now that the FK constraint is gone
+    # ------------------------------------------------------------------
+    if orphan_id_list:
+        orphan_count = conn.execute(
+            sa.text("DELETE FROM fields WHERE id = ANY(:ids)"),
+            {"ids": orphan_id_list},
+        ).rowcount
+    else:
+        orphan_count = 0
+    logger.info("Deleted %d orphaned FK field rows", orphan_count)
 
 
 def downgrade() -> None:
