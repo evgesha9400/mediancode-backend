@@ -20,6 +20,7 @@ FieldAppearance = FieldExposure  # deprecated alias, remove after full migration
 RelationshipKind = Literal["one_to_one", "one_to_many", "many_to_many"]
 FilterOperator = Literal["eq", "gte", "lte", "gt", "lt", "like", "ilike", "in"]
 GeneratedStrategy = Literal["uuid4", "now", "now_on_update", "auto_increment"]
+CdkCompute = Literal["lambda", "ecs"]
 ServerDefault = GeneratedStrategy  # deprecated alias, remove after full migration
 DefaultKind = Literal["literal", "generated"]
 FieldRole = Literal[

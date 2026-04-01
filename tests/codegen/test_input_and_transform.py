@@ -31,6 +31,7 @@ from api_craft.models.enums import (
 from api_craft.models.input import (
     InputAPI,
     InputApiConfig,
+    InputCdkConfig,
     InputDatabaseConfig,
     InputEndpoint,
     InputField,
@@ -109,6 +110,24 @@ class TestDatabaseConfig:
     def test_database_enabled(self):
         config = InputApiConfig(database={"enabled": True})
         assert config.database.enabled is True
+
+
+class TestCdkConfig:
+    def test_cdk_disabled_by_default(self):
+        config = InputApiConfig()
+        assert config.cdk.enabled is False
+
+    def test_cdk_defaults(self):
+        config = InputCdkConfig()
+        assert config.compute == "lambda"
+
+    def test_cdk_enabled_lambda(self):
+        config = InputCdkConfig(enabled=True, compute="lambda")
+        assert config.enabled is True
+
+    def test_cdk_enabled_ecs(self):
+        config = InputCdkConfig(enabled=True, compute="ecs")
+        assert config.enabled is True
 
 
 class TestPascalCaseValidation:

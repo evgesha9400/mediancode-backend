@@ -3,6 +3,7 @@ from typing import Annotated, Any, Literal, Self
 from pydantic import BaseModel, Field, model_validator
 
 from api_craft.models.enums import (
+    CdkCompute,
     FieldExposure,
     FilterOperator,
     GeneratedStrategy,
@@ -246,6 +247,17 @@ class InputTag(BaseModel):
     description: str | None = None
 
 
+class InputCdkConfig(BaseModel):
+    """CDK infrastructure generation configuration.
+
+    :ivar enabled: Whether to generate CDK infrastructure files.
+    :ivar compute: Compute platform — 'lambda' or 'ecs'.
+    """
+
+    enabled: bool = False
+    compute: CdkCompute = "lambda"
+
+
 class InputDatabaseConfig(BaseModel):
     """Database configuration for the generated API.
 
@@ -261,11 +273,13 @@ class InputApiConfig(BaseModel):
     :ivar healthcheck: Optional path used to expose a healthcheck route.
     :ivar response_placeholders: Toggle for generating placeholder response bodies.
     :ivar database: Database configuration for the generated API.
+    :ivar cdk: CDK infrastructure generation configuration.
     """
 
     healthcheck: str | None = None
     response_placeholders: bool = True
     database: InputDatabaseConfig = InputDatabaseConfig()
+    cdk: InputCdkConfig = InputCdkConfig()
 
 
 class InputAPI(BaseModel):
