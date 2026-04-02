@@ -28,6 +28,7 @@ from api_craft.models.input import (
     FieldDefaultLiteral,
     InputAPI,
     InputApiConfig,
+    InputCdkConfig,
     InputDatabaseConfig,
     InputEndpoint,
     InputField,
@@ -381,6 +382,10 @@ def _convert_to_input_api(
             response_placeholders=options.response_placeholders,
             database=InputDatabaseConfig(
                 enabled=options.database_enabled,
+            ),
+            cdk=InputCdkConfig(
+                enabled=options.cdk_enabled,
+                compute=options.cdk_compute,
             ),
         ),
     )

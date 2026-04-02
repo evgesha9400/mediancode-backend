@@ -15,6 +15,7 @@ from typing import get_args
 import pytest
 
 from api.schemas.api import GenerateOptions
+from api.services.generation import _convert_to_input_api
 from api_craft.extractors import collect_database_dependencies, collect_orm_imports
 from api_craft.models.enums import (
     Cardinality,
@@ -146,6 +147,38 @@ class TestGenerateOptionsCdk:
     def test_cdk_compute_via_camel_alias(self):
         opts = GenerateOptions.model_validate({"cdkCompute": "ecs"})
         assert opts.cdk_compute == "ecs"
+
+
+class TestGenerationServiceCdkWiring:
+    """Verify that GenerateOptions CDK fields reach InputCdkConfig."""
+
+    def _minimal_api_model(self):
+        """Return a minimal ApiModel stub sufficient for _convert_to_input_api."""
+        from unittest.mock import MagicMock
+
+        api = MagicMock()
+        api.title = "ShopApi"
+        api.version = "1.0.0"
+        api.description = "Test"
+        api.namespace_id = "00000000-0000-0000-0000-000000000001"
+        api.endpoints = []
+        return api
+
+    def test_cdk_disabled_passes_through(self):
+        opts = GenerateOptions(cdk_enabled=False)
+        result = _convert_to_input_api(self._minimal_api_model(), {}, {}, opts)
+        assert result.config.cdk.enabled is False
+
+    def test_cdk_enabled_lambda_passes_through(self):
+        opts = GenerateOptions(cdk_enabled=True, cdk_compute="lambda")
+        result = _convert_to_input_api(self._minimal_api_model(), {}, {}, opts)
+        assert result.config.cdk.enabled is True
+        assert result.config.cdk.compute == "lambda"
+
+    def test_cdk_ecs_passes_through(self):
+        opts = GenerateOptions(cdk_enabled=True, cdk_compute="ecs")
+        result = _convert_to_input_api(self._minimal_api_model(), {}, {}, opts)
+        assert result.config.cdk.compute == "ecs"
 
 
 class TestPascalCaseValidation:
