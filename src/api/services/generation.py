@@ -378,7 +378,6 @@ def _convert_to_input_api(
         endpoints=input_endpoints,
         tags=input_tags,
         config=InputApiConfig(
-            healthcheck=options.healthcheck,
             response_placeholders=options.response_placeholders,
             database=InputDatabaseConfig(
                 enabled=options.database_enabled,

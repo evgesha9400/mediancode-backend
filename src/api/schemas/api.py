@@ -92,14 +92,12 @@ class ApiResponse(BaseModel):
 class GenerateOptions(BaseModel):
     """Options for code generation passed to POST /v1/apis/{api_id}/generate.
 
-    :ivar healthcheck: Path for the healthcheck endpoint (None to disable).
     :ivar response_placeholders: Generate placeholder response bodies.
     :ivar database_enabled: Generate database support (SQLAlchemy, Alembic, Docker Compose).
     :ivar cdk_enabled: Generate CDK infrastructure files.
     :ivar cdk_compute: Compute platform for CDK — 'lambda' or 'ecs'.
     """
 
-    healthcheck: str | None = Field(default="/health")
     response_placeholders: bool = Field(default=True, alias="responsePlaceholders")
     database_enabled: bool = Field(default=False, alias="databaseEnabled")
     cdk_enabled: bool = Field(default=False, alias="cdkEnabled")

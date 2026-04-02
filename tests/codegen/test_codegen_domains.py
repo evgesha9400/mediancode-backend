@@ -192,12 +192,6 @@ class TestConvertToInputApi:
         result = _convert_to_input_api(api, objects_map, fields_map, opts)
         assert result.config.database.enabled is True
 
-    def test_healthcheck_none_disables_it(self):
-        api = self._make_api_model()
-        opts = GenerateOptions(healthcheck=None)
-        result = _convert_to_input_api(api, {}, {}, opts)
-        assert result.config.healthcheck is None
-
     def test_response_placeholders_false_passed_through(self):
         api = self._make_api_model()
         opts = GenerateOptions(response_placeholders=False)

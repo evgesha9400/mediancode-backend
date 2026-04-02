@@ -2494,17 +2494,14 @@ class TestComplexTypes:
 class TestGenerateOptions:
     def test_defaults(self):
         opts = GenerateOptions()
-        assert opts.healthcheck == "/health"
         assert opts.response_placeholders is True
         assert opts.database_enabled is False
 
     def test_override_all_fields(self):
         opts = GenerateOptions(
-            healthcheck=None,
             response_placeholders=False,
             database_enabled=True,
         )
-        assert opts.healthcheck is None
         assert opts.response_placeholders is False
         assert opts.database_enabled is True
 
@@ -2520,13 +2517,13 @@ class TestGenerateOptions:
 
     def test_empty_body_uses_defaults(self):
         opts = GenerateOptions.model_validate({})
-        assert opts.healthcheck == "/health"
         assert opts.response_placeholders is True
         assert opts.database_enabled is False
 
-    def test_custom_healthcheck_path(self):
-        opts = GenerateOptions(healthcheck="/status")
-        assert opts.healthcheck == "/status"
+    def test_no_healthcheck_field(self):
+        """GenerateOptions no longer exposes a healthcheck field."""
+        opts = GenerateOptions()
+        assert not hasattr(opts, "healthcheck")
 
 
 class TestGenerateOptionsSchema:

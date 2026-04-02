@@ -270,13 +270,13 @@ class InputDatabaseConfig(BaseModel):
 class InputApiConfig(BaseModel):
     """Configuration flags for the generated API.
 
-    :ivar healthcheck: Optional path used to expose a healthcheck route.
+    :ivar healthcheck: Path for the healthcheck route (always generated).
     :ivar response_placeholders: Toggle for generating placeholder response bodies.
     :ivar database: Database configuration for the generated API.
     :ivar cdk: CDK infrastructure generation configuration.
     """
 
-    healthcheck: str | None = None
+    healthcheck: str = "/health"
     response_placeholders: bool = True
     database: InputDatabaseConfig = InputDatabaseConfig()
     cdk: InputCdkConfig = InputCdkConfig()
