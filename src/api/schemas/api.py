@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from api_craft.models.enums import CdkCompute
 from api_craft.models.types import PascalCaseName
 
 
@@ -94,10 +95,14 @@ class GenerateOptions(BaseModel):
     :ivar healthcheck: Path for the healthcheck endpoint (None to disable).
     :ivar response_placeholders: Generate placeholder response bodies.
     :ivar database_enabled: Generate database support (SQLAlchemy, Alembic, Docker Compose).
+    :ivar cdk_enabled: Generate CDK infrastructure files.
+    :ivar cdk_compute: Compute platform for CDK — 'lambda' or 'ecs'.
     """
 
     healthcheck: str | None = Field(default="/health")
     response_placeholders: bool = Field(default=True, alias="responsePlaceholders")
     database_enabled: bool = Field(default=False, alias="databaseEnabled")
+    cdk_enabled: bool = Field(default=False, alias="cdkEnabled")
+    cdk_compute: CdkCompute = Field(default="lambda", alias="cdkCompute")
 
     model_config = ConfigDict(populate_by_name=True)

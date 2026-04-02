@@ -130,6 +130,24 @@ class TestCdkConfig:
         assert config.enabled is True
 
 
+class TestGenerateOptionsCdk:
+    def test_cdk_disabled_by_default(self):
+        opts = GenerateOptions()
+        assert opts.cdk_enabled is False
+
+    def test_cdk_compute_default_is_lambda(self):
+        opts = GenerateOptions()
+        assert opts.cdk_compute == "lambda"
+
+    def test_cdk_enabled_via_camel_alias(self):
+        opts = GenerateOptions.model_validate({"cdkEnabled": True})
+        assert opts.cdk_enabled is True
+
+    def test_cdk_compute_via_camel_alias(self):
+        opts = GenerateOptions.model_validate({"cdkCompute": "ecs"})
+        assert opts.cdk_compute == "ecs"
+
+
 class TestPascalCaseValidation:
     """PascalCase name validation must reject underscores."""
 
