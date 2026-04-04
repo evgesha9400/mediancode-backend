@@ -247,6 +247,16 @@ def _convert_to_input_api(
                 field = fields_map.get(member.field_id)
                 if field:
                     pk, exposure, default = _derive_input_field_props(member)
+                    # TODO(mediancode): Review scalar member ``name`` vs ``Field.name`` for codegen.
+                    # - ``ScalarMember`` has its own ``name`` (editable in object drawer); API persists it;
+                    #   object service enforces unique member names per object.
+                    # - Here and in query-param extraction below we use ``field.name`` for InputField /
+                    #   InputQueryParam names, so object-level renames do not affect generated scalar names
+                    #   today (relationship members already use ``member.name``).
+                    # - Frontend mirrors the split: e.g. paramInference resolveTargetFields uses
+                    #   ``member.name``; ObjectFormContent tooltip implies generated code follows member name.
+                    # - Follow-up: either use ``member.name`` (or a defined precedence) consistently in
+                    #   api_craft input, or document that Field.name is authoritative and adjust UI.
                     input_field = InputField(
                         name=field.name,
                         type=_build_field_type(
@@ -328,6 +338,8 @@ def _convert_to_input_api(
                     if isinstance(member, ScalarMember):
                         field = fields_map.get(member.field_id)
                         if field:
+                            # TODO(mediancode): Same as InputField above — query param names use
+                            # ``field.name``; keep in sync with any change to scalar member naming.
                             query_params.append(
                                 InputQueryParam(
                                     name=field.name,
