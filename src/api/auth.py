@@ -11,6 +11,8 @@ from jwt import PyJWKClient, PyJWKClientError
 
 from api.settings import Settings, get_settings
 
+JWT_CLOCK_SKEW_LEEWAY_SECONDS = 5
+
 
 class ClerkAuthenticator:
     """Validates Clerk JWT tokens and extracts user information.
@@ -59,6 +61,7 @@ class ClerkAuthenticator:
             decode_kwargs: dict = {
                 "algorithms": ["RS256"],
                 "issuer": self.settings.clerk_frontend_api_url,
+                "leeway": JWT_CLOCK_SKEW_LEEWAY_SECONDS,
                 "options": decode_options,
             }
             if self.settings.clerk_jwt_audience:
