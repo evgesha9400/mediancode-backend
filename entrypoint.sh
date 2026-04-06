@@ -7,7 +7,7 @@ if [ "$DB_RESET" = "true" ]; then
 import asyncio, asyncpg, os
 async def reset():
     conn = await asyncpg.connect(os.environ['DATABASE_URL'])
-    await conn.execute('DROP SCHEMA public CASCADE')
+    await conn.execute('DROP SCHEMA IF EXISTS public CASCADE')
     await conn.execute('CREATE SCHEMA public')
     await conn.close()
 asyncio.run(reset())
