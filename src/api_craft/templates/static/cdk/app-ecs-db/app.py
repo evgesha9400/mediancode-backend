@@ -3,7 +3,6 @@ import os
 
 import aws_cdk as cdk
 from aws_cdk import RemovalPolicy
-
 from stacks.compute import ComputeStack
 from stacks.database import DatabaseStack
 

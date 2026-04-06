@@ -3,6 +3,7 @@
 
 import json
 from pathlib import Path
+import tomllib
 
 import pytest
 
@@ -97,23 +98,26 @@ def ecs_db_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 class TestPlatformAlwaysPresent:
-    @pytest.mark.parametrize("fixture_name", [
-        "lambda_project", "lambda_db_project", "ecs_project", "ecs_db_project"
-    ])
+    @pytest.mark.parametrize(
+        "fixture_name",
+        ["lambda_project", "lambda_db_project", "ecs_project", "ecs_db_project"],
+    )
     def test_platform_directory_exists(self, fixture_name: str, request):
         project = request.getfixturevalue(fixture_name)
         assert (project / "infra" / "platform").exists()
 
-    @pytest.mark.parametrize("fixture_name", [
-        "lambda_project", "lambda_db_project", "ecs_project", "ecs_db_project"
-    ])
+    @pytest.mark.parametrize(
+        "fixture_name",
+        ["lambda_project", "lambda_db_project", "ecs_project", "ecs_db_project"],
+    )
     def test_platform_network_stack_exists(self, fixture_name: str, request):
         project = request.getfixturevalue(fixture_name)
         assert (project / "infra" / "platform" / "stacks" / "network.py").exists()
 
-    @pytest.mark.parametrize("fixture_name", [
-        "lambda_project", "lambda_db_project", "ecs_project", "ecs_db_project"
-    ])
+    @pytest.mark.parametrize(
+        "fixture_name",
+        ["lambda_project", "lambda_db_project", "ecs_project", "ecs_db_project"],
+    )
     def test_platform_creates_new_vpc(self, fixture_name: str, request):
         project = request.getfixturevalue(fixture_name)
         content = (project / "infra" / "platform" / "stacks" / "network.py").read_text()
@@ -137,6 +141,27 @@ class TestCdkJson:
 
 
 # ---------------------------------------------------------------------------
+# Root pyproject.toml
+# ---------------------------------------------------------------------------
+
+
+class TestRootPyprojectDevDependencies:
+    @pytest.mark.parametrize(
+        "fixture_name",
+        ["lambda_project", "lambda_db_project", "ecs_project", "ecs_db_project"],
+    )
+    def test_cdk_projects_include_cdk_dev_dependencies(
+        self, fixture_name: str, request
+    ):
+        project = request.getfixturevalue(fixture_name)
+        pyproject = tomllib.loads((project / "pyproject.toml").read_text())
+        dev_dependencies = pyproject["dependency-groups"]["dev"]
+
+        assert any(dep.startswith("aws-cdk-lib") for dep in dev_dependencies)
+        assert any(dep.startswith("constructs") for dep in dev_dependencies)
+
+
+# ---------------------------------------------------------------------------
 # Lambda (no DB)
 # ---------------------------------------------------------------------------
 
@@ -149,10 +174,14 @@ class TestLambdaNoDb:
         assert (lambda_project / "infra" / "app" / "stacks" / "compute.py").exists()
 
     def test_no_database_stack(self, lambda_project: Path):
-        assert not (lambda_project / "infra" / "app" / "stacks" / "database.py").exists()
+        assert not (
+            lambda_project / "infra" / "app" / "stacks" / "database.py"
+        ).exists()
 
     def test_compute_uses_lambda(self, lambda_project: Path):
-        content = (lambda_project / "infra" / "app" / "stacks" / "compute.py").read_text()
+        content = (
+            lambda_project / "infra" / "app" / "stacks" / "compute.py"
+        ).read_text()
         assert "lambda_.Function(" in content
 
     def test_requirements_txt_exists(self, lambda_project: Path):
@@ -172,11 +201,15 @@ class TestLambdaDb:
         assert (lambda_db_project / "infra" / "app" / "stacks" / "compute.py").exists()
 
     def test_database_stack_has_rds(self, lambda_db_project: Path):
-        content = (lambda_db_project / "infra" / "app" / "stacks" / "database.py").read_text()
+        content = (
+            lambda_db_project / "infra" / "app" / "stacks" / "database.py"
+        ).read_text()
         assert "rds.DatabaseInstance(" in content
 
     def test_compute_uses_lambda(self, lambda_db_project: Path):
-        content = (lambda_db_project / "infra" / "app" / "stacks" / "compute.py").read_text()
+        content = (
+            lambda_db_project / "infra" / "app" / "stacks" / "compute.py"
+        ).read_text()
         assert "lambda_.Function(" in content
 
 
@@ -204,9 +237,13 @@ class TestEcsDb:
         assert (ecs_db_project / "infra" / "app" / "stacks" / "database.py").exists()
 
     def test_compute_stack_uses_fargate(self, ecs_db_project: Path):
-        content = (ecs_db_project / "infra" / "app" / "stacks" / "compute.py").read_text()
+        content = (
+            ecs_db_project / "infra" / "app" / "stacks" / "compute.py"
+        ).read_text()
         assert "ApplicationLoadBalancedFargateService" in content
 
     def test_database_stack_has_rds(self, ecs_db_project: Path):
-        content = (ecs_db_project / "infra" / "app" / "stacks" / "database.py").read_text()
+        content = (
+            ecs_db_project / "infra" / "app" / "stacks" / "database.py"
+        ).read_text()
         assert "rds.DatabaseInstance(" in content

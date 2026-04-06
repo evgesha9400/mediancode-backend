@@ -16,7 +16,11 @@ import pytest
 
 from api.schemas.api import GenerateOptions
 from api.services.generation import _convert_to_input_api
-from api_craft.extractors import collect_database_dependencies, collect_orm_imports
+from api_craft.extractors import (
+    collect_cdk_dependencies,
+    collect_database_dependencies,
+    collect_orm_imports,
+)
 from api_craft.models.enums import (
     Cardinality,
     Container,
@@ -1566,6 +1570,14 @@ class TestCollectDatabaseDependencies:
         assert "sqlalchemy[asyncio]" in dep_names
         assert "asyncpg" in dep_names
         assert "alembic" in dep_names
+
+
+class TestCollectCdkDependencies:
+    def test_returns_required_deps(self):
+        deps = collect_cdk_dependencies()
+        dep_names = [d.split(" ")[0] for d in deps]
+        assert "aws-cdk-lib" in dep_names
+        assert "constructs" in dep_names
 
 
 class TestOrmBuilderServerDefaults:

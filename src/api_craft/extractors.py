@@ -1,3 +1,4 @@
+# api_craft/extractors.py
 import re
 
 from api_craft.models.input import InputModel
@@ -249,4 +250,15 @@ def collect_database_dependencies() -> list[str]:
         "greenlet (>=3.0.0,<4.0.0)",
         "asyncpg (>=0.31.0,<1.0.0)",
         "alembic (>=1.18.0,<2.0.0)",
+    ]
+
+
+def collect_cdk_dependencies() -> list[str]:
+    """Return pip dependencies for CDK development support.
+
+    :returns: List of pip dependency strings.
+    """
+    return [
+        "aws-cdk-lib (>=2.150.0,<3.0.0)",
+        "constructs (>=10.0.0,<11.0.0)",
     ]

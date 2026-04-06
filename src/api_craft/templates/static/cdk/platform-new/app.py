@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import aws_cdk as cdk
-
 from stacks.network import NetworkStack
 
 app = cdk.App()

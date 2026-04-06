@@ -4,11 +4,23 @@ from aws_cdk import (
     Duration,
     Stack,
     Tags,
+)
+from aws_cdk import (
     aws_apigatewayv2 as apigwv2,
+)
+from aws_cdk import (
     aws_ec2 as ec2,
+)
+from aws_cdk import (
     aws_iam as iam,
+)
+from aws_cdk import (
     aws_lambda as lambda_,
+)
+from aws_cdk import (
     aws_logs as logs,
+)
+from aws_cdk import (
     aws_ssm as ssm,
 )
 from aws_cdk.aws_apigatewayv2_integrations import HttpLambdaIntegration
@@ -52,7 +64,8 @@ class ComputeStack(Stack):
         bundling = BundlingOptions(
             image=lambda_.Runtime.PYTHON_3_13.bundling_image,
             command=[
-                "bash", "-c",
+                "bash",
+                "-c",
                 "pip install poetry poetry-plugin-export && "
                 "poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && "
                 "pip install -r /tmp/requirements.txt -t /asset-output && "
@@ -72,14 +85,24 @@ class ComputeStack(Stack):
         else:
             retention = logs.RetentionDays.ONE_MONTH
 
-        logs.LogGroup(self, "ApiLogGroup", log_group_name=f"/{prefix}/lambda-logs", retention=retention)
+        logs.LogGroup(
+            self,
+            "ApiLogGroup",
+            log_group_name=f"/{prefix}/lambda-logs",
+            retention=retention,
+        )
         api_role = iam.Role(
-            self, "ApiRole",
+            self,
+            "ApiRole",
             role_name=f"{prefix}-lambda-role",
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole"),
-                iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaVPCAccessExecutionRole"),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AWSLambdaBasicExecutionRole"
+                ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AWSLambdaVPCAccessExecutionRole"
+                ),
             ],
         )
 

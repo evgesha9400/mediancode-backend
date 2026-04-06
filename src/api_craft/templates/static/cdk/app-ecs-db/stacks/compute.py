@@ -2,11 +2,23 @@ from aws_cdk import (
     Duration,
     Stack,
     Tags,
+)
+from aws_cdk import (
     aws_ec2 as ec2,
+)
+from aws_cdk import (
     aws_ecr_assets as ecr_assets,
+)
+from aws_cdk import (
     aws_ecs as ecs,
+)
+from aws_cdk import (
     aws_ecs_patterns as ecs_patterns,
+)
+from aws_cdk import (
     aws_logs as logs,
+)
+from aws_cdk import (
     aws_ssm as ssm,
 )
 from constructs import Construct
@@ -54,7 +66,8 @@ class ComputeStack(Stack):
             retention = logs.RetentionDays.ONE_MONTH
 
         api_log_group = logs.LogGroup(
-            self, "ApiLogGroup",
+            self,
+            "ApiLogGroup",
             log_group_name=f"/{prefix}/ecs-logs",
             retention=retention,
         )

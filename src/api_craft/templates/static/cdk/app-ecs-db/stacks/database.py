@@ -3,9 +3,17 @@ from aws_cdk import (
     RemovalPolicy,
     Stack,
     Tags,
+)
+from aws_cdk import (
     aws_ec2 as ec2,
+)
+from aws_cdk import (
     aws_rds as rds,
+)
+from aws_cdk import (
     aws_secretsmanager as secretsmanager,
+)
+from aws_cdk import (
     aws_ssm as ssm,
 )
 from constructs import Construct

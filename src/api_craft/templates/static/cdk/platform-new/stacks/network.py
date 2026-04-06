@@ -1,7 +1,11 @@
 from aws_cdk import (
     Stack,
     Tags,
+)
+from aws_cdk import (
     aws_ec2 as ec2,
+)
+from aws_cdk import (
     aws_ssm as ssm,
 )
 from constructs import Construct
@@ -61,25 +65,19 @@ class NetworkStack(Stack):
             self,
             "PublicSubnetIdsParam",
             parameter_name=f"{ssm_prefix}/public-subnet-ids",
-            string_value=",".join(
-                [s.subnet_id for s in vpc.public_subnets]
-            ),
+            string_value=",".join([s.subnet_id for s in vpc.public_subnets]),
         )
 
         ssm.StringParameter(
             self,
             "AppSubnetIdsParam",
             parameter_name=f"{ssm_prefix}/app-subnet-ids",
-            string_value=",".join(
-                [s.subnet_id for s in vpc.private_subnets]
-            ),
+            string_value=",".join([s.subnet_id for s in vpc.private_subnets]),
         )
 
         ssm.StringParameter(
             self,
             "DbSubnetIdsParam",
             parameter_name=f"{ssm_prefix}/db-subnet-ids",
-            string_value=",".join(
-                [s.subnet_id for s in vpc.isolated_subnets]
-            ),
+            string_value=",".join([s.subnet_id for s in vpc.isolated_subnets]),
         )

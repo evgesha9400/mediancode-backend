@@ -2,6 +2,7 @@
 - Parameters:
 - api : TemplateApi
 - extra_dependencies : list[str] - additional pip dependencies
+- extra_dev_dependencies : list[str] - additional dev-only pip dependencies
 </%doc>\
 [project]
 name = "${api.kebab_name}"
@@ -25,7 +26,11 @@ dependencies = [
 [dependency-groups]
 dev = [
     "httpx (>=0.28.0,<1.0.0)",
-    "pyyaml (>=6.0.0,<7.0.0)"
+    "pyyaml (>=6.0.0,<7.0.0)"\
+% for dep in extra_dev_dependencies:
+,
+    "${dep}"\
+% endfor
 ]
 
 [tool.poetry]

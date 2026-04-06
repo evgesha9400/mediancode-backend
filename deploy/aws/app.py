@@ -4,7 +4,6 @@
 import os
 
 import aws_cdk as cdk
-
 from stacks.backend_stack import BackendStack
 
 app = cdk.App()

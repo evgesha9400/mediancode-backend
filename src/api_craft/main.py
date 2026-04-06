@@ -1,3 +1,4 @@
+# api_craft/main.py
 """Main module for API generation.
 
 This module orchestrates transforming a high-level API specification into a
@@ -16,6 +17,7 @@ from mako.template import Template
 
 from api_craft.extractors import (
     collect_association_tables,
+    collect_cdk_dependencies,
     collect_database_dependencies,
     collect_model_extra_dependencies,
     collect_model_imports,
@@ -156,18 +158,20 @@ class APIGenerator:
             raise ValueError("Component extraction failed") from e
 
     def render_components(
-        self, components: dict[str, Any], template_api: PreparedAPI
+        self, components: dict[str, Any], template_api: PreparedAPI, api: InputAPI
     ) -> dict[str, str]:
         """Render all components using templates.
 
         :param components: Extracted API components.
         :param template_api: Transformed template API.
+        :param api: Original input API.
         :returns: Mapping of filenames to rendered text content.
         :raises ValueError: If rendering fails.
         """
         try:
             model_imports = collect_model_imports(components["models"])
             extra_deps = collect_model_extra_dependencies(components["models"])
+            extra_dev_deps: list[str] = []
 
             database_config = components.get("database_config")
             orm_models = components.get("orm_models", [])
@@ -192,6 +196,10 @@ class APIGenerator:
                 db_deps = collect_database_dependencies()
                 extra_deps = sorted(set(extra_deps + db_deps))
 
+            if api.config.cdk.enabled:
+                cdk_deps = collect_cdk_dependencies()
+                extra_dev_deps = sorted(set(extra_dev_deps + cdk_deps))
+
             rendered_components = {
                 "models.py": self.templates["models"].render(
                     models=components["models"],
@@ -209,7 +217,9 @@ class APIGenerator:
                 ),
                 "main.py": self.templates["main"].render(api=template_api),
                 "pyproject.toml": self.templates["pyproject"].render(
-                    api=template_api, extra_dependencies=extra_deps or []
+                    api=template_api,
+                    extra_dependencies=extra_deps or [],
+                    extra_dev_dependencies=extra_dev_deps or [],
                 ),
                 "Makefile": self.templates["makefile"].render(api=template_api),
                 "Dockerfile": self.templates["dockerfile"].render(api=template_api),
@@ -379,9 +389,7 @@ class APIGenerator:
 
         for item in src.rglob("*"):
             rel = item.relative_to(src)
-            if any(
-                part in ("__pycache__", "cdk.out") for part in rel.parts
-            ):
+            if any(part in ("__pycache__", "cdk.out") for part in rel.parts):
                 continue
             if item.name == ".DS_Store":
                 continue
@@ -394,13 +402,13 @@ class APIGenerator:
                 target.write_text(item.read_text())
 
         cdk_json_content = (
-            '{\n'
+            "{\n"
             '  "app": "python3 app.py",\n'
             '  "context": {\n'
             '    "env": "dev",\n'
             f'    "project": "{project_name}"\n'
-            '  }\n'
-            '}\n'
+            "  }\n"
+            "}\n"
         )
         (dest_dir / "cdk.json").write_text(cdk_json_content)
 
@@ -450,7 +458,7 @@ class APIGenerator:
 
             # 4. Render components
             logger.info("Rendering components...")
-            rendered_components = self.render_components(components, template_api)
+            rendered_components = self.render_components(components, template_api, api)
 
             # 5. Write files or display dry run
             if not dry_run:
