@@ -14,9 +14,10 @@ SEED_USER_EMAIL := aleshiner@mail.ru
 # =============================================================================
 
 .PHONY: setup
-setup: install-hooks ## First-time setup: install deps, hooks, start DB, run migrations
+setup: ## First-time setup: install deps, hooks, start DB, run migrations
 	@echo "Installing dependencies..."
 	@$(POETRY) install
+	@$(MAKE) install-hooks
 	@echo "Starting PostgreSQL..."
 	@docker compose up -d
 	@echo "Waiting for database..."
@@ -59,6 +60,10 @@ test-e2e: ## Run end-to-end tests (requires Docker)
 .PHONY: test-codegen
 test-codegen: ## Run codegen tests (fast, no DB needed)
 	@$(POETRY) run pytest -m codegen
+
+.PHONY: lint
+lint: ## Same Ruff checks as CI / git pre-commit (.pre-commit-config.yaml)
+	@$(POETRY) run pre-commit run --all-files
 
 # =============================================================================
 #  LOCAL DATABASE MIGRATIONS
@@ -116,10 +121,10 @@ clean: ## Remove Python caches and test output
 	@echo "Cleaned"
 
 .PHONY: install-hooks
-install-hooks: ## Install git pre-commit hook (runs formatting + tests before each commit)
-	@cp hooks/pre-commit .git/hooks/pre-commit
-	@chmod +x .git/hooks/pre-commit
-	@echo "Pre-commit hook installed."
+install-hooks: ## Install git pre-commit hooks (same checks as CI; requires: poetry install)
+	@test -d .git || (echo "install-hooks: not a git checkout" >&2 && exit 1)
+	@$(POETRY) run pre-commit install --install-hooks
+	@echo "Pre-commit installed (see .pre-commit-config.yaml)."
 
 .PHONY: docker-build
 docker-build: ## Build Docker image locally (prunes old layers)
@@ -147,6 +152,7 @@ help: ## Show this help message
 	@echo "  make db-stop         Stop PostgreSQL database"
 	@echo "  make db-reset        Reset database: delete data, restart, re-migrate"
 	@echo "  make test            Run tests"
+	@echo "  make lint            Ruff format + lint (same as CI)"
 	@echo ""
 	@echo "LOCAL DATABASE MIGRATIONS (runs against local Docker PostgreSQL):"
 	@echo "  make migrate-up      Apply pending migrations"
@@ -160,7 +166,7 @@ help: ## Show this help message
 	@echo "  make seed-prod       Seed Shop data into prod backend"
 	@echo ""
 	@echo "UTILITIES:"
-	@echo "  make install-hooks   Install git pre-commit hook"
+	@echo "  make install-hooks   Install pre-commit hooks (Ruff; same as CI)"
 	@echo "  make clean           Remove Python caches"
 	@echo "  make docker-build    Build Docker image"
 	@echo "  make docker-run      Run Docker image locally"

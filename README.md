@@ -20,15 +20,20 @@ poetry install
 cp .env.local.example .env.local
 # Edit .env.local with your Clerk credentials
 
-# First-time setup: start DB + run migrations
+# First-time setup: deps, pre-commit hooks (Ruff — same as CI), DB, migrations
 make setup
-
-# Install git hooks (runs formatting + tests before each commit)
-make install-hooks
 
 # Start the backend (in a separate terminal)
 make dev
 ```
+
+`make setup` installs hooks from `.pre-commit-config.yaml` via `pre-commit`. To run the same checks manually, use `make lint`.
+
+<details>
+<summary>If <code>make install-hooks</code> errors about <code>core.hooksPath</code></summary>
+
+Some tools set a custom Git hooks path. Either unset it (`git config --unset-all core.hooksPath`) or follow your tool’s instructions for running <code>pre-commit</code>.
+</details>
 
 Backend runs at http://localhost:8000
 - API Docs: http://localhost:8000/docs
@@ -37,13 +42,15 @@ Backend runs at http://localhost:8000
 ### Local Commands
 
 ```bash
-make setup          # First-time setup: install deps, start DB, run migrations
+make setup          # First-time setup: install deps, hooks, DB, migrations
 make dev            # Start backend with hot reload
 make db             # Start PostgreSQL only
 make db-stop        # Stop PostgreSQL
 make db-reset       # Reset database: delete data, restart, re-migrate
 make test           # Run all tests
 make test-codegen   # Run codegen tests only (no DB needed)
+make lint           # Ruff format + lint (same as CI / pre-commit)
+make install-hooks  # Install pre-commit git hooks (also run by make setup)
 make clean          # Remove Python caches and test output
 ```
 

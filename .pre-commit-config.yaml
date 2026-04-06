@@ -1,0 +1,9 @@
+# Shared git hook + CI checks (see Makefile install-hooks, .github/workflows/ci.yml).
+# Rev must stay aligned with the ruff version in poetry.lock.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.7
+    hooks:
+      - id: ruff-format
+      - id: ruff
+        args: [--fix]
