@@ -345,13 +345,22 @@ def _resolve_target(
     has_field_params = _has_field_params(endpoint)
 
     if endpoint.response_shape == "object":
-        # Detail endpoint: target is the response model
-        if endpoint.target and endpoint.target != endpoint.response:
-            raise ValueError(
-                f"Endpoint '{endpoint.name}': detail endpoint target '{endpoint.target}' "
-                f"must match response '{endpoint.response}'"
-            )
-        target_name = endpoint.target or endpoint.response
+        if endpoint.response is None:
+            # No response body (e.g. DELETE 204): target is path-param / entity context only
+            if has_field_params and not endpoint.target:
+                raise ValueError(
+                    f"Endpoint '{endpoint.name}': detail endpoint with no response model "
+                    f"requires an explicit 'target' object when using field-based parameters"
+                )
+            target_name = endpoint.target
+        else:
+            # Detail endpoint: target must align with the response model
+            if endpoint.target and endpoint.target != endpoint.response:
+                raise ValueError(
+                    f"Endpoint '{endpoint.name}': detail endpoint target '{endpoint.target}' "
+                    f"must match response '{endpoint.response}'"
+                )
+            target_name = endpoint.target or endpoint.response
     else:
         # List endpoint: target must be explicit when field params are used
         if has_field_params and not endpoint.target:

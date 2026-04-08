@@ -372,6 +372,72 @@ class TestRule1TargetIsKnown:
                 ],
             )
 
+    def test_delete_no_response_model_allows_explicit_target_for_path_params(self):
+        """DELETE with response=None uses target only for path-param inference."""
+        api = InputAPI(
+            name="TestApi",
+            endpoints=[
+                InputEndpoint(
+                    name="DeleteProduct",
+                    path="/products/{product_id}",
+                    method="DELETE",
+                    response=None,
+                    response_shape="object",
+                    target="Product",
+                    path_params=[
+                        InputPathParam(name="product_id", type="uuid", field="id"),
+                    ],
+                ),
+            ],
+            objects=[
+                InputModel(
+                    name="Product",
+                    fields=[
+                        InputField(
+                            name="id",
+                            type="uuid",
+                            pk=True,
+                            exposure="read_only",
+                        ),
+                        InputField(name="name", type="str"),
+                    ],
+                ),
+            ],
+        )
+        assert api is not None
+
+    def test_delete_no_response_model_requires_target_when_field_path_params(self):
+        with pytest.raises(ValueError, match="no response model"):
+            InputAPI(
+                name="TestApi",
+                endpoints=[
+                    InputEndpoint(
+                        name="DeleteProduct",
+                        path="/products/{product_id}",
+                        method="DELETE",
+                        response=None,
+                        response_shape="object",
+                        target=None,
+                        path_params=[
+                            InputPathParam(name="product_id", type="uuid", field="id"),
+                        ],
+                    ),
+                ],
+                objects=[
+                    InputModel(
+                        name="Product",
+                        fields=[
+                            InputField(
+                                name="id",
+                                type="uuid",
+                                pk=True,
+                                exposure="read_only",
+                            ),
+                        ],
+                    ),
+                ],
+            )
+
     def test_list_endpoint_requires_explicit_target(self):
         with pytest.raises(ValueError, match="target"):
             InputAPI(

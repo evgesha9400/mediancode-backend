@@ -415,7 +415,7 @@ ENDPOINTS = [
         "path": "/products/{tracking_id}",
         "description": "Delete a product",
         "tag": "Products",
-        "object": None,
+        "object": "Product",
         "path_params": [{"name": "tracking_id", "field": "tracking_id"}],
         "response_shape": "object",
     },
