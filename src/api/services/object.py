@@ -446,26 +446,42 @@ class ObjectService(BaseService[ObjectDefinition]):
         # Update or insert members
         for position, member in enumerate(members):
             if member.id is not None:
-                # Update existing member
+                # Update existing member — fail loudly on unknown/mis-owned ids
+                # to avoid silent data loss when a client sends a synthetic id.
                 existing = await self.db.get(ObjectMember, member.id)
-                if existing:
-                    existing.name = member.name
-                    existing.position = position
-                    if isinstance(member, ScalarMemberInput):
-                        existing.field_id = member.field_id
-                        existing.role = member.role
-                        is_nullable = member.is_nullable
-                        default_value = member.default_value
-                        if member.role in self._GENERATED_ROLES:
-                            is_nullable = False
-                            default_value = None
-                        existing.is_nullable = is_nullable
-                        existing.default_value = default_value
-                    else:
-                        existing.target_object_id = member.target_object_id
-                        existing.kind = member.kind
-                        existing.inverse_name = member.inverse_name
-                        existing.required = member.required
+                if existing is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=(
+                            f"Unknown member id {member.id}. "
+                            "New members must be sent without an `id` field."
+                        ),
+                    )
+                if existing.object_id != obj.id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=(
+                            f"Member id {member.id} belongs to a different object; "
+                            "cannot move members across objects via update."
+                        ),
+                    )
+                existing.name = member.name
+                existing.position = position
+                if isinstance(member, ScalarMemberInput):
+                    existing.field_id = member.field_id
+                    existing.role = member.role
+                    is_nullable = member.is_nullable
+                    default_value = member.default_value
+                    if member.role in self._GENERATED_ROLES:
+                        is_nullable = False
+                        default_value = None
+                    existing.is_nullable = is_nullable
+                    existing.default_value = default_value
+                else:
+                    existing.target_object_id = member.target_object_id
+                    existing.kind = member.kind
+                    existing.inverse_name = member.inverse_name
+                    existing.required = member.required
             else:
                 # Insert new member
                 self._create_member(obj.id, member, position)
